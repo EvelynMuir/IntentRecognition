@@ -1,0 +1,46 @@
+_target_: src.models.intentonomy_vit_mcc_module.IntentonomyViTModule
+
+optimizer:
+  _target_: torch.optim.AdamW
+  _partial_: true
+  lr: 0.00001
+  weight_decay: 0.01
+
+scheduler:
+  _target_: torch.optim.lr_scheduler.CosineAnnealingLR
+  _partial_: true
+  T_max: 50
+  eta_min: 1e-6
+
+net:
+  _target_: src.models.components.vit.VisionTransformer
+  num_classes: 28
+  pretrained: true
+  image_size: 224
+
+num_classes: 28
+
+# DiscriminativeClueMiner 配置参数
+use_mcc: true
+k_patches: 16  # Top-K patches 数量
+gcn_layers: 2  # GCN 层数
+input_dim: 768  # ViT-B/16 的 hidden dimension
+label_embedding_path: /home/evelynmuir/lambda/projects/IntentRecognition/Intentonomy/data/label_embedding_des_1536
+
+# Sparsity loss 配置参数
+use_sparsity_loss: true  # 是否使用 sparsity loss
+sparsity_loss_weight: 0.1  # Sparsity loss 的权重（仅在 use_sparsity_loss=true 时生效）
+target_sparsity: 0.2  # 目标稀疏度，期望只有 20% 的区域是高活性的
+
+# loss function configuration
+criterion:
+  _target_: src.models.components.aslloss.AsymmetricLossOptimized
+  gamma_neg: 2
+  gamma_pos: 0
+  clip: 0.05
+  eps: 1e-5
+  disable_torch_grad_focal_loss: false
+
+# compile model for faster training with pytorch 2.0
+compile: true
+

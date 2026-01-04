@@ -1,0 +1,12 @@
+_target_: src.data.intentonomy_datamodule.IntentonomyDataModule
+data_dir: ${paths.root_dir}/../Intentonomy/data
+annotation_dir: ${paths.root_dir}/../Intentonomy/data/annotation
+image_dir: ${paths.root_dir}/../Intentonomy/data/images/low
+train_annotation: intentonomy_train2020.json
+val_annotation: intentonomy_val2020.json
+test_annotation: intentonomy_test2020.json
+batch_size: 32
+num_workers: 4
+pin_memory: True
+image_size: 224
+
