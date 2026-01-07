@@ -57,6 +57,7 @@ coverage.xml
 
 # Django stuff:
 *.log
+*.err
 local_settings.py
 db.sqlite3
 db.sqlite3-journal
@@ -148,6 +149,7 @@ dmypy.json
 configs/local/default.yaml
 /data/
 /logs/
+/output/
 .env
 
 # Aim logging

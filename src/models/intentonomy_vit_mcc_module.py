@@ -44,17 +44,54 @@ class GraphReasoningLayer(nn.Module):
         # 3. Residual Connection (残差连接，防止梯度消失)
         return x + self.dropout(out)
 
+
+class LabelGuidedVerifier(nn.Module):
+    def __init__(self, vis_dim, num_classes, num_heads=4):
+        super().__init__()
+        # 标准的 Multihead Attention
+        self.attn = nn.MultiheadAttention(embed_dim=vis_dim, num_heads=num_heads, batch_first=True)
+        
+        # 【核心创新】为每个类别定义一个可学习的温度参数
+        # 初始化为 0 (即 exp(0) = 1.0，标准 Attention)
+        self.log_temperature = nn.Parameter(torch.zeros(num_classes)) 
+        
+    def forward(self, label_queries, visual_evidence):
+        """
+        label_queries: [B, Num_Classes, D] - 意图标签 Embedding
+        visual_evidence: [B, K, D] - 经过 GCN 的视觉线索
+        """
+        # 1. 计算温度 tau
+        # 使用 exp 保证温度恒为正数，且数值稳定
+        # shape: [Num_Classes] -> [1, Num_Classes, 1] 以便广播
+        tau = torch.exp(self.log_temperature).view(1, -1, 1)
+        
+        # 2. 调节 Query 的"锐度" (Temperature Scaling)
+        # 如果 tau < 1: Query 变大 -> Softmax 变尖 -> 关注局部 (Focal)
+        # 如果 tau > 1: Query 变小 -> Softmax 变平 -> 关注全局 (Global)
+        scaled_queries = label_queries / tau
+        
+        # 3. 传入标准 Attention
+        # 这里的 scaled_queries 已经携带了类别特有的"聚焦偏好"
+        attn_out, attn_weights = self.attn(query=scaled_queries, 
+                                           key=visual_evidence, 
+                                           value=visual_evidence)
+        
+        return attn_out, attn_weights, tau
+
+
 class DiscriminativeClueMiner(nn.Module):
     def __init__(self, 
                  vis_dim=768,       # ViT 输出维度 (Base: 768, Large: 1024)
                  text_dim=1536,     # LLM 标签 Embedding 维度 (e.g., BERT/GPT)
                  num_classes=28,    # 意图类别数
                  k_patches=16,      # 显式保留的关键 Patch 数量
-                 gcn_depth=2):      # GCN 推理层数
+                 gcn_depth=2,       # GCN 推理层数
+                 use_adaptive_temperature=False):  # 是否使用自适应温度缩放
         super().__init__()
         
         self.vis_dim = vis_dim
         self.k = k_patches
+        self.use_adaptive_temperature = use_adaptive_temperature
         
         # -----------------------------------------------------------
         # 1. Clue Proposal Network (Patch Scoring)
@@ -81,15 +118,18 @@ class DiscriminativeClueMiner(nn.Module):
         # 将文本维度的 Label 映射到视觉维度
         self.label_proj = nn.Linear(text_dim, vis_dim)
         
-        # Cross-Attention: 
-        # Query = Labels (Target Intents)
-        # Key/Value = Reasoned Visual Graph (Evidence)
-        self.cross_attn = nn.MultiheadAttention(
-            embed_dim=vis_dim, 
-            num_heads=8, 
-            batch_first=True,
-            dropout=0.1
-        )
+        # 根据 use_adaptive_temperature 选择使用哪种 Verifier
+        if use_adaptive_temperature:
+            # 使用带自适应温度缩放的 LabelGuidedVerifier
+            self.verifier = LabelGuidedVerifier(vis_dim, num_classes, num_heads=4)
+        else:
+            # 使用标准的 MultiheadAttention
+            self.cross_attn = nn.MultiheadAttention(
+                embed_dim=vis_dim, 
+                num_heads=8, 
+                batch_first=True,
+                dropout=0.1
+            )
         
         # 最后的 Logit 缩放因子 (可选，有助于收敛)
         self.scale = nn.Parameter(torch.ones([]) * (vis_dim ** -0.5))
@@ -159,25 +199,40 @@ class DiscriminativeClueMiner(nn.Module):
         # 扩展到 Batch: [B, Num_Classes, Vis_D]
         label_queries = label_queries.unsqueeze(0).expand(B, -1, -1)
         
-        # 4.2 Cross Attention
-        # "我看这 K 个线索(Key/Value)中，有没有符合 Label(Query) 描述的组合？"
-        # attn_out: [B, Num_Classes, Vis_D]
-        attn_out, _ = self.cross_attn(
-            query=label_queries, 
-            key=gcn_feat, 
-            value=gcn_feat
-        )
+        # 4.2 根据是否使用自适应温度选择不同的 Verifier
+        if self.use_adaptive_temperature:
+            # 使用带温度缩放的 LabelGuidedVerifier
+            # "我看这 K 个线索(Key/Value)中，有没有符合 Label(Query) 描述的组合？"
+            # attn_out: [B, Num_Classes, Vis_D]
+            attn_out, attn_weights, learned_tau = self.verifier(label_queries, gcn_feat)
+        else:
+            # 使用标准的 Cross Attention
+            # attn_out: [B, Num_Classes, Vis_D]
+            attn_out, attn_weights = self.cross_attn(
+                query=label_queries, 
+                key=gcn_feat, 
+                value=gcn_feat
+            )
+            learned_tau = None
         
         # 4.3 预测 Logits (Visual-Semantic Similarity)
         # 计算对齐后的视觉特征与标签语义的点积
         # [B, NC, D] * [B, NC, D] -> sum -> [B, NC]
-        logits = torch.sum(attn_out * label_queries, dim=-1) * self.scale
+        logits = (attn_out * label_queries).sum(dim=-1) * self.scale
         
-        return logits, {
+        # 构建返回字典
+        aux_dict = {
             "patch_scores": scores,        # 用于 Sparsity Loss
             "topk_indices": topk_indices,  # 用于可视化 (Fig 5)
-            "adj_matrix": adj_matrix       # 用于可视化图结构
+            "adj_matrix": adj_matrix,      # 用于可视化图结构
+            "attn_weights": attn_weights   # Attention 权重
         }
+        
+        # 只有在使用自适应温度时才添加 learned_tau
+        if self.use_adaptive_temperature:
+            aux_dict["learned_tau"] = learned_tau  # 学习到的温度参数，用于做分析图表！
+        
+        return logits, aux_dict
 
 
 def sparsity_loss(patch_scores, target_sparsity=0.2):
@@ -227,6 +282,7 @@ class IntentonomyViTModule(LightningModule):
         k_patches: int = 16,
         gcn_layers: int = 2,
         input_dim: int = 768,
+        use_adaptive_temperature: bool = False,  # 是否使用自适应温度缩放
         # Label embedding 参数
         label_embedding_path: str = None,
         # Sparsity loss 参数
@@ -246,6 +302,7 @@ class IntentonomyViTModule(LightningModule):
         :param k_patches: Number of top-k patches to select in DiscriminativeClueMiner.
         :param gcn_layers: Number of GCN layers in DiscriminativeClueMiner.
         :param input_dim: Input dimension for DiscriminativeClueMiner (should match ViT hidden dim).
+        :param use_adaptive_temperature: Whether to use adaptive temperature scaling in LabelGuidedVerifier (default False).
         :param label_embedding_path: Path to label embedding file. If None and use_mcc=True, will raise error.
         :param use_sparsity_loss: Whether to use sparsity loss (default True).
         :param sparsity_loss_weight: Weight for sparsity loss (default 0.1).
@@ -299,7 +356,8 @@ class IntentonomyViTModule(LightningModule):
                 text_dim=label_embedding.shape[-1],  # 使用 label_embedding 的维度
                 num_classes=num_classes,
                 k_patches=k_patches,
-                gcn_depth=gcn_layers
+                gcn_depth=gcn_layers,
+                use_adaptive_temperature=use_adaptive_temperature
             )
         else:
             self.mcc_miner = None

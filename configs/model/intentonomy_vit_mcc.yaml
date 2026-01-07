@@ -25,6 +25,7 @@ use_mcc: true
 k_patches: 16  # Top-K patches 数量
 gcn_layers: 2  # GCN 层数
 input_dim: 768  # ViT-B/16 的 hidden dimension
+use_adaptive_temperature: false  # 是否使用自适应温度缩放（LabelGuidedVerifier）
 label_embedding_path: /home/evelynmuir/lambda/projects/IntentRecognition/Intentonomy/data/label_embedding_des_1536
 
 # Sparsity loss 配置参数
