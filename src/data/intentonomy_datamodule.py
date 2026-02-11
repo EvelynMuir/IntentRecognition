@@ -23,15 +23,18 @@ class IntentonomyDataset(Dataset):
         annotation_file: str,
         image_dir: str,
         transform: Optional[transforms.Compose] = None,
+        binarize_softprob: bool = False,
     ):
         """Initialize Intentonomy dataset.
 
         :param annotation_file: Path to JSON annotation file.
         :param image_dir: Directory containing images.
         :param transform: Optional transform to be applied on images.
+        :param binarize_softprob: If True, when use_softprob is True, convert soft prob > 0 to 1.0. Default False.
         """
         self.image_dir = Path(image_dir)
         self.transform = transform
+        self.binarize_softprob = binarize_softprob
 
         # Load annotations
         with open(annotation_file, "r") as f:
@@ -106,6 +109,9 @@ class IntentonomyDataset(Dataset):
         if self.use_softprob:
             # Use softprob directly (already a probability vector)
             labels = torch.tensor(annotation_data, dtype=torch.float32)
+            if self.binarize_softprob:
+                # Convert soft prob > 0 to 1.0, others to 0.0
+                labels = (labels > 0).float()
         else:
             # Convert category_ids to one-hot encoding
             labels = torch.zeros(self.num_classes, dtype=torch.float32)
@@ -149,6 +155,7 @@ class IntentonomyDataModule(LightningDataModule):
         num_workers: int = 4,
         pin_memory: bool = True,
         image_size: int = 224,
+        binarize_softprob: bool = False,
     ) -> None:
         """Initialize a `IntentonomyDataModule`.
 
@@ -162,6 +169,7 @@ class IntentonomyDataModule(LightningDataModule):
         :param num_workers: Number of workers for data loading.
         :param pin_memory: Whether to pin memory.
         :param image_size: Image size for resizing.
+        :param binarize_softprob: If True, when use_softprob is True, convert soft prob > 0 to 1.0. Default False.
         """
         super().__init__()
 
@@ -256,10 +264,13 @@ class IntentonomyDataModule(LightningDataModule):
                     annotation_file=train_ann_file,
                     image_dir=self.hparams.image_dir,
                     transform=self.train_transform,
+                    binarize_softprob=self.hparams.binarize_softprob,
                 )
                 # Get num_classes from dataset
                 self._num_classes = self.data_train.num_classes
 
+        # Initialize validation dataset for both "fit" and "validate" stages
+        if stage == "fit" or stage == "validate" or stage is None:
             if self.data_val is None:
                 val_ann_file = os.path.join(
                     self.hparams.annotation_dir, self.hparams.val_annotation
@@ -268,6 +279,7 @@ class IntentonomyDataModule(LightningDataModule):
                     annotation_file=val_ann_file,
                     image_dir=self.hparams.image_dir,
                     transform=self.val_test_transform,
+                    binarize_softprob=self.hparams.binarize_softprob,
                 )
 
         if stage == "test" or stage is None:
@@ -279,6 +291,7 @@ class IntentonomyDataModule(LightningDataModule):
                     annotation_file=test_ann_file,
                     image_dir=self.hparams.image_dir,
                     transform=self.val_test_transform,
+                    binarize_softprob=self.hparams.binarize_softprob,
                 )
                 # Get num_classes from dataset if not set
                 if self._num_classes is None:

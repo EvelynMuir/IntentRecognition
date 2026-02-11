@@ -1,22 +1,18 @@
 # @package _global_
 
 # to execute this experiment run:
-# python train.py experiment=intentonomy_vit_mcc_adaptive
+# python train.py experiment=intentonomy_clip_vit_mlp
 
 defaults:
   - override /data: intentonomy
-  - override /model: intentonomy_vit_mcc
+  - override /model: intentonomy_clip_vit_mlp
   - override /callbacks: default
   - override /trainer: default
 
 # all parameters below will be merged with parameters from default configurations set above
 # this allows you to overwrite only specified parameters
 
-tags: ["intentonomy", "vit", "mcc", "adaptive_temperature"]
-
-# 启用自适应温度缩放功能
-model:
-  use_adaptive_temperature: true
+tags: ["intentonomy", "clip-vit", "mlp"]
 
 callbacks:
   model_checkpoint:
@@ -29,14 +25,11 @@ callbacks:
     patience: 10
 
 data:
-  batch_size: 256
+  batch_size: 1024
 
 logger:
   wandb:
-    name: "Intentonomy-ViT-MCC-Adaptive"
+    name: "Intentonomy-CLIP-ViT-L14-MLP"
     tags: ${tags}
-    group: "Intentonomy-ViT-MCC-Adaptive"
-
-  tensorboard:
-    name: "Intentonomy-ViT-MCC-Adaptive"
+    group: "Intentonomy-CLIP-ViT-MLP"
 

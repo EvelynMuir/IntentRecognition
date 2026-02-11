@@ -1,22 +1,19 @@
 # @package _global_
 
 # to execute this experiment run:
-# python train.py experiment=intentonomy_vit_mcc_adaptive
+# python train.py experiment=intentonomy_resnet101_mcc
 
 defaults:
   - override /data: intentonomy
-  - override /model: intentonomy_vit_mcc
+  - override /model: intentonomy_resnet101_mcc
   - override /callbacks: default
   - override /trainer: default
 
 # all parameters below will be merged with parameters from default configurations set above
 # this allows you to overwrite only specified parameters
 
-tags: ["intentonomy", "vit", "mcc", "adaptive_temperature"]
+tags: ["intentonomy", "resnet101", "mcc"]
 
-# 启用自适应温度缩放功能
-model:
-  use_adaptive_temperature: true
 
 callbacks:
   model_checkpoint:
@@ -32,11 +29,7 @@ data:
   batch_size: 256
 
 logger:
-  wandb:
-    name: "Intentonomy-ViT-MCC-Adaptive"
-    tags: ${tags}
-    group: "Intentonomy-ViT-MCC-Adaptive"
-
   tensorboard:
-    name: "Intentonomy-ViT-MCC-Adaptive"
+    name: "Intentonomy-ResNet101-MCC"
+    
 

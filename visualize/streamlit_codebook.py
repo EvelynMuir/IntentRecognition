@@ -424,7 +424,7 @@ def collect_code_statistics(model, test_loader, device, model_type: str):
     
     total_batches = len(test_loader)
     
-            with torch.no_grad():
+    with torch.no_grad():
         for batch_idx, batch in enumerate(test_loader):
             images = batch["image"].to(device)
             image_ids = batch.get("image_id", None)

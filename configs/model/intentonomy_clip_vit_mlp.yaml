@@ -1,0 +1,38 @@
+_target_: src.models.intentonomy_clip_vit_module.IntentonomyClipViTModule
+
+optimizer:
+  _target_: torch.optim.AdamW
+  _partial_: true
+  lr: 5e-3
+  weight_decay: 0.01
+
+scheduler:
+  _target_: torch.optim.lr_scheduler.CosineAnnealingLR
+  _partial_: true
+  T_max: 50
+  eta_min: 1e-6
+
+net:
+  _target_: src.models.components.clip_vit.ClipVisionTransformer
+  num_classes: 28
+  pretrained: true
+  image_size: 224
+  clip_model_name: "ViT-L/14"  # CLIP ViT-L/14 with hidden dimension 1024
+
+num_classes: 28
+
+# loss function configuration
+criterion:
+  _target_: src.models.components.aslloss.AsymmetricLossOptimized
+  gamma_neg: 2
+  gamma_pos: 0
+  clip: 0.05
+  eps: 1e-5
+  disable_torch_grad_focal_loss: false
+
+# Freeze CLIP backbone, only train MLP classifier head
+freeze_backbone: true
+
+# compile model for faster training with pytorch 2.0
+compile: true
+

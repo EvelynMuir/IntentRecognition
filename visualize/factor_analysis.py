@@ -34,8 +34,12 @@ def factor_drop_test(model, z_q_split: torch.Tensor, intents: List[str] = None) 
     device = z_q_split.device
     
     # 获取基础预测（所有 factor 都保留）
+    # 拼接所有 factor: [B, F, D] -> [B, F*D]
     z_flat_base = z_q_split.view(B, -1)  # [B, F*D]
-    base_pred = model.classifier(z_flat_base).sigmoid()  # [B, num_intents]
+    # 通过 fusion_mlp 处理: [B, F*D] -> [B, 1024]
+    fusion_mlp_out_base = model.fusion_mlp(z_flat_base)  # [B, 1024]
+    # 通过 classifier: [B, 1024] -> [B, num_intents]
+    base_pred = model.classifier(fusion_mlp_out_base).sigmoid()  # [B, num_intents]
     
     drops = []
     
@@ -47,7 +51,10 @@ def factor_drop_test(model, z_q_split: torch.Tensor, intents: List[str] = None) 
         
         # 获取 drop 后的预测
         z_flat_drop = z_drop.view(B, -1)  # [B, F*D]
-        pred = model.classifier(z_flat_drop).sigmoid()  # [B, num_intents]
+        # 通过 fusion_mlp 处理: [B, F*D] -> [B, 1024]
+        fusion_mlp_out_drop = model.fusion_mlp(z_flat_drop)  # [B, 1024]
+        # 通过 classifier: [B, 1024] -> [B, num_intents]
+        pred = model.classifier(fusion_mlp_out_drop).sigmoid()  # [B, num_intents]
         
         # 计算预测变化（绝对值平均）
         drop = (base_pred - pred).abs().mean(dim=0)  # [num_intents]
