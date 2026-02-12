@@ -477,37 +477,21 @@ class IntentonomyClipViTMultiStreamModule(IntentonomyClipViTBaseModule):
         z_f_raw = z_f
         
         # 6. Parallel VQ: 5个VQ分别处理对应的factor
-        # 根据token_mode决定是否使用适配器：
-        # - cls模式: 所有因子都不使用适配器
-        # - patch模式: 所有因子都使用适配器
-        # - mixed模式: 因子0, 2, 4 (coco, emotion, actions) 使用适配器，因子1, 3 (places, ava) 不使用适配器
+        # 所有因子都通过适配器处理，将视觉特征映射到对应的Codebook空间
         quantized_list = []
         vq_losses = []
         perplexities = []
         
         for i in range(5):
-            # 判断是否需要使用适配器
-            use_adapter = False
-            if self.token_mode == "patch":
-                # patch模式：所有因子都使用适配器
-                use_adapter = True
-            elif self.token_mode == "mixed":
-                # mixed模式：仅patch因子使用适配器 (0, 2, 4)
-                if i in [0, 2, 4]:  # coco, emotion, actions
-                    use_adapter = True
-            # cls模式：所有因子都不使用适配器，use_adapter保持False
-            
             # 取出第 i 个因子的原始特征
             raw_feat = z_f_raw[:, i, :]  # [B, 768]
             
-            if use_adapter:
-                # 通过适配器：变成"潜在的语义向量"
-                adapted_feat = self.adapters[i](raw_feat)  # [B, vq_dim=768]
-                # 输入冻结的 VQ，此时 adapted_feat 会努力通过训练去靠近 Codebook
-                vq_input = adapted_feat.unsqueeze(1)  # [B, 1, 768]
-            else:
-                # 直接使用原始特征，不经过适配器
-                vq_input = raw_feat.unsqueeze(1)  # [B, 1, 768]
+            # 通过适配器：变成"潜在的语义向量"
+            # 此时 adapted_feat 会努力通过训练去靠近 Codebook
+            adapted_feat = self.adapters[i](raw_feat)  # [B, vq_dim=768]
+            
+            # 输入冻结的 VQ
+            vq_input = adapted_feat.unsqueeze(1)  # [B, 1, 768]
             
             # 输入VQ
             z_q, vq_loss, perplexity = self.vqs[i](vq_input)
@@ -642,33 +626,19 @@ class IntentonomyClipViTMultiStreamModule(IntentonomyClipViTBaseModule):
         # 保存原始特征
         z_f_raw = z_f
         
-        # 根据token_mode决定是否使用适配器（与forward方法保持一致）
+        # 所有因子都通过适配器处理，将视觉特征映射到对应的Codebook空间
         indices = {}
         factor_names = ["coco", "places", "emotion", "ava", "actions"]
         
         for i, factor_name in enumerate(factor_names):
-            # 判断是否需要使用适配器
-            use_adapter = False
-            if self.token_mode == "patch":
-                # patch模式：所有因子都使用适配器
-                use_adapter = True
-            elif self.token_mode == "mixed":
-                # mixed模式：仅patch因子使用适配器 (0, 2, 4)
-                if i in [0, 2, 4]:  # coco, emotion, actions
-                    use_adapter = True
-            # cls模式：所有因子都不使用适配器，use_adapter保持False
-            
             # 取出第 i 个因子的原始特征
             raw_feat = z_f_raw[:, i, :]  # [B, 768]
             
-            if use_adapter:
-                # 通过适配器：变成"潜在的语义向量"
-                adapted_feat = self.adapters[i](raw_feat)  # [B, vq_dim=768]
-                # 输入VQ
-                vq_input = adapted_feat.unsqueeze(1)  # [B, 1, 768]
-            else:
-                # 直接使用原始特征，不经过适配器
-                vq_input = raw_feat.unsqueeze(1)  # [B, 1, 768]
+            # 通过适配器：变成"潜在的语义向量"
+            adapted_feat = self.adapters[i](raw_feat)  # [B, vq_dim=768]
+            
+            # 输入VQ
+            vq_input = adapted_feat.unsqueeze(1)  # [B, 1, 768]
             
             # 获取code indices
             indices[factor_name] = self.vqs[i].get_code_indices(vq_input)
@@ -749,6 +719,8 @@ class IntentonomyClipViTMultiStreamModule(IntentonomyClipViTBaseModule):
         
         if self.use_factor_separation_loss and quantized_dict is not None:
             factor_sep_loss = self.factor_separation_loss(quantized_dict)
+        else:
+            factor_sep_loss = torch.tensor(0.0, device=logits.device)
         
         # Total loss
         loss = (vq_loss + 
