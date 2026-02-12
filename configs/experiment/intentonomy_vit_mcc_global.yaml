@@ -1,7 +1,7 @@
 # @package _global_
 
 # to execute this experiment run:
-# python train.py experiment=example
+# python train.py experiment=intentonomy_vit_mcc_global
 
 defaults:
   - override /data: intentonomy
@@ -12,7 +12,10 @@ defaults:
 # all parameters below will be merged with parameters from default configurations set above
 # this allows you to overwrite only specified parameters
 
-tags: ["intentonomy", "vit", "mcc"]
+tags: ["intentonomy", "vit", "mcc", "global_feature"]
+
+model:
+  use_global_feature: true
 
 callbacks:
   model_checkpoint:
@@ -29,9 +32,9 @@ data:
 
 logger:
   wandb:
-    name: "Intentonomy-ViT-MCC"
+    name: "Intentonomy-ViT-MCC-Global"
     tags: ${tags}
-    group: "Intentonomy-ViT-MCC"
+    group: "Intentonomy-ViT-MCC-Global"
 
   tensorboard:
-    name: "Intentonomy-ViT-MCC"
+    name: "Intentonomy-ViT-MCC-Global"

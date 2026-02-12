@@ -1,0 +1,45 @@
+# @package _global_
+
+# to execute this experiment run:
+# python train.py experiment=intentonomy_clip_vit_codebook
+
+defaults:
+  - override /data: intentonomy
+  - override /model: intentonomy_clip_vit_codebook
+  - override /callbacks: default
+  - override /trainer: default
+
+# all parameters below will be merged with parameters from default configurations set above
+# this allows you to overwrite only specified parameters
+
+tags: ["intentonomy", "clip_vit", "codebook"]
+
+callbacks:
+  model_checkpoint:
+    monitor: val/f1_macro
+    mode: max
+
+  early_stopping:
+    monitor: val/f1_macro
+    mode: max
+    patience: 10
+
+data:
+  batch_size: 64
+  binarize_softprob: true
+
+logger:
+  wandb:
+    name: "Intentonomy-CLIP-ViT-Codebook"
+    tags: ${tags}
+    group: "Intentonomy-CLIP-ViT-Codebook"
+
+  tensorboard:
+    name: "Intentonomy-CLIP-ViT-Codebook"
+
+# Weight decay for different parameter groups
+model:
+  wd_projector: 1e-6  # Weight decay for projector
+  wd_vq: 0.0  # Weight decay for vector quantizers
+  wd_head: 1e-4  # Weight decay for classifier (head)
+

@@ -1,0 +1,70 @@
+_target_: src.models.intentonomy_clip_vit_codebook_module.IntentonomyClipViTCodebookModule
+
+# Optimizer learning rates (configurable)
+lr_projector: 1e-3  # Learning rate for projector
+lr_vq: 1e-3  # Learning rate for vector quantizers
+lr_classifier: 3e-4  # Learning rate for classifier (head)
+lr_vit: 1e-5  # Learning rate for unfrozen ViT blocks
+weight_decay: 1e-4  # Weight decay for optimizer
+
+# Intent loss weight scheduling
+intent_loss_weight_warmup_epochs: 2  # Number of epochs with reduced intent loss weight
+intent_loss_weight_warmup: 0.2  # Intent loss weight during warmup epochs (loss = vq_loss + 0.2 * intent_loss)
+intent_loss_weight_normal: 1.0  # Intent loss weight after warmup (loss = vq_loss + 1.0 * intent_loss)
+
+# Note: The optimizer config below is not used (optimizer is created in configure_optimizers)
+# but kept for compatibility with the framework
+optimizer:
+  _target_: torch.optim.AdamW
+  _partial_: true
+  lr: 0.00001
+  weight_decay: 0.01
+
+scheduler:
+  _target_: torch.optim.lr_scheduler.CosineAnnealingLR
+  _partial_: true
+  T_max: 50
+  eta_min: 1e-6
+
+net:
+  _target_: src.models.components.clip_vit.ClipVisionTransformer
+  num_classes: 28
+  pretrained: true
+  image_size: 224
+  clip_model_name: "ViT-L/14"  # Options: "ViT-B/32" (512), "ViT-B/16" (768), "ViT-L/14" (1024)
+
+num_classes: 28
+
+# loss function configuration
+criterion:
+  _target_: src.models.components.aslloss.AsymmetricLossOptimized
+  gamma_neg: 2
+  gamma_pos: 0
+  clip: 0.05
+  eps: 1e-5
+  disable_torch_grad_focal_loss: false
+
+# Codebook parameters
+k_semantic_blocks: 5  # K: number of semantic blocks
+block_dim: 256  # D: dimension of each semantic block
+codebook_size: 128  # N: number of codebook vectors
+vq_commitment_cost: 0.07  # Weight for VQ commitment loss (beta in VQ-VAE paper)
+
+# EMA parameters for model weights
+use_ema: false
+ema_decay: 0.9997
+
+# Backbone freezing
+freeze_backbone: true  # Whether to freeze CLIP ViT backbone (default true)
+unfreeze_last_n_blocks: 0  # Number of last transformer blocks to unfreeze (0 = disabled, 2 = unfreeze last 2 blocks)
+
+# Anchor loss
+use_anchor_loss: false  # Whether to use anchor loss
+anchor_loss_weight: 0.05  # Weight for anchor loss
+
+# compile model for faster training with pytorch 2.0
+compile: true
+
+# pretrained checkpoint path (optional)
+pretrained_ckpt_path: null  # Path to pretrained checkpoint to load, e.g., "path/to/checkpoint.ckpt"
+

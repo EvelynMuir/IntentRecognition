@@ -1,9 +1,9 @@
-_target_: src.models.intentonomy_vit_mcc_module.IntentonomyViTModule
+_target_: src.models.intentonomy_resnet101_mcc_module.IntentonomyResNet101Module
 
 optimizer:
   _target_: torch.optim.AdamW
   _partial_: true
-  lr: 0.00001
+  lr: 1e-4
   weight_decay: 0.01
 
 scheduler:
@@ -13,7 +13,7 @@ scheduler:
   eta_min: 1e-6
 
 net:
-  _target_: src.models.components.vit.VisionTransformer
+  _target_: src.models.components.resnet101.ResNet101Backbone
   num_classes: 28
   pretrained: true
   image_size: 224
@@ -24,10 +24,9 @@ num_classes: 28
 use_mcc: true
 k_patches: 16  # Top-K patches 数量
 gcn_layers: 2  # GCN 层数
-input_dim: 768  # ViT-B/16 的 hidden dimension
+input_dim: 2048  # ResNet101 的输出通道数
 use_adaptive_temperature: false  # 是否使用自适应温度缩放（LabelGuidedVerifier）
 label_embedding_type: default  # "default" 使用 label_embedding_path, "clip" 使用 CLIP embedding
-label_embedding_path: ../IntentRecognition/Intentonomy/data/label_embedding_300_28  # Label embedding 初始化路径
 
 # Sparsity loss 配置参数
 use_sparsity_loss: true  # 是否使用 sparsity loss
@@ -35,7 +34,6 @@ sparsity_loss_weight: 0.1  # Sparsity loss 的权重（仅在 use_sparsity_loss=
 target_sparsity: 0.2  # 目标稀疏度，期望只有 20% 的区域是高活性的
 sparsity_loss_type: default  # "default" 或 "smart"，选择稀疏损失函数类型
 sparsity_loss_k: 3  # 仅在 sparsity_loss_type="smart" 时使用，保护前 K 个最高分数的 Patch
-
 
 # loss function configuration
 criterion:

@@ -121,13 +121,33 @@ def eval_all_metrics(
 def get_best_f1_scores(
     multihot_targets: np.ndarray,
     scores: np.ndarray,
-    threshold_end: float = 0.05
+    threshold_end: float = 0.05,
+    use_inference_strategy: bool = False,
+    class_thresholds: np.ndarray = None
 ) -> Dict[str, float]:
     """
     get the optimal macro f1 score by tuning threshold
+    If class_thresholds is provided, use class-level thresholds directly without searching.
     """
+    if class_thresholds is not None:
+        # 如果提供了类别级阈值，直接使用，跳过阈值搜索
+        _micros, _samples, _macros, _none = compute_f1(
+            multihot_targets, scores, threshold=0.5, 
+            use_inference_strategy=use_inference_strategy, 
+            class_thresholds=class_thresholds
+        )
+        f1 = {}
+        f1["micro"] = _micros
+        f1["macro"] = _macros
+        f1["samples"] = _samples
+        f1["none"] = _none
+        # 对于类别级阈值，返回平均阈值作为参考
+        f1["threshold"] = float(np.mean(class_thresholds))
+        return f1
+    
+    # 原有逻辑：搜索最优单一阈值
     thrs = np.linspace(
-        threshold_end, 0.95, int(np.round((0.95 - threshold_end) / 0.05)) + 1,
+        threshold_end, 0.95, int(np.round((0.95 - threshold_end) / 0.01)) + 1,
         endpoint=True
     )
     f1_micros = []
@@ -135,7 +155,7 @@ def get_best_f1_scores(
     f1_samples = []
     f1_none = []
     for thr in thrs:
-        _micros, _samples, _macros, _none = compute_f1(multihot_targets, scores, thr)
+        _micros, _samples, _macros, _none = compute_f1(multihot_targets, scores, thr, use_inference_strategy)
         f1_micros.append(_micros)
         f1_samples.append(_samples)
         f1_macros.append(_macros)
@@ -143,8 +163,11 @@ def get_best_f1_scores(
 
     f1_macros_m = max(f1_macros)
     b_thr = np.argmax(f1_macros)
+    # f1_micros_m = max(f1_micros)
+    # b_thr = np.argmax(f1_micros)
 
     f1_micros_m = f1_micros[b_thr]
+    # f1_macros_m = f1_macros[b_thr]
     f1_samples_m = f1_samples[b_thr]
     f1_none_m = f1_none[b_thr]
     f1 = {}
@@ -158,10 +181,24 @@ def get_best_f1_scores(
 
 
 def compute_f1(
-        multihot_targets: np.ndarray, scores: np.ndarray, threshold: float = 0.5
+        multihot_targets: np.ndarray, scores: np.ndarray, threshold: float = 0.5,
+        use_inference_strategy: bool = False, class_thresholds: np.ndarray = None
 ) -> Tuple[float, float, float, np.ndarray]:
     # change scores to predict_labels
-    predict_labels = scores > threshold
+    if class_thresholds is not None:
+        # 使用类别级阈值：每个类别使用自己的阈值
+        # scores: [num_samples, num_classes], class_thresholds: [num_classes]
+        # 广播机制：scores > class_thresholds
+        predict_labels = scores > class_thresholds
+    else:
+        # 使用单一阈值（原有逻辑）
+        predict_labels = scores > threshold
+    # 只有当 use_inference_strategy=True 时才应用保底机制
+    if use_inference_strategy:
+        for i in range(predict_labels.shape[0]):
+            if predict_labels[i].sum() == 0:
+                max_idx = np.argmax(scores[i])
+                predict_labels[i, max_idx] = 1.0
     predict_labels = predict_labels.astype(int)
 
     # get f1 scores
@@ -213,16 +250,24 @@ def multihot(x: List[List[int]], nb_classes: int) -> np.ndarray:
 def eval_validation_set(
     val_scores: np.ndarray,
     val_targets: np.ndarray,
+    use_inference_strategy: bool = False,
+    class_thresholds: np.ndarray = None
 ) -> dict:
     """
     compute validation results
     args:
         val_scores: np.ndarray of shape (val_num, num_classes),
         val_targets: np.ndarray of shape (val_num, num_classes) - multihot encoded targets
+        use_inference_strategy: whether to use inference strategy (fallback mechanism for all-zero predictions)
+        class_thresholds: optional np.ndarray of shape (num_classes,) - class-level thresholds to use directly
     """
     # get optimal threshold using val set
     multihot_targets = val_targets
-    f1_dict = get_best_f1_scores(multihot_targets, val_scores)
+    f1_dict = get_best_f1_scores(
+        multihot_targets, val_scores, 
+        use_inference_strategy=use_inference_strategy,
+        class_thresholds=class_thresholds
+    )
 
     # compute mAP
     mAP = compute_mAP(val_scores, multihot_targets)

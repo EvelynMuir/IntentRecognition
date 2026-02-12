@@ -1,0 +1,73 @@
+_target_: src.models.intentonomy_clip_vit_mcc_module.IntentonomyClipViTModule
+
+optimizer:
+  _target_: torch.optim.AdamW
+  _partial_: true
+  lr: 0.00001
+  weight_decay: 0.01
+
+scheduler:
+  _target_: torch.optim.lr_scheduler.CosineAnnealingLR
+  _partial_: true
+  T_max: 50
+  eta_min: 1e-6
+
+net:
+  _target_: src.models.components.clip_vit.ClipVisionTransformer
+  num_classes: 28
+  pretrained: true
+  image_size: 224
+  clip_model_name: "ViT-B/32"  # Options: "ViT-B/32", "ViT-B/16", "ViT-L/14"
+
+num_classes: 28
+
+# loss function configuration
+criterion:
+  _target_: src.models.components.aslloss.AsymmetricLossOptimized
+  gamma_neg: 2
+  gamma_pos: 0
+  clip: 0.05
+  eps: 1e-5
+  disable_torch_grad_focal_loss: false
+
+# DiscriminativeClueMiner 参数
+use_mcc: true
+k_patches: 16
+gcn_layers: 2
+input_dim: 512  # CLIP ViT-B/32: 512, ViT-B/16: 768, ViT-L/14: 1024
+use_adaptive_temperature: false
+use_global_feature: false
+use_learnable_fusion: false
+use_image_level_temperature: false
+use_cosine_similarity_temperature: false
+use_max_pooling_temperature: false
+use_consistency_bias: false
+
+# Label embedding 参数 - 使用CLIP embedding
+label_embedding_path: null  # 当 label_embedding_type="clip" 时，会自动查找 label_embedding_clip
+label_embedding_type: "clip"  # 使用CLIP embedding
+
+# Label adjacency matrix 参数
+label_adjacency_matrix_path: null
+
+# Sparsity loss 参数
+use_sparsity_loss: true
+sparsity_loss_weight: 0.1
+target_sparsity: 0.2
+sparsity_loss_type: "default"  # "default" 或 "smart"
+sparsity_loss_k: 3
+
+# Correlation loss 参数
+use_correlation_loss: true
+correlation_loss_weight: 0.1
+
+# Class thresholds 参数
+use_class_thresholds: false
+
+# EMA 参数
+use_ema: true
+ema_decay: 0.9997
+
+# compile model for faster training with pytorch 2.0
+compile: true
+

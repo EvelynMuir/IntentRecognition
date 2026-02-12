@@ -2,8 +2,8 @@
 
 defaults:
   - _self_
-  - data: mnist # choose datamodule with `test_dataloader()` for evaluation
-  - model: mnist
+  - data: intentonomy # choose datamodule with `test_dataloader()` for evaluation
+  - model: intentonomy_resnet101_mcc
   - logger: null
   - trainer: default
   - paths: default
@@ -12,7 +12,7 @@ defaults:
 
 task_name: "eval"
 
-tags: ["dev"]
+tags: ["intentonomy", "resnet101", "mcc"]
 
 # passing checkpoint path is necessary for evaluation
 ckpt_path: ???

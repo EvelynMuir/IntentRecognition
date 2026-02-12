@@ -1,0 +1,72 @@
+_target_: src.models.intentonomy_clip_vit_multistream_module.IntentonomyClipViTMultiStreamModule
+
+# Semantic anchors path
+semantic_anchors_path: "semantic_anchors.pth"  # Path to semantic anchors file
+
+# VQ parameters
+vq_commitment_cost: 0.25  # Weight for VQ commitment loss
+freeze_codebook: true  # Whether to freeze codebook (default true, set to false for fine-tuning)
+
+# Semantic consistency loss
+use_semantic_consistency_loss: false  # Whether to use semantic consistency loss (only when freeze_codebook=false)
+semantic_consistency_weight: 0.1  # Weight for semantic consistency loss
+
+# Optimizer learning rates (can be set separately for each VQ)
+lr_vq_coco: 1e-3  # Learning rate for COCO VQ
+lr_vq_places: 1e-3  # Learning rate for Places365 VQ
+lr_vq_emotion: 1e-3  # Learning rate for Emotion VQ
+lr_vq_ava: 1e-3  # Learning rate for AVA VQ
+lr_vq_actions: 1e-3  # Learning rate for Actions VQ
+lr_classifier: 3e-4  # Learning rate for classifier (head)
+
+# Weight decay
+wd_vq: 0.0  # Weight decay for vector quantizers
+wd_head: 1e-4  # Weight decay for classifier (head)
+
+# Intent loss weight scheduling
+intent_loss_weight_warmup_epochs: 2  # Number of epochs with reduced intent loss weight
+intent_loss_weight_warmup: 0.2  # Intent loss weight during warmup epochs
+intent_loss_weight_normal: 1.0  # Intent loss weight after warmup
+
+# Note: The optimizer config below is not used (optimizer is created in configure_optimizers)
+# but kept for compatibility with the framework
+optimizer:
+  _target_: torch.optim.AdamW
+  _partial_: true
+  lr: 0.00001
+  weight_decay: 0.01
+
+scheduler:
+  _target_: torch.optim.lr_scheduler.CosineAnnealingLR
+  _partial_: true
+  T_max: 50
+  eta_min: 1e-6
+
+net:
+  _target_: src.models.components.clip_vit.ClipVisionTransformer
+  num_classes: 28
+  pretrained: true
+  image_size: 224
+  clip_model_name: "ViT-L/14"  # Options: "ViT-B/32" (512), "ViT-B/16" (768), "ViT-L/14" (1024)
+
+num_classes: 28
+
+# Loss function configuration
+criterion:
+  _target_: src.models.components.aslloss.AsymmetricLossOptimized
+  gamma_neg: 2
+  gamma_pos: 0
+  clip: 0.05
+  eps: 1e-5
+  disable_torch_grad_focal_loss: false
+
+# EMA parameters for model weights
+use_ema: true
+ema_decay: 0.9997
+
+# Backbone freezing
+freeze_backbone: true  # Whether to freeze CLIP ViT backbone (default true)
+
+# Compile model for faster training with pytorch 2.0
+compile: true
+

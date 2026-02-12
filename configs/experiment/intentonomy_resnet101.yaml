@@ -1,18 +1,18 @@
 # @package _global_
 
 # to execute this experiment run:
-# python train.py experiment=example
+# python train.py experiment=intentonomy_resnet101
 
 defaults:
   - override /data: intentonomy
-  - override /model: intentonomy_vit_mcc
+  - override /model: intentonomy_resnet101
   - override /callbacks: default
   - override /trainer: default
 
 # all parameters below will be merged with parameters from default configurations set above
 # this allows you to overwrite only specified parameters
 
-tags: ["intentonomy", "vit", "mcc"]
+tags: ["intentonomy", "resnet101"]
 
 callbacks:
   model_checkpoint:
@@ -28,10 +28,7 @@ data:
   batch_size: 256
 
 logger:
-  wandb:
-    name: "Intentonomy-ViT-MCC"
-    tags: ${tags}
-    group: "Intentonomy-ViT-MCC"
-
   tensorboard:
-    name: "Intentonomy-ViT-MCC"
+    name: "Intentonomy-ResNet101"
+    
+

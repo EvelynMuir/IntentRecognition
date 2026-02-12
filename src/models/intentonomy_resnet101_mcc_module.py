@@ -1,4 +1,5 @@
 from typing import Any, Dict, Tuple
+from collections import OrderedDict
 
 import torch
 import numpy as np
@@ -10,558 +11,168 @@ from torchmetrics import MaxMetric, MeanMetric
 from src.models.components.aslloss import AsymmetricLossOptimized
 from src.utils.metrics import eval_validation_set
 from src.utils.ema import ModelEma
+from src.models.intentonomy_vit_mcc_module import (
+    DiscriminativeClueMiner,
+    sparsity_loss,
+    sparsity_loss_smart,
+    correlation_loss,
+    threshold_consistency_loss
+)
 
 
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-
-class GraphReasoningLayer(nn.Module):
-    """
-    单层图卷积推理：让选中的 Patch 之间交换信息
-    Formula: H' = ReLU(Norm(A * H * W)) + H
-    """
-    def __init__(self, dim):
-        super().__init__()
-        self.linear = nn.Linear(dim, dim)
-        self.norm = nn.LayerNorm(dim)
-        self.act = nn.ReLU()
-        self.dropout = nn.Dropout(0.1)
-
-    def forward(self, x, adj):
-        """
-        x: [B, K, D] - 节点特征
-        adj: [B, K, K] - 邻接矩阵
-        """
-        # 1. Message Passing (聚合邻居信息)
-        # [B, K, K] @ [B, K, D] -> [B, K, D]
-        out = torch.bmm(adj, x)
+# def aggressive_gap_threshold_loss(pred_thresh, logits, soft_targets):
+    # """
+    # 让阈值学会钻缝隙：必须低于 Weak Positive (0.33)，但高于 Negative (0.1)。
+    # """
+    # probs = torch.sigmoid(logits).detach()  # 梯度只传给 threshold head
+    # loss_batch = 0.0
+    # valid_cnt = 0
+    
+    # for i in range(logits.shape[0]):
+    #     p = probs[i]
+    #     t = soft_targets[i]
         
-        # 2. Node Update (节点内部变换)
-        out = self.linear(out)
-        out = self.norm(out)
-        out = self.act(out)
+    #     # 定义正负样本 (激进版：0.33 也是正)
+    #     neg_scores = p[t < 0.1]
+    #     pos_scores = p[t > 0.1]  # 包含 0.33, 0.66, 1.0
         
-        # 3. Residual Connection (残差连接，防止梯度消失)
-        return x + self.dropout(out)
-
-
-class LabelGCN(nn.Module):
-    """
-    标签图卷积网络：使用预计算的邻接矩阵增强标签嵌入之间的交互
-    Formula: H' = ReLU(A * H * W) + H (带残差连接)
-    """
-    def __init__(self, dim, adj_matrix):
-        super().__init__()
-        self.fc = nn.Linear(dim, dim)
-        self.act = nn.ReLU()
-        # 将邻接矩阵注册为 buffer (不可学习，但随模型保存)
-        # adj_matrix 应该是 [Num_Classes, Num_Classes]，行归一化过
-        self.register_buffer('adj', adj_matrix)
-
-    def forward(self, x):
-        """
-        x: [Num_Classes, Dim] - 标签嵌入特征
-        返回: [Num_Classes, Dim] - 交互后的标签特征
-        """
-        # 公式: H' = ReLU(A * H * W) + H
-        x_proj = self.fc(x)       # [C, D]
-        x_adj = torch.mm(self.adj, x_proj)  # [C, C] * [C, D] -> [C, D]
-        return x + self.act(x_adj)  # 残差连接，防止把 Embedding 搞乱
-
-
-class LabelGuidedVerifier(nn.Module):
-    def __init__(self, vis_dim, num_classes, num_heads=4):
-        super().__init__()
-        # 标准的 Multihead Attention
-        self.attn = nn.MultiheadAttention(embed_dim=vis_dim, num_heads=num_heads, batch_first=True)
-        
-        # 【核心创新】为每个类别定义一个可学习的温度参数
-        # 初始化为 0 (即 exp(0) = 1.0，标准 Attention)
-        self.log_temperature = nn.Parameter(torch.zeros(num_classes)) 
-        nn.init.constant_(self.log_temperature, -1.0)
-        
-    def forward(self, label_queries, visual_evidence):
-        """
-        label_queries: [B, Num_Classes, D] - 意图标签 Embedding
-        visual_evidence: [B, K, D] - 经过 GCN 的视觉线索
-        """
-        # 1. 计算温度 tau
-        # 使用 exp 保证温度恒为正数，且数值稳定
-        # shape: [Num_Classes] -> [1, Num_Classes, 1] 以便广播
-        # 限制范围！防止除以 0 或过大
-        tau = torch.clamp(torch.exp(self.log_temperature), min=0.01, max=5.0)
-        tau = tau.view(1, -1, 1) # [1, Num_Classes, 1]
-        
-        # 2. 调节 Query 的"锐度" (Temperature Scaling)
-        # 如果 tau < 1: Query 变大 -> Softmax 变尖 -> 关注局部 (Focal)
-        # 如果 tau > 1: Query 变小 -> Softmax 变平 -> 关注全局 (Global)
-        scaled_queries = label_queries / tau
-        
-        # 3. 传入标准 Attention
-        # 这里的 scaled_queries 已经携带了类别特有的"聚焦偏好"
-        attn_out, attn_weights = self.attn(query=scaled_queries, 
-                                           key=visual_evidence, 
-                                           value=visual_evidence)
-        
-        return attn_out, attn_weights, tau
-
-
-class DiscriminativeClueMiner(nn.Module):
-    def __init__(self, 
-                 vis_dim=768,       # ViT 输出维度 (Base: 768, Large: 1024)
-                 text_dim=1536,     # LLM 标签 Embedding 维度 (e.g., BERT/GPT)
-                 num_classes=28,    # 意图类别数
-                 k_patches=16,      # 显式保留的关键 Patch 数量
-                 gcn_depth=2,       # GCN 推理层数
-                 use_adaptive_temperature=False,  # 是否使用自适应温度缩放
-                 use_global_feature=False,  # 是否使用全局特征拼接
-                 use_learnable_fusion=False,  # 是否使用可学习的融合权重
-                 use_threshold_loss=False,  # 是否使用阈值loss（决定是否创建阈值头）
-                 use_image_level_temperature=False,  # 是否使用 Image-Level 温度头
-                 use_cosine_similarity_temperature=False,  # 是否使用基于余弦相似度的温度计算
-                 use_max_pooling_temperature=False,  # 是否使用 Max Pooling 辅助温度计算（双通道一致性）
-                 use_consistency_bias=False,  # 是否使用 consistency bias（默认关闭）
-                 adj_matrix=None):  # 标签共现概率邻接矩阵 [Num_Classes, Num_Classes]
-        super().__init__()
-        
-        self.vis_dim = vis_dim
-        self.k = k_patches
-        self.use_adaptive_temperature = use_adaptive_temperature
-        self.use_global_feature = use_global_feature
-        self.use_learnable_fusion = use_learnable_fusion
-        self.use_threshold_loss = use_threshold_loss
-        self.use_image_level_temperature = use_image_level_temperature
-        self.use_cosine_similarity_temperature = use_cosine_similarity_temperature
-        self.use_max_pooling_temperature = use_max_pooling_temperature
-        self.use_consistency_bias = use_consistency_bias
-        self.num_classes = num_classes  # 修复：保存 num_classes 供 forward 使用
-        
-        # -----------------------------------------------------------
-        # 1. Clue Proposal Network (Patch Scoring)
-        # -----------------------------------------------------------
-        # 给每个 Patch 打分，用于筛选 Top-K
-        self.scorer = nn.Sequential(
-            nn.Linear(vis_dim, vis_dim // 4),
-            nn.ReLU(),
-            nn.Linear(vis_dim // 4, 1),
-            nn.Sigmoid() 
-        )
-
-        # -----------------------------------------------------------
-        # 2. Dynamic Structure Learning (GCN)
-        # -----------------------------------------------------------
-        # 用于在选中的 K 个 Patch 之间建立推理关系
-        self.gcn_layers = nn.ModuleList([
-            GraphReasoningLayer(vis_dim) for _ in range(gcn_depth)
-        ])
-        
-        # -----------------------------------------------------------
-        # 3. Label-Guided Alignment (The "Verifier")
-        # -----------------------------------------------------------
-        # 将文本维度的 Label 映射到视觉维度
-        self.label_proj = nn.Linear(text_dim, vis_dim)
-        
-        # 【新增】Label GCN 模块：让标签之间交互
-        if adj_matrix is not None:
-            self.label_gcn = LabelGCN(vis_dim, adj_matrix)
-        else:
-            self.label_gcn = nn.Identity()
-        
-        # 根据 use_adaptive_temperature 选择使用哪种 Verifier
-        if use_adaptive_temperature:
-            # 使用带自适应温度缩放的 LabelGuidedVerifier
-            self.verifier = LabelGuidedVerifier(vis_dim, num_classes, num_heads=4)
-        else:
-            # 使用标准的 MultiheadAttention
-            self.cross_attn = nn.MultiheadAttention(
-                embed_dim=vis_dim, 
-                num_heads=8, 
-                batch_first=True,
-                dropout=0.1
-            )
-
-        if use_global_feature:
-            self.global_head = nn.Linear(vis_dim, num_classes)
-        else:
-            self.global_head = None
-
-        self.ln_local = nn.LayerNorm(vis_dim)
-        self.local_head = nn.Linear(vis_dim, 1)
-        
-        # 【必杀技】零初始化 Local Head
-        # 这确保了在 Epoch 0，DCM 分支的输出全为 0，不干扰 Global 分支
-        nn.init.constant_(self.local_head.weight, 0)
-        nn.init.constant_(self.local_head.bias, 0)
-        
-        # 阈值头：用于预测每个样本的阈值（仅在 use_threshold_loss=True 时创建）
-        # 输入维度是 vis_dim (ResNet global feature dim, e.g., 2048 or 1024)
-        if use_threshold_loss:
-            self.thresh_head = nn.Sequential(
-                nn.Linear(vis_dim, vis_dim // 4),
-                nn.ReLU(),
-                nn.Linear(vis_dim // 4, 1),
-                nn.Sigmoid()  # 必须有 Sigmoid，确保输出在 0-1 之间
-            )
-        else:
-            self.thresh_head = None
-        
-        # 最后的 Logit 缩放因子 (可选，有助于收敛)
-        self.scale = nn.Parameter(torch.ones([]) * (vis_dim ** -0.5))
-        
-        # 可学习的全局特征融合权重（仅在 use_learnable_fusion=True 时创建）
-        if use_learnable_fusion:
-            self.global_scale = nn.Parameter(torch.tensor(1.0))
-        else:
-            self.global_scale = None
-        
-        # 【核心新增】Image-Level 温度头
-        # 极其简单：Global Feature -> Scalar
-        # 用于根据全局特征自适应计算温度，对 logits 进行缩放
-        if use_image_level_temperature:
-            self.temp_head = nn.Sequential(
-                nn.Linear(vis_dim, 64),
-                nn.ReLU(),
-                nn.Linear(64, 1),
-                nn.Sigmoid() 
-            )
-        else:
-            self.temp_head = None
-        
-        # 【新增】基于 Global-Local Cosine Similarity 的温度计算
-        # 使用可学习的 logit_scale 参数来动态决定温度
-        if use_cosine_similarity_temperature:
-            # 初始化为 ln(100) ≈ 4.6052，这在对比学习中是一个经典的初始值
-            # 这是一个可学习参数，它决定了模型对"一致性"有多敏感
-            self.logit_scale = nn.Parameter(torch.ones([]) * 4.6052)
-        else:
-            self.logit_scale = None
-        
-        # 【新增】Dropout 层：在训练时给 DCM 加一点 Dropout
-        # self.clue_dropout = nn.Dropout(0.1)
-        
-        # 【新增】Consistency Bias：用于调整 consistency 值的可学习参数
-        if use_consistency_bias:
-            self.consistency_bias = nn.Parameter(torch.tensor(-0.5))
-        else:
-            self.consistency_bias = None
-
-    def forward(self, x, label_embeddings):
-        """
-        Args:
-            x: [B, N_patches, D] - ViT Backbone 输出 (无 CLS token)
-            label_embeddings: [Num_Classes, Text_D] - 冻结的 LLM 特征
-        Returns:
-            logits: [B, Num_Classes]
-            aux_dict: 用于计算 Loss 和可视化的信息
-        """
-        B, N, D = x.shape
-
-        # 计算全局特征（如果使用 global_feature、threshold_loss、image_level_temperature 或 cosine_similarity_temperature，需要计算）
-        if self.use_global_feature or self.use_threshold_loss or self.use_image_level_temperature or self.use_cosine_similarity_temperature:
-            global_feat = x.mean(dim=1) # [B, D]
-        else:
-            global_feat = None
-        
-        if self.use_global_feature:
-            logits_global = self.global_head(global_feat) # [B, num_classes]
-        else:
-            logits_global = torch.zeros(B, self.num_classes, device=x.device)
-        
-        # 计算阈值预测（仅在 use_threshold_loss=True 时）
-        if self.use_threshold_loss and self.thresh_head is not None:
-            pred_thresh = self.thresh_head(global_feat)  # [B, 1]
-        else:
-            pred_thresh = None
-        
-        # =======================================================
-        # Step 1: Discriminative Clue Mining (去噪与筛选)
-        # =======================================================
-        
-        # 1.1 计算分数
-        scores = self.scorer(x)  # [B, N, 1]
-        
-        # 1.2 Top-K 筛选
-        # topk_indices: [B, K, 1]
-        topk_scores, topk_indices = torch.topk(scores, self.k, dim=1)
-        
-        # 1.3 提取特征
-        # 扩展 indices 以适配 gather: [B, K, D]
-        gather_indices = topk_indices.expand(-1, -1, D)
-        selected_features = torch.gather(x, 1, gather_indices) # [B, K, D]
-        
-        # *关键*: 将分数乘回特征。
-        # 作用 A: 让梯度流回 scorer，使模型学会给重要 Patch 打高分。
-        # 作用 B: 作为一个 Soft Gate，进一步抑制不确定的特征。
-        selected_features = selected_features * topk_scores
-        
-        # =======================================================
-        # Step 2: Dynamic Graph Construction (动态构图)
-        # =======================================================
-        
-        # 计算 Patch 间的语义相似度作为边权重
-        # normalize 确保余弦相似度计算
-        feats_norm = F.normalize(selected_features, p=2, dim=-1)
-        # [B, K, D] @ [B, D, K] -> [B, K, K]
-        adj_matrix = torch.bmm(feats_norm, feats_norm.transpose(1, 2))
-        
-        # 归一化邻接矩阵 (Row-wise Softmax)，作为 GCN 的权重
-        # 乘以 10 作为 temperature，让关注点更集中
-        adj_matrix = F.softmax(adj_matrix * 10, dim=-1)
-        
-        # =======================================================
-        # Step 3: Compositional Reasoning (GCN 推理)
-        # =======================================================
-        
-        # "Reasoned Features": 此时的特征不再是孤立的 Patch，而是包含了上下文关系
-        gcn_feat = selected_features
-        for layer in self.gcn_layers:
-            gcn_feat = layer(gcn_feat, adj_matrix)
+    #     if len(pos_scores) > 0:
+    #         min_pos = pos_scores.min()
+    #         if len(neg_scores) > 0:
+    #             max_neg = neg_scores.max()
+    #             # 理想情况：阈值在 max_neg 和 min_pos 中间
+    #             # 如果混叠了 (max_neg > min_pos)，则强制阈值去逼近 min_pos - 0.05
+    #             target = (max_neg + min_pos) / 2.0 if max_neg < min_pos else (min_pos - 0.05)
+    #         else:
+    #             target = min_pos - 0.05
+    #     else:
+    #         # 全负样本：阈值设高点，或者比最大负样本高
+    #         target = neg_scores.max() + 0.1 if len(neg_scores) > 0 else torch.tensor(0.5).to(p.device)
             
-        # =======================================================
-        # Step 4: Label-Guided Verification (意图验证)
-        # =======================================================
+    #     # 限制 target 范围，防止 tensor 越界
+    #     target = target.clamp(0.01, 0.99)
+    #     loss_batch += F.mse_loss(pred_thresh[i], target.unsqueeze(0))
+    #     valid_cnt += 1
         
-        # 4.1 准备 Queries
-        # label_embeddings: [Num_Classes, Text_D]
-        label_feats = self.label_proj(label_embeddings) # [Num_Classes, Vis_D]
+    # return loss_batch / (valid_cnt + 1e-6)
+
+def aggressive_gap_threshold_loss(pred_thresh, logits, soft_targets):
+    """
+    【最终推荐版】SOTA 杀手：Aggressive Gap-Aware Threshold Loss
+    针对 Micro F1 和 Samples F1 进行了特化优化。
+    """
+    # 梯度截断：只训练阈值头，不干扰 Backbone 的特征学习
+    probs = torch.sigmoid(logits).detach()
+    
+    loss_batch = 0.0
+    valid_cnt = 0
+    device = pred_thresh.device
+    
+    for i in range(logits.shape[0]):
+        p = probs[i]
+        t = soft_targets[i]
         
-        # 4.1.1 【关键】让 Label 之间交互
-        # 交互后的 label_feats 包含了共现信息
-        # 比如 "Party" 的向量里会混入一点 "Friends" 的信息
-        label_feats = self.label_gcn(label_feats)  # [Num_Classes, Vis_D]
+        # === 1. 定义 SOTA 视角下的正负 ===
+        # 激进定义：只要 soft_target > 0.1 (即包含 0.33) 全都算正样本
+        pos_scores = p[t > 0.1] 
+        # 只有 soft_target 接近 0 才是负样本
+        neg_scores = p[t < 0.1]
         
-        # 扩展到 Batch: [B, Num_Classes, Vis_D]
-        label_queries = label_feats.unsqueeze(0).expand(B, -1, -1)
+        # 默认初始化
+        target_t = torch.tensor(0.5).to(device)
         
-        # 4.2 根据是否使用自适应温度选择不同的 Verifier
-        if self.use_adaptive_temperature:
-            # 使用带温度缩放的 LabelGuidedVerifier
-            # "我看这 K 个线索(Key/Value)中，有没有符合 Label(Query) 描述的组合？"
-            # attn_out: [B, Num_Classes, Vis_D]
-            attn_out, attn_weights, learned_tau = self.verifier(label_queries, gcn_feat)
-        else:
-            # 使用标准的 Cross Attention
-            # attn_out: [B, Num_Classes, Vis_D]
-            attn_out, attn_weights = self.cross_attn(
-                query=label_queries, 
-                key=gcn_feat, 
-                value=gcn_feat
-            )
-            learned_tau = None
-        
-        # 在训练时给 DCM 加一点 Dropout
-        # attn_out = self.clue_dropout(attn_out)
-        
-        # 4.3 预测 Logits (Visual-Semantic Similarity)
-        # 计算对齐后的视觉特征与标签语义的点积
-        # [B, NC, D] * [B, NC, D] -> sum -> [B, NC]
-        # logits = (attn_out * label_queries).sum(dim=-1) * self.scale
-        attn_out = self.ln_local(attn_out)
-        if self.use_learnable_fusion:
-            logits = self.local_head(attn_out).squeeze(-1) + self.global_scale * logits_global
-        else:
-            logits = self.local_head(attn_out).squeeze(-1) + torch.tanh(logits_global) * 2.0
-        
-        # 【关键一步】计算全局自适应温度
-        # 0.1 (锐化，用于弱样本) ~ 1.0 (保持，用于强样本)
-        temperature = None
-        
-        # 优先使用基于余弦相似度的温度计算
-        if self.use_cosine_similarity_temperature and self.logit_scale is not None:
-            # 确保 global_feat 已计算
-            if global_feat is None:
-                global_feat = x.mean(dim=1)  # [B, D]
+        # === 2. 寻找缝隙 (Gap Finding) ===
+        if len(pos_scores) > 0:
+            # 找到最弱的正样本 (也就是我们需要捞回来的 0.33)
+            min_pos = pos_scores.min()
             
-            # === 核心修改：双通道一致性 (Dual-Stream Consistency) ===
-            
-            # A. 准备特征
-            global_norm = F.normalize(global_feat, dim=-1)  # [B, D]
-            
-            if self.use_max_pooling_temperature:
-                # 通道 1: 平均线索 (代表整体氛围)
-                feat_mean_norm = F.normalize(attn_out.mean(dim=1), dim=-1)  # [B, Num_Classes, Vis_D] -> [B, Vis_D]
-                consistency_mean = (global_norm * feat_mean_norm).sum(dim=-1, keepdim=True)  # [B, 1]
+            if len(neg_scores) > 0:
+                max_neg = neg_scores.max()
                 
-                # 通道 2: 峰值线索 (代表最强证据)
-                # 只要有一个 Patch 和全局特征对上了，就是强信号！
-                # attn_out: [B, Num_Classes, Vis_D] -> max -> [B, Vis_D]
-                feat_max, _ = attn_out.max(dim=1) 
-                feat_max_norm = F.normalize(feat_max, dim=-1)
-                consistency_max = (global_norm * feat_max_norm).sum(dim=-1, keepdim=True)  # [B, 1]
-                
-                # B. 融合策略：取两者的最大值 (Winner Takes All)
-                # 逻辑：只要"整体像" 或者 "局部有个地方特别像"，我就认为一致性高
-                # 这能极大挽救那些背景杂乱的弱样本！
-                consistency = torch.max(consistency_mean, consistency_max)
+                if max_neg < min_pos:
+                    # 情况 A：分得开 -> 阈值设在中间 (最稳健)
+                    target_t = (max_neg + min_pos) / 2.0
+                else:
+                    # 情况 B：分不开 (混叠) -> 优先保 Recall！
+                    # 区别点：只退后 0.02，贴着正样本下沿切
+                    target_t = min_pos - 0.02
             else:
-                # 原有逻辑：仅使用平均线索
-                # 1. DCM 挖掘线索 - 从 attn_out 聚合得到局部特征
-                local_feat_agg = attn_out.mean(dim=1)  # [B, Num_Classes, Vis_D] -> [B, Vis_D]
-                
-                # 2. 归一化并计算余弦相似度
-                local_norm = F.normalize(local_feat_agg, dim=-1)  # [B, Vis_D]
-                
-                # consistency: [-1, 1]
-                consistency = (global_norm * local_norm).sum(dim=-1, keepdim=True)  # [B, 1]
-            
-            # C. 计算温度 (保持之前的逻辑)
-            # .exp() 保证系数恒为正
-            # 这个系数通常会学到很大 (比如 10~50)，用来放大微小的相似度差异
-            scale = self.logit_scale.exp()
-            
-            # 动态温度系数 alpha: 0(难/不一致) ~ 1(易/一致)
-            # 如果启用 consistency_bias，则在计算前加上 bias
-            if self.use_consistency_bias and self.consistency_bias is not None:
-                alpha = torch.sigmoid((consistency + self.consistency_bias) * scale)  # [B, 1]
+                # 情况 C：只有正样本 -> 阈值设在最小正样本下面
+                target_t = min_pos - 0.02
+        else:
+            # 情况 D：全负样本 -> 阈值设在最大负样本上面
+            if len(neg_scores) > 0:
+                target_t = neg_scores.max() + 0.1
             else:
-                alpha = torch.sigmoid(consistency * scale)  # [B, 1]
+                target_t = torch.tensor(0.5).to(device)
             
-            # 最终温度：[0.1, 1.0]
-            # alpha 越小 -> T 越接近 0.1 (锐化，帮助弱样本)
-            # alpha 越大 -> T 越接近 1.0 (保持，防止过拟合)
-            temperature = alpha * 0.9 + 0.1  # 范围 [0.1, 1.0]
-
-            # DEBUG: print temperature
-            # print(f"Temp Mean: {temperature.mean().item():.3f} | Min: {temperature.min().item():.3f} | Max: {temperature.max().item():.3f}")
-            
-            # 应用基于共识的温度
-            logits = logits / temperature
-        # 向后兼容：使用原有的 Image-Level 温度头
-        elif self.use_image_level_temperature and self.temp_head is not None:
-            # 确保 global_feat 已计算
-            if global_feat is None:
-                global_feat = x.mean(dim=1)  # [B, D]
-            
-            # 计算温度：alpha 在 [0, 1]，temperature 在 [0.1, 1.0]
-            alpha = self.temp_head(global_feat)  # [B, 1]
-            temperature = alpha * 0.9 + 0.1  # 范围 [0.1, 1.0]
-            
-            # 放大 Logits：这就是 Hard Label 能 Work 的核心魔法
-            logits = logits / temperature
+        # === 3. 激进截断 (The Clamp Trick) ===
+        # 区别点：强制上限 0.6。
+        # 即使全是负样本，也不让阈值飙太高，防止下一张图有弱信号时反应不过来。
+        # 同时也防止阈值太低变成 0.0
+        target_t = target_t.clamp(0.01, 0.6)
         
-        # 构建返回字典
-        aux_dict = {
-            "patch_scores": scores,        # 用于 Sparsity Loss
-            "topk_indices": topk_indices,  # 用于可视化 (Fig 5)
-            "adj_matrix": adj_matrix,      # 用于可视化图结构
-            "attn_weights": attn_weights   # Attention 权重
-        }
+        loss_batch += F.mse_loss(pred_thresh[i], target_t.unsqueeze(0))
+        valid_cnt += 1
         
-        # 只有在使用阈值loss时才添加 pred_thresh
-        if pred_thresh is not None:
-            aux_dict["pred_thresh"] = pred_thresh  # 阈值预测 [B, 1]
+    return loss_batch / (valid_cnt + 1e-6)
+
+
+def clean_state_dict_for_loading(state_dict: Dict[str, Any]) -> Dict[str, Any]:
+    """清理state_dict，移除torch.compile产生的_orig_mod前缀和EMA相关前缀。
+    
+    :param state_dict: 原始state_dict
+    :return: 清理后的state_dict
+    """
+    new_state_dict = OrderedDict()
+    
+    for k, v in state_dict.items():
+        new_key = k
         
-        # 只有在使用自适应温度时才添加 learned_tau
-        if self.use_adaptive_temperature:
-            aux_dict["learned_tau"] = learned_tau  # 学习到的温度参数，用于做分析图表！
+        # 移除 ema_model.module. 前缀（如果存在）
+        if new_key.startswith("ema_model.module."):
+            # new_key = new_key[len("ema_model.module."):]
+            continue
         
-        # 只有在使用 Image-Level 温度时才添加 temperature
-        if temperature is not None:
-            aux_dict["image_level_temperature"] = temperature  # Image-Level 温度，用于分析和可视化
+        # 移除 net._orig_mod. 前缀（torch.compile产生）
+        if new_key.startswith("net._orig_mod."):
+            new_key = "net." + new_key[len("net._orig_mod."):]
         
-        return logits, aux_dict
+        new_state_dict[new_key] = v
+    
+    return new_state_dict
 
 
-def sparsity_loss(patch_scores, target_sparsity=0.2):
+def soft_margin_boosting_loss(logits, soft_targets):
     """
-    强迫 Scorer 网络只激活少量的 Patch，防止所有 Patch 分数都很高。
-    这能增强 'DCM' 的去噪能力。
+    强迫 0.33 的预测值 > 0.5，强迫 0.1 的预测值 < 0.05
     """
-    # L1 约束：希望平均分接近 target_sparsity
-    mean_score = torch.mean(patch_scores)
-    loss = torch.abs(mean_score - target_sparsity)
-    return loss
-
-
-def sparsity_loss_smart(patch_scores, k=3):
-    """
-    智能稀疏：保护分数最高的 K 个 Patch 不受惩罚，只惩罚剩下的背景。
-    
-    Args:
-        patch_scores: [B, N, 1] 或 [B, N] - Patch 分数
-        k: int - 保护前 K 个最高分数的 Patch
-    
-    Returns:
-        loss: 背景 Patch 分数的平均绝对值
-    """
-    # 处理形状：如果是 [B, N, 1]，先 squeeze 为 [B, N]
-    if patch_scores.dim() == 3:
-        patch_scores = patch_scores.squeeze(-1)  # [B, N, 1] -> [B, N]
-    
-    # 1. 对 Patch 分数排序
-    sorted_scores, _ = torch.sort(patch_scores, dim=1, descending=True)
-    
-    # 2. 只惩罚排在 K 名之后的 Patch (认为是背景)
-    # 这样如果有 10 个有效线索，模型可以大胆激活前 10 个，只要把第 11 个以后的背景压住就行
-    background_scores = sorted_scores[:, k:] 
-    
-    loss = torch.mean(torch.abs(background_scores))
-    return loss
-
-
-def correlation_loss(logits, targets):
-    """
-    计算预测的相关性与真实标签的相关性之间的差异。
-    通过比较预测概率的相关性矩阵和真实标签的相关性矩阵来约束模型学习标签之间的相关性。
-    
-    Args:
-        logits: [B, Num_Classes] - 模型输出的 logits
-        targets: [B, Num_Classes] - 真实标签（0/1）
-    
-    Returns:
-        loss: 相关性损失值
-    """
-    # 预测的相关性
     probs = torch.sigmoid(logits)
-    probs_norm = F.normalize(probs, dim=0)  # 跨 Batch 归一化
-    pred_corr = torch.mm(probs_norm.t(), probs_norm)
     
-    # 真实的相关性
-    targets_norm = F.normalize(targets.float(), dim=0)
-    gt_corr = torch.mm(targets_norm.t(), targets_norm)
+    # 选中所有的 Weak Positives (0.33)
+    weak_pos_mask = (soft_targets > 0.3) & (soft_targets < 0.4)
+    # 选中所有的 Negatives
+    neg_mask = soft_targets < 0.1
     
-    return F.mse_loss(pred_corr, gt_corr)
+    loss = 0.0
+    
+    # Boosting: 让 0.33 的预测值至少达到 0.5 (One-sided Loss)
+    if weak_pos_mask.sum() > 0:
+        preds = probs[weak_pos_mask]
+        # 只惩罚小于 0.5 的部分
+        loss += F.mse_loss(preds, torch.max(preds, torch.tensor(0.5).to(preds.device)))
 
-
-def threshold_consistency_loss(scaled_logits, targets, class_thresholds, margin=0.1):
-    """
-    阈值一致性损失：让学习到的阈值能够把正负样本分开。
-    正样本应该 > threshold + margin
-    负样本应该 < threshold - margin
-    
-    Args:
-        scaled_logits: [B, Num_Classes] - 经过 Temperature 缩放后的 Logits
-        targets: [B, Num_Classes] - 真实标签（0/1）
-        class_thresholds: [Num_Classes] - 类别级可学习阈值参数（未经过 Sigmoid）
-        margin: float - 边界值，默认 0.1
-    
-    Returns:
-        loss: 阈值一致性损失值
-    """
-    # 计算阈值和概率
-    thresholds = torch.sigmoid(class_thresholds).unsqueeze(0)  # [1, Num_Classes]
-    probs = torch.sigmoid(scaled_logits)  # [B, Num_Classes]
-    
-    # 正样本和负样本的掩码
-    pos_mask = (targets == 1)
-    neg_mask = (targets == 0)
-    
-    # 惩罚那些低于阈值的正样本
-    loss_thresh_pos = 0.0
-    if pos_mask.sum() > 0:
-        loss_thresh_pos = F.relu(thresholds - probs + margin)[pos_mask].mean()
-    
-    # 惩罚那些高于阈值的负样本
-    loss_thresh_neg = 0.0
+    # Suppressing: 让 0.1 的预测值压到 0.05 以下
     if neg_mask.sum() > 0:
-        loss_thresh_neg = F.relu(probs - thresholds + margin)[neg_mask].mean()
-    
-    return loss_thresh_pos + loss_thresh_neg
+        preds = probs[neg_mask]
+        # 只惩罚大于 0.05 的部分
+        loss += F.mse_loss(preds, torch.min(preds, torch.tensor(0.05).to(preds.device)))
+        
+    return loss
 
 
-class IntentonomyViTModule(LightningModule):
-    """`LightningModule` for Intentonomy multi-label classification using Vision Transformer with DiscriminativeClueMiner.
+class IntentonomyResNet101Module(LightningModule):
+    """`LightningModule` for Intentonomy multi-label classification using ResNet101 with DiscriminativeClueMiner.
 
     A `LightningModule` implements 8 key methods:
 
@@ -595,7 +206,7 @@ class IntentonomyViTModule(LightningModule):
         use_mcc: bool = True,
         k_patches: int = 16,
         gcn_layers: int = 2,
-        input_dim: int = 768,
+        input_dim: int = 2048,  # ResNet101 的输出通道数
         use_adaptive_temperature: bool = False,  # 是否使用自适应温度缩放
         use_global_feature: bool = False,  # 是否使用全局特征拼接
         use_learnable_fusion: bool = False,  # 是否使用可学习的融合权重
@@ -604,7 +215,7 @@ class IntentonomyViTModule(LightningModule):
         use_max_pooling_temperature: bool = False,  # 是否使用 Max Pooling 辅助温度计算（双通道一致性）
         use_consistency_bias: bool = False,  # 是否使用 consistency bias（默认关闭）
         # Label embedding 参数
-        label_embedding_path: str = "Intentonomy/data/label_embedding_300_28",
+        label_embedding_path: str = None,
         label_embedding_type: str = "default",  # "default" 或 "clip"，用于自动选择embedding路径
         # Label adjacency matrix 参数
         label_adjacency_matrix_path: str = None,  # 标签共现概率邻接矩阵路径
@@ -617,13 +228,21 @@ class IntentonomyViTModule(LightningModule):
         # Correlation loss 参数
         use_correlation_loss: bool = True,
         correlation_loss_weight: float = 0.1,
+        # Threshold loss 参数
+        use_threshold_loss: bool = False,  # 默认关闭
+        threshold_loss_weight: float = 1.0,
+        # Margin boosting loss 参数
+        use_margin_boosting_loss: bool = False,  # 默认关闭
+        margin_boosting_loss_weight: float = 0.5,
+        # Inference strategy 参数
+        use_inference_strategy: bool = False,  # 是否使用 inference_strategy（默认关闭）
         # Class thresholds 参数
         use_class_thresholds: bool = False,  # 是否使用类别级可学习阈值（默认关闭）
         # EMA 参数
         use_ema: bool = True,
         ema_decay: float = 0.9997,
     ) -> None:
-        """Initialize a `IntentonomyViTModule` with DiscriminativeClueMiner.
+        """Initialize a `IntentonomyResNet101Module` with DiscriminativeClueMiner.
 
         :param net: The model to train.
         :param optimizer: The optimizer to use for training.
@@ -634,12 +253,13 @@ class IntentonomyViTModule(LightningModule):
         :param use_mcc: Whether to use DiscriminativeClueMiner. If False, use standard forward.
         :param k_patches: Number of top-k patches to select in DiscriminativeClueMiner.
         :param gcn_layers: Number of GCN layers in DiscriminativeClueMiner.
-        :param input_dim: Input dimension for DiscriminativeClueMiner (should match ViT hidden dim).
+        :param input_dim: Input dimension for DiscriminativeClueMiner (should match ResNet101 output channels, 2048).
         :param use_adaptive_temperature: Whether to use adaptive temperature scaling in LabelGuidedVerifier (default False).
         :param use_global_feature: Whether to concatenate global average pooled feature with top-K features (default False).
         :param use_learnable_fusion: Whether to use learnable fusion weight for combining local and global features (default False).
         :param use_image_level_temperature: Whether to use Image-Level temperature head for adaptive logits scaling (default False).
         :param use_cosine_similarity_temperature: Whether to use Global-Local Cosine Similarity for dynamic temperature calculation (default False).
+        :param use_max_pooling_temperature: Whether to use Max Pooling to assist temperature calculation (dual-stream consistency, default False).
         :param use_consistency_bias: Whether to use consistency bias for adjusting consistency value before alpha calculation (default False).
         :param label_embedding_path: Path to label embedding file. If None and use_mcc=True, will raise error.
         :param label_embedding_type: Type of label embedding to use. Options: "default" (use label_embedding_path), 
@@ -651,6 +271,12 @@ class IntentonomyViTModule(LightningModule):
         :param sparsity_loss_k: Number of top patches to protect from penalty when using "smart" loss (default 3).
         :param use_correlation_loss: Whether to use correlation loss (default True).
         :param correlation_loss_weight: Weight for correlation loss (default 0.1).
+        :param use_threshold_loss: Whether to use threshold loss (default False).
+        :param threshold_loss_weight: Weight for threshold loss (default 1.0).
+        :param use_margin_boosting_loss: Whether to use margin boosting loss (default False).
+        :param margin_boosting_loss_weight: Weight for margin boosting loss (default 0.5).
+        :param use_inference_strategy: Whether to use inference_strategy in validation and test steps (default False).
+                                      When enabled, uses adaptive threshold and fallback mechanism for predictions.
         :param use_class_thresholds: Whether to use class-level learnable thresholds (default False).
         :param use_ema: Whether to use Exponential Moving Average for model parameters (default True).
         :param ema_decay: Decay factor for EMA (default 0.9997).
@@ -671,6 +297,11 @@ class IntentonomyViTModule(LightningModule):
         self.sparsity_loss_k = sparsity_loss_k
         self.use_correlation_loss = use_correlation_loss
         self.correlation_loss_weight = correlation_loss_weight
+        self.use_threshold_loss = use_threshold_loss
+        self.threshold_loss_weight = threshold_loss_weight
+        self.use_margin_boosting_loss = use_margin_boosting_loss
+        self.margin_boosting_loss_weight = margin_boosting_loss_weight
+        self.use_inference_strategy = use_inference_strategy
         self.use_class_thresholds = use_class_thresholds
 
         # 加载 label_embedding
@@ -690,22 +321,15 @@ class IntentonomyViTModule(LightningModule):
             else:
                 # 使用 label_embedding_path（如果为None，使用默认路径）
                 if label_embedding_path is None:
-                    # 尝试多个可能的路径
-                    possible_paths = [
-                        os.path.join("/share/lmcp/tangyin/projects/IntentRecognition", "Intentonomy/data/label_embedding_300_28"),
-                        os.path.join("/home/evelynmuir/lambda/projects/IntentRecognition", "Intentonomy/data/label_embedding_300_28"),
-                        "Intentonomy/data/label_embedding_300_28"
-                    ]
-                    actual_embedding_path = None
-                    for path in possible_paths:
-                        if os.path.exists(path):
-                            actual_embedding_path = path
-                            break
-                    if actual_embedding_path is None:
-                        raise FileNotFoundError(
-                            f"Label embedding file not found. Tried paths: {possible_paths}. "
-                            f"Please specify label_embedding_path in config."
-                        )
+                    # 使用默认路径
+                    import os
+                    base_dir = "/share/lmcp/tangyin/projects/IntentRecognition"
+                    default_path = os.path.join(base_dir, "Intentonomy/data/label_embedding_300_28")
+                    if not os.path.exists(default_path):
+                        # 尝试另一个可能的路径
+                        base_dir = "/home/evelynmuir/lambda/projects/IntentRecognition"
+                        default_path = os.path.join(base_dir, "Intentonomy/data/label_embedding_300_28")
+                    actual_embedding_path = default_path
                 else:
                     actual_embedding_path = label_embedding_path
             
@@ -782,6 +406,7 @@ class IntentonomyViTModule(LightningModule):
                 use_cosine_similarity_temperature=use_cosine_similarity_temperature,  # 新增
                 use_max_pooling_temperature=use_max_pooling_temperature,  # 新增：Max Pooling 辅助温度计算
                 use_consistency_bias=use_consistency_bias,  # 新增：Consistency Bias
+                use_threshold_loss=use_threshold_loss,  # 传递阈值loss参数
                 adj_matrix=adj_matrix
             )
         else:
@@ -815,6 +440,14 @@ class IntentonomyViTModule(LightningModule):
         self.train_correlation_loss = MeanMetric()
         self.val_correlation_loss = MeanMetric()
         
+        # for tracking threshold loss
+        self.train_threshold_loss = MeanMetric()
+        self.val_threshold_loss = MeanMetric()
+        
+        # for tracking margin boosting loss
+        self.train_margin_boosting_loss = MeanMetric()
+        self.val_margin_boosting_loss = MeanMetric()
+        
         # for tracking threshold consistency loss
         self.train_threshold_consistency_loss = MeanMetric()
         self.val_threshold_consistency_loss = MeanMetric()
@@ -839,38 +472,28 @@ class IntentonomyViTModule(LightningModule):
         self.test_ema_targets_list = []
 
     def _extract_patch_features(self, x: torch.Tensor) -> torch.Tensor:
-        """从 ViT backbone 中提取 patch features.
+        """从 ResNet101 backbone 中提取特征并转换为序列格式.
         
         :param x: Input tensor of shape (batch_size, 3, image_size, image_size).
-        :return: Patch features of shape (batch_size, num_patches, hidden_dim).
+        :return: Patch features of shape (batch_size, num_patches, feature_dim).
+                 对于 224x224 输入，输出为 (batch_size, 49, 2048) (7x7=49).
         """
-        # 访问 ViT backbone
+        # 访问 ResNet101 backbone
         backbone = self.net.backbone
         
-        # torchvision 的 ViT 结构: conv_proj -> encoder -> heads
-        # 将图像转换为 patches
-        x = backbone.conv_proj(x)  # [B, hidden_dim, H', W']
-        B, C, H, W = x.shape
-        x = x.reshape(B, C, H * W).permute(0, 2, 1)  # [B, N_patches, hidden_dim]
+        # ResNet101 特征提取
+        # Input: [B, 3, 224, 224]
+        feat_map = backbone(x) 
+        # Output: [B, 2048, 7, 7] (假设输入 224x224，经过5次下采样，32倍)
         
-        # 添加 CLS token
-        # 注意：encoder.forward() 内部会自动添加位置编码，所以这里不需要手动添加
-        batch_size = x.shape[0]
-        cls_token = backbone.class_token.expand(batch_size, -1, -1)  # [B, 1, hidden_dim]
-        x = torch.cat([cls_token, x], dim=1)  # [B, 1+N_patches, hidden_dim]
+        # 【关键步骤】格式转换 (Flatten)
+        # 目标：变成 [B, N, D] 以适配 DCM
+        B, C, H, W = feat_map.shape
+        # [B, C, H, W] -> [B, C, H*W] -> [B, H*W, C]
+        feat_seq = feat_map.view(B, C, -1).permute(0, 2, 1) 
+        # 现在 feat_seq 是 [B, 49, 2048] (对于 224x224 输入)
         
-        # 通过 encoder
-        # torchvision ViT encoder 的 forward 方法期望输入为 [B, N, hidden_dim] 格式
-        # encoder.forward() 内部会：
-        # 1. 添加位置编码：input = input + self.pos_embedding
-        # 2. 通过 transformer layers
-        # 3. 应用最后的 layer norm：return self.ln(self.layers(self.dropout(input)))
-        x = backbone.encoder(x)  # [B, 1+N_patches, hidden_dim]
-        
-        # 返回 patch tokens (去掉 CLS token，即 x[:, 1:, :])
-        # DiscriminativeClueMiner 需要的是 patch features，不包括 CLS token
-        # 根据 DiscriminativeClueMiner 的注释，应该传入 x[:, 1:, :]
-        return x[:, 1:, :]  # [B, N_patches, hidden_dim]
+        return feat_seq
 
     def forward(self, x: torch.Tensor, return_selection_info: bool = False) -> torch.Tensor:
         """Perform a forward pass through the model.
@@ -884,7 +507,6 @@ class IntentonomyViTModule(LightningModule):
             patch_features = self._extract_patch_features(x)
             # 传入 label_embedding 的权重
             logits, selection_info = self.mcc_miner(patch_features, self.label_embedding.weight)
-            # print(selection_info)
             if return_selection_info:
                 return logits, selection_info
             return logits
@@ -907,17 +529,12 @@ class IntentonomyViTModule(LightningModule):
             # 使用EMA模型的DiscriminativeClueMiner
             # 从EMA模型的backbone提取特征
             backbone = ema_module.net.backbone
-            x_patches = backbone.conv_proj(x)
-            B, C, H, W = x_patches.shape
-            x_patches = x_patches.reshape(B, C, H * W).permute(0, 2, 1)
-            batch_size = x_patches.shape[0]
-            cls_token = backbone.class_token.expand(batch_size, -1, -1)
-            x_patches = torch.cat([cls_token, x_patches], dim=1)
-            x_patches = backbone.encoder(x_patches)
-            patch_features = x_patches[:, 1:, :]
+            feat_map = backbone(x)
+            B, C, H, W = feat_map.shape
+            feat_seq = feat_map.view(B, C, -1).permute(0, 2, 1)
             
             # 使用EMA模型的mcc_miner和label_embedding
-            logits, selection_info = ema_module.mcc_miner(patch_features, ema_module.label_embedding.weight)
+            logits, selection_info = ema_module.mcc_miner(feat_seq, ema_module.label_embedding.weight)
             if return_selection_info:
                 return logits, selection_info
             return logits
@@ -939,6 +556,12 @@ class IntentonomyViTModule(LightningModule):
         if self.use_correlation_loss:
             self.train_correlation_loss.reset()
             self.val_correlation_loss.reset()
+        if self.use_threshold_loss:
+            self.train_threshold_loss.reset()
+            self.val_threshold_loss.reset()
+        if self.use_margin_boosting_loss:
+            self.train_margin_boosting_loss.reset()
+            self.val_margin_boosting_loss.reset()
         self.train_threshold_consistency_loss.reset()
         self.val_threshold_consistency_loss.reset()
         
@@ -950,18 +573,20 @@ class IntentonomyViTModule(LightningModule):
 
     def model_step(
         self, batch: Dict[str, torch.Tensor], use_ema_model: bool = False
-    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         """Perform a single model step on a batch of data.
 
         :param batch: A batch of data containing the input tensor of images and target labels.
         :param use_ema_model: Whether to use EMA model for forward pass (default False).
 
         :return: A tuple containing (in order):
-            - A tensor of total losses (classification + sparsity + correlation + threshold_consistency).
+            - A tensor of total losses (classification + sparsity + correlation + threshold + margin_boosting + threshold_consistency).
             - A tensor of predictions (probabilities after sigmoid).
             - A tensor of target labels.
             - A tensor of sparsity loss values.
             - A tensor of correlation loss values.
+            - A tensor of threshold loss values.
+            - A tensor of margin boosting loss values.
             - A tensor of threshold consistency loss values.
         """
         x = batch["image"]
@@ -994,6 +619,22 @@ class IntentonomyViTModule(LightningModule):
             else:
                 correlation_loss_val = torch.tensor(0.0, device=classification_loss.device)
             
+            # 计算 threshold loss（如果启用）
+            if self.use_threshold_loss:
+                pred_thresh = selection_info.get("pred_thresh")  # [B, 1]
+                if pred_thresh is not None:
+                    threshold_loss_val = aggressive_gap_threshold_loss(pred_thresh, logits, y)
+                else:
+                    threshold_loss_val = torch.tensor(0.0, device=classification_loss.device)
+            else:
+                threshold_loss_val = torch.tensor(0.0, device=classification_loss.device)
+            
+            # 计算 margin boosting loss（如果启用）
+            if self.use_margin_boosting_loss:
+                margin_boosting_loss_val = soft_margin_boosting_loss(logits, y)
+            else:
+                margin_boosting_loss_val = torch.tensor(0.0, device=classification_loss.device)
+            
             # 计算阈值一致性损失（如果启用）
             if self.use_class_thresholds and self.class_thresholds is not None:
                 threshold_consistency_loss_val = threshold_consistency_loss(
@@ -1002,8 +643,8 @@ class IntentonomyViTModule(LightningModule):
             else:
                 threshold_consistency_loss_val = torch.tensor(0.0, device=classification_loss.device)
             
-            # 总 loss: Loss_Total = Loss_ASL + weight_sparsity * Loss_Sparsity + weight_corr * Loss_Corr + 0.1 * Loss_Threshold
-            loss = classification_loss + self.sparsity_loss_weight * sparsity_loss_val + self.correlation_loss_weight * correlation_loss_val + 0.1 * threshold_consistency_loss_val
+            # 总 loss: Loss_Total = Loss_ASL + weight_sparsity * Loss_Sparsity + weight_corr * Loss_Corr + weight_thresh * Loss_Thresh + weight_margin * Loss_Margin + 0.1 * Loss_Threshold_Consistency
+            loss = classification_loss + self.sparsity_loss_weight * sparsity_loss_val + self.correlation_loss_weight * correlation_loss_val + self.threshold_loss_weight * threshold_loss_val + self.margin_boosting_loss_weight * margin_boosting_loss_val + 0.1 * threshold_consistency_loss_val
         else:
             logits = forward_fn(x)
             classification_loss = self.criterion(logits, y)
@@ -1015,6 +656,15 @@ class IntentonomyViTModule(LightningModule):
             else:
                 correlation_loss_val = torch.tensor(0.0, device=classification_loss.device)
             
+            # 计算 threshold loss（如果启用，但在非MCC模式下无法获取pred_thresh，设为0）
+            threshold_loss_val = torch.tensor(0.0, device=classification_loss.device)
+            
+            # 计算 margin boosting loss（如果启用）
+            if self.use_margin_boosting_loss:
+                margin_boosting_loss_val = soft_margin_boosting_loss(logits, y)
+            else:
+                margin_boosting_loss_val = torch.tensor(0.0, device=classification_loss.device)
+            
             # 计算阈值一致性损失（如果启用）
             if self.use_class_thresholds and self.class_thresholds is not None:
                 threshold_consistency_loss_val = threshold_consistency_loss(
@@ -1024,10 +674,10 @@ class IntentonomyViTModule(LightningModule):
                 threshold_consistency_loss_val = torch.tensor(0.0, device=classification_loss.device)
             
             # 总 loss
-            loss = classification_loss + self.correlation_loss_weight * correlation_loss_val + 0.1 * threshold_consistency_loss_val
+            loss = classification_loss + self.correlation_loss_weight * correlation_loss_val + self.margin_boosting_loss_weight * margin_boosting_loss_val + 0.1 * threshold_consistency_loss_val
         
         preds = torch.sigmoid(logits)  # Convert logits to probabilities
-        return loss, preds, y, sparsity_loss_val, correlation_loss_val, threshold_consistency_loss_val
+        return loss, preds, y, sparsity_loss_val, correlation_loss_val, threshold_loss_val, margin_boosting_loss_val, threshold_consistency_loss_val
 
     def training_step(
         self, batch: Dict[str, torch.Tensor], batch_idx: int
@@ -1038,7 +688,7 @@ class IntentonomyViTModule(LightningModule):
         :param batch_idx: The index of the current batch.
         :return: A tensor of losses between model predictions and targets.
         """
-        loss, preds, targets, sparsity_loss_val, correlation_loss_val, threshold_consistency_loss_val = self.model_step(batch)
+        loss, preds, targets, sparsity_loss_val, correlation_loss_val, threshold_loss_val, margin_boosting_loss_val, threshold_consistency_loss_val = self.model_step(batch)
 
         # update and log loss
         self.train_loss(loss)
@@ -1054,9 +704,15 @@ class IntentonomyViTModule(LightningModule):
             self.train_correlation_loss(correlation_loss_val)
             self.log("train/correlation_loss", self.train_correlation_loss, on_step=False, on_epoch=True, prog_bar=False)
         
-        # update and log threshold consistency loss
-        self.train_threshold_consistency_loss(threshold_consistency_loss_val)
-        self.log("train/threshold_consistency_loss", self.train_threshold_consistency_loss, on_step=False, on_epoch=True, prog_bar=False)
+        # update and log threshold loss
+        if self.use_threshold_loss:
+            self.train_threshold_loss(threshold_loss_val)
+            self.log("train/threshold_loss", self.train_threshold_loss, on_step=False, on_epoch=True, prog_bar=False)
+        
+        # update and log margin boosting loss
+        if self.use_margin_boosting_loss:
+            self.train_margin_boosting_loss(margin_boosting_loss_val)
+            self.log("train/margin_boosting_loss", self.train_margin_boosting_loss, on_step=False, on_epoch=True, prog_bar=False)
 
         # return loss or backpropagation will fail
         return loss
@@ -1078,7 +734,7 @@ class IntentonomyViTModule(LightningModule):
         :param batch_idx: The index of the current batch.
         """
         # 使用原始模型
-        loss, preds, targets, sparsity_loss_val, correlation_loss_val, threshold_consistency_loss_val = self.model_step(batch, use_ema_model=False)
+        loss, preds, targets, sparsity_loss_val, correlation_loss_val, threshold_loss_val, margin_boosting_loss_val, threshold_consistency_loss_val = self.model_step(batch, use_ema_model=False)
 
         # update and log loss
         self.val_loss(loss)
@@ -1094,6 +750,16 @@ class IntentonomyViTModule(LightningModule):
             self.val_correlation_loss(correlation_loss_val)
             self.log("val/correlation_loss", self.val_correlation_loss, on_step=False, on_epoch=True, prog_bar=False)
         
+        # update and log threshold loss
+        if self.use_threshold_loss:
+            self.val_threshold_loss(threshold_loss_val)
+            self.log("val/threshold_loss", self.val_threshold_loss, on_step=False, on_epoch=True, prog_bar=False)
+        
+        # update and log margin boosting loss
+        if self.use_margin_boosting_loss:
+            self.val_margin_boosting_loss(margin_boosting_loss_val)
+            self.log("val/margin_boosting_loss", self.val_margin_boosting_loss, on_step=False, on_epoch=True, prog_bar=False)
+        
         # update and log threshold consistency loss
         self.val_threshold_consistency_loss(threshold_consistency_loss_val)
         self.log("val/threshold_consistency_loss", self.val_threshold_consistency_loss, on_step=False, on_epoch=True, prog_bar=False)
@@ -1104,7 +770,7 @@ class IntentonomyViTModule(LightningModule):
         
         # 如果使用EMA，也使用EMA模型进行推理
         if self.use_ema and self.ema_model is not None:
-            _, ema_preds, _, _, _, _ = self.model_step(batch, use_ema_model=True)
+            _, ema_preds, _, _, _, _, _, _ = self.model_step(batch, use_ema_model=True)
             self.val_ema_preds_list.append(ema_preds.detach().cpu())
             self.val_ema_targets_list.append(targets.detach().cpu())
 
@@ -1122,7 +788,7 @@ class IntentonomyViTModule(LightningModule):
             val_targets_all = torch.cat(self.val_targets_list, dim=0).numpy()
             
             # 使用 HLEG 的计算方式，传递类别级阈值（如果启用）
-            f1_dict = eval_validation_set(val_preds_all, val_targets_all, class_thresholds=thresholds)
+            f1_dict = eval_validation_set(val_preds_all, val_targets_all, use_inference_strategy=self.use_inference_strategy, class_thresholds=thresholds)
             
             # 更新最佳 macro F1
             self.val_f1_macro_best(f1_dict["val_macro"])
@@ -1150,7 +816,7 @@ class IntentonomyViTModule(LightningModule):
                 ema_module = self.ema_model.module
                 if ema_module.class_thresholds is not None:
                     ema_thresholds = torch.sigmoid(ema_module.class_thresholds).detach().cpu().numpy()
-            f1_dict_ema = eval_validation_set(val_ema_preds_all, val_ema_targets_all, class_thresholds=ema_thresholds)
+            f1_dict_ema = eval_validation_set(val_ema_preds_all, val_ema_targets_all, use_inference_strategy=self.use_inference_strategy, class_thresholds=ema_thresholds)
             
             # 记录EMA模型的metrics
             self.log("val_ema/f1_micro", f1_dict_ema["val_micro"], sync_dist=True, prog_bar=True)
@@ -1170,7 +836,7 @@ class IntentonomyViTModule(LightningModule):
         :param batch_idx: The index of the current batch.
         """
         # 使用原始模型
-        loss, preds, targets, sparsity_loss_val, correlation_loss_val, threshold_consistency_loss_val = self.model_step(batch, use_ema_model=False)
+        loss, preds, targets, sparsity_loss_val, correlation_loss_val, threshold_loss_val, margin_boosting_loss_val, threshold_consistency_loss_val = self.model_step(batch, use_ema_model=False)
 
         # update and log loss
         self.test_loss(loss)
@@ -1184,6 +850,14 @@ class IntentonomyViTModule(LightningModule):
         if self.use_correlation_loss:
             self.log("test/correlation_loss", correlation_loss_val, on_step=False, on_epoch=True, prog_bar=False)
         
+        # log threshold loss (test阶段通常不需要累积)
+        if self.use_threshold_loss:
+            self.log("test/threshold_loss", threshold_loss_val, on_step=False, on_epoch=True, prog_bar=False)
+        
+        # log margin boosting loss (test阶段通常不需要累积)
+        if self.use_margin_boosting_loss:
+            self.log("test/margin_boosting_loss", margin_boosting_loss_val, on_step=False, on_epoch=True, prog_bar=False)
+        
         # log threshold consistency loss (test阶段通常不需要累积)
         self.log("test/threshold_consistency_loss", threshold_consistency_loss_val, on_step=False, on_epoch=True, prog_bar=False)
 
@@ -1193,7 +867,7 @@ class IntentonomyViTModule(LightningModule):
         
         # 如果使用EMA，也使用EMA模型进行推理
         if self.use_ema and self.ema_model is not None:
-            _, ema_preds, _, _, _, _ = self.model_step(batch, use_ema_model=True)
+            _, ema_preds, _, _, _, _, _, _ = self.model_step(batch, use_ema_model=True)
             self.test_ema_preds_list.append(ema_preds.detach().cpu())
             self.test_ema_targets_list.append(targets.detach().cpu())
 
@@ -1211,7 +885,7 @@ class IntentonomyViTModule(LightningModule):
             test_targets_all = torch.cat(self.test_targets_list, dim=0).numpy()
             
             # 使用 HLEG 的计算方式，传递类别级阈值（如果启用）
-            f1_dict = eval_validation_set(test_preds_all, test_targets_all, class_thresholds=thresholds)
+            f1_dict = eval_validation_set(test_preds_all, test_targets_all, use_inference_strategy=self.use_inference_strategy, class_thresholds=thresholds)
             
             # 记录 metrics
             self.log("test/f1_micro", f1_dict["val_micro"], sync_dist=True, prog_bar=True)
@@ -1235,7 +909,7 @@ class IntentonomyViTModule(LightningModule):
                 ema_module = self.ema_model.module
                 if ema_module.class_thresholds is not None:
                     ema_thresholds = torch.sigmoid(ema_module.class_thresholds).detach().cpu().numpy()
-            f1_dict_ema = eval_validation_set(test_ema_preds_all, test_ema_targets_all, class_thresholds=ema_thresholds)
+            f1_dict_ema = eval_validation_set(test_ema_preds_all, test_ema_targets_all, use_inference_strategy=self.use_inference_strategy, class_thresholds=ema_thresholds)
             
             # 记录EMA模型的metrics
             self.log("test_ema/f1_micro", f1_dict_ema["val_micro"], sync_dist=True, prog_bar=True)
@@ -1247,6 +921,20 @@ class IntentonomyViTModule(LightningModule):
             # 清空EMA列表
             self.test_ema_preds_list.clear()
             self.test_ema_targets_list.clear()
+
+    def on_load_checkpoint(self, checkpoint: Dict[str, Any]) -> None:
+        """Lightning hook called when loading a checkpoint.
+        
+        在加载checkpoint之前清理state_dict，移除torch.compile产生的_orig_mod前缀。
+        
+        :param checkpoint: The checkpoint dictionary.
+        """
+        if "state_dict" in checkpoint:
+            original_state_dict = checkpoint["state_dict"]
+            # print(original_state_dict.keys())
+            cleaned_state_dict = clean_state_dict_for_loading(original_state_dict)
+            # print(cleaned_state_dict.keys())
+            checkpoint["state_dict"] = cleaned_state_dict
 
     def setup(self, stage: str) -> None:
         """Lightning hook that is called at the beginning of fit (train + validate), validate,
@@ -1271,53 +959,34 @@ class IntentonomyViTModule(LightningModule):
         # 获取基础学习率
         # 从 optimizer 的 keywords 中获取 lr（因为使用了 _partial_）
         if hasattr(self.hparams.optimizer, 'keywords'):
-            base_lr = self.hparams.optimizer.keywords.get('lr', 0.00001)
+            base_lr = self.hparams.optimizer.keywords.get('lr', 0.0001)
         else:
             # 如果没有 keywords 属性，使用默认值
-            base_lr = 0.00001
+            base_lr = 0.0001
         
-        # 分离 ViT、DCM 和 log_temperature 的参数
-        vit_params = []
+        # 分离 ResNet101 和 DCM 的参数
+        backbone_params = []
         dcm_params = []
-        log_temperature_params = []
         
-        # ViT backbone 的参数
+        # ResNet101 backbone 的参数
         if self.net is not None:
-            vit_params.extend(self.net.parameters())
+            backbone_params.extend(self.net.parameters())
         
         # DCM 的参数（如果使用）
         if self.use_mcc and self.mcc_miner is not None:
-            # 检查是否有 verifier 和 log_temperature 参数
-            if hasattr(self.mcc_miner, 'verifier') and hasattr(self.mcc_miner.verifier, 'log_temperature'):
-                # 将 log_temperature 单独分离出来
-                log_temperature_params.append(self.mcc_miner.verifier.log_temperature)
-                # 获取 DCM 的其他参数（排除 log_temperature）
-                for name, param in self.mcc_miner.named_parameters():
-                    if 'log_temperature' not in name:
-                        dcm_params.append(param)
-            else:
-                # 如果没有 log_temperature，使用所有 DCM 参数
-                dcm_params.extend(self.mcc_miner.parameters())
+            dcm_params.extend(self.mcc_miner.parameters())
         
-        # 创建参数组：
-        # - ViT 使用基础学习率
-        # - DCM 使用 10 倍学习率
-        # - log_temperature 使用 base_lr / 10
+        # 创建参数组：ResNet101 使用基础学习率，DCM 使用 10 倍学习率
         param_groups = []
-        if vit_params:
+        if backbone_params:
             param_groups.append({
-                'params': vit_params,
+                'params': backbone_params,
                 'lr': base_lr
             })
         if dcm_params:
             param_groups.append({
                 'params': dcm_params,
                 'lr': base_lr * 10.0
-            })
-        if log_temperature_params:
-            param_groups.append({
-                'params': log_temperature_params,
-                'lr': base_lr / 10.0
             })
         
         # 如果没有分离参数，使用所有参数（向后兼容）
