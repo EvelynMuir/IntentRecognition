@@ -1,0 +1,36 @@
+# @package _global_
+
+# to execute this experiment run:
+# python src/train.py experiment=intentonomy_clip_vit_layer_patch_mean model.layer_idx=24
+
+defaults:
+  - override /data: intentonomy
+  - override /model: intentonomy_clip_vit_layer_patch_mean
+  - override /callbacks: default
+  - override /trainer: default
+
+tags: ["intentonomy", "clip-vit", "layer-patch-mean", "mlp"]
+
+callbacks:
+  model_checkpoint:
+    monitor: val/f1_macro
+    mode: max
+
+  early_stopping:
+    monitor: val/f1_macro
+    mode: max
+    patience: 10
+
+  confusion_matrix:
+    _target_: src.callbacks.confusion_matrix_callback.ConfusionMatrixCallback
+    annotation_file: null
+    output_filename: "confusion_matrix.png"
+    show_values: true
+    dpi: 300
+
+data:
+  batch_size: 1024
+
+logger:
+  tensorboard:
+    name: "Intentonomy-CLIP-ViT-Layer24-PatchMean"

@@ -6,7 +6,7 @@ from lightning import LightningModule
 from torchmetrics import MaxMetric, MeanMetric
 
 from src.models.components.aslloss import AsymmetricLossOptimized
-from src.utils.metrics import eval_validation_set
+from src.utils.metrics import eval_test_set_both_strategies, eval_validation_set
 
 
 class IntentonomyClipViTModule(LightningModule):
@@ -169,6 +169,9 @@ class IntentonomyClipViTModule(LightningModule):
             self.log("val/f1_macro_best", self.val_f1_macro_best.compute(), sync_dist=True, prog_bar=True)
             self.log("val/mAP", f1_dict["val_mAP"], sync_dist=True, prog_bar=True)
             self.log("val/threshold", f1_dict["threshold"], sync_dist=True)
+            self.log("val/easy", f1_dict["val_easy"], sync_dist=True)
+            self.log("val/medium", f1_dict["val_medium"], sync_dist=True)
+            self.log("val/hard", f1_dict["val_hard"], sync_dist=True)
             
             # 清空列表以便下次验证
             self.val_preds_list.clear()
@@ -198,15 +201,30 @@ class IntentonomyClipViTModule(LightningModule):
             test_preds_all = torch.cat(self.test_preds_list, dim=0).numpy()
             test_targets_all = torch.cat(self.test_targets_list, dim=0).numpy()
             
-            # 使用 HLEG 的计算方式
-            f1_dict = eval_validation_set(test_preds_all, test_targets_all)
-            
-            # 记录 metrics
+            dual_f1_dict = eval_test_set_both_strategies(test_preds_all, test_targets_all)
+
+            for strategy_name, metrics in dual_f1_dict.items():
+                self.log(f"test/{strategy_name}/f1_micro", metrics["val_micro"], sync_dist=True, prog_bar=True)
+                self.log(f"test/{strategy_name}/f1_macro", metrics["val_macro"], sync_dist=True, prog_bar=True)
+                self.log(f"test/{strategy_name}/f1_samples", metrics["val_samples"], sync_dist=True)
+                self.log(f"test/{strategy_name}/f1_mean", (metrics["val_micro"] + metrics["val_macro"] + metrics["val_samples"]) / 3.0, sync_dist=True)
+                self.log(f"test/{strategy_name}/mAP", metrics["val_mAP"], sync_dist=True, prog_bar=True)
+                self.log(f"test/{strategy_name}/threshold", metrics["threshold"], sync_dist=True)
+                self.log(f"test/{strategy_name}/easy", metrics["val_easy"], sync_dist=True)
+                self.log(f"test/{strategy_name}/medium", metrics["val_medium"], sync_dist=True)
+                self.log(f"test/{strategy_name}/hard", metrics["val_hard"], sync_dist=True)
+
+            # Backward-compatible aliases (legacy behavior = no inference strategy)
+            f1_dict = dual_f1_dict["no_inference_strategy"]
             self.log("test/f1_micro", f1_dict["val_micro"], sync_dist=True, prog_bar=True)
             self.log("test/f1_macro", f1_dict["val_macro"], sync_dist=True, prog_bar=True)
             self.log("test/f1_samples", f1_dict["val_samples"], sync_dist=True)
+            self.log("test/f1_mean", (f1_dict["val_micro"] + f1_dict["val_macro"] + f1_dict["val_samples"]) / 3.0, sync_dist=True)
             self.log("test/mAP", f1_dict["val_mAP"], sync_dist=True, prog_bar=True)
             self.log("test/threshold", f1_dict["threshold"], sync_dist=True)
+            self.log("test/easy", f1_dict["val_easy"], sync_dist=True)
+            self.log("test/medium", f1_dict["val_medium"], sync_dist=True)
+            self.log("test/hard", f1_dict["val_hard"], sync_dist=True)
             
             # 清空列表
             self.test_preds_list.clear()
@@ -251,4 +269,3 @@ class IntentonomyClipViTModule(LightningModule):
                 },
             }
         return {"optimizer": optimizer}
-

@@ -10,7 +10,7 @@ from lightning import LightningModule
 from torchmetrics import MaxMetric, MeanMetric
 
 from src.models.components.aslloss import AsymmetricLossOptimized
-from src.utils.metrics import eval_validation_set
+from src.utils.metrics import eval_test_set_both_strategies, eval_validation_set
 from src.utils.ema import ModelEma
 
 
@@ -66,6 +66,10 @@ class IntentonomyClipViTBaseModule(LightningModule):
         """
         super().__init__()
         
+        # Save hyperparameters to make them accessible via self.hparams
+        # This is needed for the setup method to access self.hparams.compile
+        self.save_hyperparameters(logger=False, ignore=["net", "optimizer", "scheduler", "criterion"])
+        
         self.net = net
         self.num_classes = num_classes
         self.use_ema = use_ema
@@ -77,6 +81,7 @@ class IntentonomyClipViTBaseModule(LightningModule):
         self.intent_loss_weight_warmup = intent_loss_weight_warmup
         self.intent_loss_weight_normal = intent_loss_weight_normal
         self.use_cls_token = use_cls_token
+        self.compile = compile  # Store compile flag as instance variable
         
         # Freeze CLIP ViT backbone if requested
         if freeze_backbone:
@@ -441,6 +446,9 @@ class IntentonomyClipViTBaseModule(LightningModule):
             self.log("val/f1_macro_best", self.val_f1_macro_best.compute(), sync_dist=True, prog_bar=True)
             self.log("val/mAP", f1_dict["val_mAP"], sync_dist=True, prog_bar=True)
             self.log("val/threshold", f1_dict["threshold"], sync_dist=True)
+            self.log("val/easy", f1_dict["val_easy"], sync_dist=True)
+            self.log("val/medium", f1_dict["val_medium"], sync_dist=True)
+            self.log("val/hard", f1_dict["val_hard"], sync_dist=True)
             
             # Clear lists
             self.val_preds_list.clear()
@@ -459,6 +467,9 @@ class IntentonomyClipViTBaseModule(LightningModule):
             self.log("val_ema/f1_samples", f1_dict_ema["val_samples"], sync_dist=True)
             self.log("val_ema/mAP", f1_dict_ema["val_mAP"], sync_dist=True, prog_bar=True)
             self.log("val_ema/threshold", f1_dict_ema["threshold"], sync_dist=True)
+            self.log("val_ema/easy", f1_dict_ema["val_easy"], sync_dist=True)
+            self.log("val_ema/medium", f1_dict_ema["val_medium"], sync_dist=True)
+            self.log("val_ema/hard", f1_dict_ema["val_hard"], sync_dist=True)
             
             # Clear EMA lists
             self.val_ema_preds_list.clear()
@@ -497,14 +508,29 @@ class IntentonomyClipViTBaseModule(LightningModule):
             test_preds_all = torch.cat(self.test_preds_list, dim=0).numpy()
             test_targets_all = torch.cat(self.test_targets_list, dim=0).numpy()
             
-            f1_dict = eval_validation_set(test_preds_all, test_targets_all)
-            
-            # Log metrics
+            dual_f1_dict = eval_test_set_both_strategies(test_preds_all, test_targets_all)
+            for strategy_name, metrics in dual_f1_dict.items():
+                self.log(f"test/{strategy_name}/f1_micro", metrics["val_micro"], sync_dist=True, prog_bar=True)
+                self.log(f"test/{strategy_name}/f1_macro", metrics["val_macro"], sync_dist=True, prog_bar=True)
+                self.log(f"test/{strategy_name}/f1_samples", metrics["val_samples"], sync_dist=True)
+                self.log(f"test/{strategy_name}/f1_mean", (metrics["val_micro"] + metrics["val_macro"] + metrics["val_samples"]) / 3.0, sync_dist=True)
+                self.log(f"test/{strategy_name}/mAP", metrics["val_mAP"], sync_dist=True, prog_bar=True)
+                self.log(f"test/{strategy_name}/threshold", metrics["threshold"], sync_dist=True)
+                self.log(f"test/{strategy_name}/easy", metrics["val_easy"], sync_dist=True)
+                self.log(f"test/{strategy_name}/medium", metrics["val_medium"], sync_dist=True)
+                self.log(f"test/{strategy_name}/hard", metrics["val_hard"], sync_dist=True)
+
+            # Backward-compatible aliases (legacy behavior = no inference strategy)
+            f1_dict = dual_f1_dict["no_inference_strategy"]
             self.log("test/f1_micro", f1_dict["val_micro"], sync_dist=True, prog_bar=True)
             self.log("test/f1_macro", f1_dict["val_macro"], sync_dist=True, prog_bar=True)
             self.log("test/f1_samples", f1_dict["val_samples"], sync_dist=True)
+            self.log("test/f1_mean", (f1_dict["val_micro"] + f1_dict["val_macro"] + f1_dict["val_samples"]) / 3.0, sync_dist=True)
             self.log("test/mAP", f1_dict["val_mAP"], sync_dist=True, prog_bar=True)
             self.log("test/threshold", f1_dict["threshold"], sync_dist=True)
+            self.log("test/easy", f1_dict["val_easy"], sync_dist=True)
+            self.log("test/medium", f1_dict["val_medium"], sync_dist=True)
+            self.log("test/hard", f1_dict["val_hard"], sync_dist=True)
             
             # Clear lists
             self.test_preds_list.clear()
@@ -515,14 +541,29 @@ class IntentonomyClipViTBaseModule(LightningModule):
             test_ema_preds_all = torch.cat(self.test_ema_preds_list, dim=0).numpy()
             test_ema_targets_all = torch.cat(self.test_ema_targets_list, dim=0).numpy()
             
-            f1_dict_ema = eval_validation_set(test_ema_preds_all, test_ema_targets_all)
-            
-            # Log EMA model metrics
+            dual_f1_dict_ema = eval_test_set_both_strategies(test_ema_preds_all, test_ema_targets_all)
+            for strategy_name, metrics in dual_f1_dict_ema.items():
+                self.log(f"test_ema/{strategy_name}/f1_micro", metrics["val_micro"], sync_dist=True, prog_bar=True)
+                self.log(f"test_ema/{strategy_name}/f1_macro", metrics["val_macro"], sync_dist=True, prog_bar=True)
+                self.log(f"test_ema/{strategy_name}/f1_samples", metrics["val_samples"], sync_dist=True)
+                self.log(f"test_ema/{strategy_name}/f1_mean", (metrics["val_micro"] + metrics["val_macro"] + metrics["val_samples"]) / 3.0, sync_dist=True)
+                self.log(f"test_ema/{strategy_name}/mAP", metrics["val_mAP"], sync_dist=True, prog_bar=True)
+                self.log(f"test_ema/{strategy_name}/threshold", metrics["threshold"], sync_dist=True)
+                self.log(f"test_ema/{strategy_name}/easy", metrics["val_easy"], sync_dist=True)
+                self.log(f"test_ema/{strategy_name}/medium", metrics["val_medium"], sync_dist=True)
+                self.log(f"test_ema/{strategy_name}/hard", metrics["val_hard"], sync_dist=True)
+
+            # Backward-compatible aliases (legacy behavior = no inference strategy)
+            f1_dict_ema = dual_f1_dict_ema["no_inference_strategy"]
             self.log("test_ema/f1_micro", f1_dict_ema["val_micro"], sync_dist=True, prog_bar=True)
             self.log("test_ema/f1_macro", f1_dict_ema["val_macro"], sync_dist=True, prog_bar=True)
             self.log("test_ema/f1_samples", f1_dict_ema["val_samples"], sync_dist=True)
+            self.log("test_ema/f1_mean", (f1_dict_ema["val_micro"] + f1_dict_ema["val_macro"] + f1_dict_ema["val_samples"]) / 3.0, sync_dist=True)
             self.log("test_ema/mAP", f1_dict_ema["val_mAP"], sync_dist=True, prog_bar=True)
             self.log("test_ema/threshold", f1_dict_ema["threshold"], sync_dist=True)
+            self.log("test_ema/easy", f1_dict_ema["val_easy"], sync_dist=True)
+            self.log("test_ema/medium", f1_dict_ema["val_medium"], sync_dist=True)
+            self.log("test_ema/hard", f1_dict_ema["val_hard"], sync_dist=True)
             
             # Clear EMA lists
             self.test_ema_preds_list.clear()
@@ -539,9 +580,54 @@ class IntentonomyClipViTBaseModule(LightningModule):
         if self.use_ema and self.ema_model is None:
             self.ema_model = ModelEma(self, decay=self.ema_decay)
             self.ema_model.set(self)
+
+    def on_load_checkpoint(self, checkpoint: Dict[str, Any]) -> None:
+        """Clean and fix state_dict during checkpoint loading.
+        
+        Handles:
+        1. Removes EMA model weights to avoid resume load mismatches
+        2. Removes torch.compile's _orig_mod wrapper prefixes
+        3. Handles nested prefixes like ema_model.module.net._orig_mod.*
+        """
+        state_dict = checkpoint.get("state_dict")
+        if not state_dict:
+            return
+
+        keys_to_remove = []
+        keys_to_rename = {}
+        
+        for key in list(state_dict.keys()):
+            new_key = key
+            
+            # Remove entire ema_model.* entries (they will be recreated on_train_start)
+            if key.startswith("ema_model."):
+                keys_to_remove.append(key)
+                continue
+            
+            # Handle torch.compile's _orig_mod wrapper in different contexts
+            # Remove _orig_mod wrappers: net._orig_mod.* -> net.*
+            if ".net._orig_mod." in new_key:
+                new_key = new_key.replace(".net._orig_mod.", ".net.")
+            elif new_key.startswith("net._orig_mod."):
+                new_key = "net." + new_key[len("net._orig_mod."):]
+            
+            if new_key != key:
+                keys_to_rename[key] = new_key
+        
+        # Apply removals
+        for key in keys_to_remove:
+            state_dict.pop(key, None)
+        
+        # Apply renames
+        for old_key, new_key in keys_to_rename.items():
+            state_dict[new_key] = state_dict.pop(old_key)
     
     def setup(self, stage: str) -> None:
         """Lightning hook that is called at the beginning of fit, validate, test, or predict."""
-        if self.hparams.compile and stage == "fit":
+        # Use instance variable if available, otherwise fall back to hparams
+        compile_flag = getattr(self, 'compile', False)
+        if hasattr(self, 'hparams') and hasattr(self.hparams, 'compile'):
+            compile_flag = self.hparams.compile
+        
+        if compile_flag and stage == "fit":
             self.net = torch.compile(self.net)
-

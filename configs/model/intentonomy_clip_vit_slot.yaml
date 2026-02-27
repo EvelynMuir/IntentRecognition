@@ -1,0 +1,47 @@
+_target_: src.models.intentonomy_clip_vit_slot_module.IntentonomyClipViTSlotModule
+
+optimizer:
+  _target_: torch.optim.AdamW
+  _partial_: true
+  lr: 2e-4
+  weight_decay: 0.01
+
+scheduler:
+  _target_: torch.optim.lr_scheduler.CosineAnnealingLR
+  _partial_: true
+  T_max: 50
+  eta_min: 1e-6
+
+net:
+  _target_: src.models.intentonomy_clip_vit_slot_module.CLIPIntentSlotModel
+  num_classes: 28
+  clip_model_name: "ViT-L/14"
+  selected_layers: [12, 18, 24]
+  use_cls_token: false
+  aggregator_layernorm: true
+  num_slots: 4
+  slot_iters: 3
+  use_intent_conditioning: true
+  intent_descriptions: null
+  intent_annotation_file: null
+  intent_description_mode: "detailed"  # Options: "generic", "short", "detailed", "llm"
+  intent_gemini_file: null  # Path to intent_description_gemini.json for "llm" mode
+  trainable_intent_queries: true
+  freeze_backbone: true
+  use_learnable_temperature: false
+  init_temperature: 1.0
+
+num_classes: 28
+
+criterion:
+  _target_: src.models.components.aslloss.AsymmetricLossOptimized
+  gamma_neg: 2
+  gamma_pos: 0
+  clip: 0.05
+  eps: 1e-5
+  disable_torch_grad_focal_loss: false
+
+use_slot_orthogonality: true
+slot_orthogonality_weight: 0.1
+
+compile: true

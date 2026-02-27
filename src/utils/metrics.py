@@ -19,6 +19,15 @@ SUBSET2IDS = {
 }
 
 
+def compute_difficulty_scores(per_class_f1: np.ndarray) -> Dict[str, float]:
+    """Compute easy/medium/hard mean F1 from per-class F1."""
+    return {
+        "easy": float(np.mean(per_class_f1[SUBSET2IDS["easy"]])),
+        "medium": float(np.mean(per_class_f1[SUBSET2IDS["medium"]])),
+        "hard": float(np.mean(per_class_f1[SUBSET2IDS["hard"]])),
+    }
+
+
 def voc_ap(rec, prec, true_num):
     """计算单个类别的平均精度 (AP)
     
@@ -272,6 +281,8 @@ def eval_validation_set(
     # compute mAP
     mAP = compute_mAP(val_scores, multihot_targets)
 
+    difficulty = compute_difficulty_scores(f1_dict["none"])
+
     # get results using the threshold found
     return {
         "val_micro": f1_dict["micro"], 
@@ -280,5 +291,31 @@ def eval_validation_set(
         "val_none": f1_dict["none"],
         "val_mAP": mAP,
         "threshold": f1_dict["threshold"],
+        "val_easy": difficulty["easy"],
+        "val_medium": difficulty["medium"],
+        "val_hard": difficulty["hard"],
     }
 
+
+def eval_test_set_both_strategies(
+    scores: np.ndarray,
+    targets: np.ndarray,
+    class_thresholds: np.ndarray = None,
+) -> Dict[str, dict]:
+    """Evaluate test metrics for both inference strategy settings."""
+    no_strategy = eval_validation_set(
+        scores,
+        targets,
+        use_inference_strategy=False,
+        class_thresholds=class_thresholds,
+    )
+    with_strategy = eval_validation_set(
+        scores,
+        targets,
+        use_inference_strategy=True,
+        class_thresholds=class_thresholds,
+    )
+    return {
+        "no_inference_strategy": no_strategy,
+        "use_inference_strategy": with_strategy,
+    }

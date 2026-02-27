@@ -23,7 +23,7 @@ from src.models.intentonomy_vit_mcc_module import (
     threshold_consistency_loss,
 )
 from src.models.components.aslloss import AsymmetricLossOptimized
-from src.utils.metrics import eval_validation_set
+from src.utils.metrics import eval_test_set_both_strategies, eval_validation_set
 from src.utils.ema import ModelEma
 
 
@@ -555,6 +555,9 @@ class IntentonomyClipViTModule(LightningModule):
             self.log("val/f1_macro_best", self.val_f1_macro_best.compute(), sync_dist=True, prog_bar=True)
             self.log("val/mAP", f1_dict["val_mAP"], sync_dist=True, prog_bar=True)
             self.log("val/threshold", f1_dict["threshold"], sync_dist=True)
+            self.log("val/easy", f1_dict["val_easy"], sync_dist=True)
+            self.log("val/medium", f1_dict["val_medium"], sync_dist=True)
+            self.log("val/hard", f1_dict["val_hard"], sync_dist=True)
             
             self.val_preds_list.clear()
             self.val_targets_list.clear()
@@ -575,6 +578,9 @@ class IntentonomyClipViTModule(LightningModule):
             self.log("val_ema/f1_samples", f1_dict_ema["val_samples"], sync_dist=True)
             self.log("val_ema/mAP", f1_dict_ema["val_mAP"], sync_dist=True, prog_bar=True)
             self.log("val_ema/threshold", f1_dict_ema["threshold"], sync_dist=True)
+            self.log("val_ema/easy", f1_dict_ema["val_easy"], sync_dist=True)
+            self.log("val_ema/medium", f1_dict_ema["val_medium"], sync_dist=True)
+            self.log("val_ema/hard", f1_dict_ema["val_hard"], sync_dist=True)
             
             self.val_ema_preds_list.clear()
             self.val_ema_targets_list.clear()
@@ -612,13 +618,31 @@ class IntentonomyClipViTModule(LightningModule):
             test_preds_all = torch.cat(self.test_preds_list, dim=0).numpy()
             test_targets_all = torch.cat(self.test_targets_list, dim=0).numpy()
             
-            f1_dict = eval_validation_set(test_preds_all, test_targets_all, class_thresholds=thresholds)
-            
+            dual_f1_dict = eval_test_set_both_strategies(
+                test_preds_all, test_targets_all, class_thresholds=thresholds
+            )
+            for strategy_name, metrics in dual_f1_dict.items():
+                self.log(f"test/{strategy_name}/f1_micro", metrics["val_micro"], sync_dist=True, prog_bar=True)
+                self.log(f"test/{strategy_name}/f1_macro", metrics["val_macro"], sync_dist=True, prog_bar=True)
+                self.log(f"test/{strategy_name}/f1_samples", metrics["val_samples"], sync_dist=True)
+                self.log(f"test/{strategy_name}/f1_mean", (metrics["val_micro"] + metrics["val_macro"] + metrics["val_samples"]) / 3.0, sync_dist=True)
+                self.log(f"test/{strategy_name}/mAP", metrics["val_mAP"], sync_dist=True, prog_bar=True)
+                self.log(f"test/{strategy_name}/threshold", metrics["threshold"], sync_dist=True)
+                self.log(f"test/{strategy_name}/easy", metrics["val_easy"], sync_dist=True)
+                self.log(f"test/{strategy_name}/medium", metrics["val_medium"], sync_dist=True)
+                self.log(f"test/{strategy_name}/hard", metrics["val_hard"], sync_dist=True)
+
+            # Backward-compatible aliases (legacy behavior = no inference strategy)
+            f1_dict = dual_f1_dict["no_inference_strategy"]
             self.log("test/f1_micro", f1_dict["val_micro"], sync_dist=True, prog_bar=True)
             self.log("test/f1_macro", f1_dict["val_macro"], sync_dist=True, prog_bar=True)
             self.log("test/f1_samples", f1_dict["val_samples"], sync_dist=True)
+            self.log("test/f1_mean", (f1_dict["val_micro"] + f1_dict["val_macro"] + f1_dict["val_samples"]) / 3.0, sync_dist=True)
             self.log("test/mAP", f1_dict["val_mAP"], sync_dist=True, prog_bar=True)
             self.log("test/threshold", f1_dict["threshold"], sync_dist=True)
+            self.log("test/easy", f1_dict["val_easy"], sync_dist=True)
+            self.log("test/medium", f1_dict["val_medium"], sync_dist=True)
+            self.log("test/hard", f1_dict["val_hard"], sync_dist=True)
             
             self.test_preds_list.clear()
             self.test_targets_list.clear()
@@ -632,13 +656,31 @@ class IntentonomyClipViTModule(LightningModule):
                 ema_module = self.ema_model.module
                 if ema_module.class_thresholds is not None:
                     ema_thresholds = torch.sigmoid(ema_module.class_thresholds).detach().cpu().numpy()
-            f1_dict_ema = eval_validation_set(test_ema_preds_all, test_ema_targets_all, class_thresholds=ema_thresholds)
-            
+            dual_f1_dict_ema = eval_test_set_both_strategies(
+                test_ema_preds_all, test_ema_targets_all, class_thresholds=ema_thresholds
+            )
+            for strategy_name, metrics in dual_f1_dict_ema.items():
+                self.log(f"test_ema/{strategy_name}/f1_micro", metrics["val_micro"], sync_dist=True, prog_bar=True)
+                self.log(f"test_ema/{strategy_name}/f1_macro", metrics["val_macro"], sync_dist=True, prog_bar=True)
+                self.log(f"test_ema/{strategy_name}/f1_samples", metrics["val_samples"], sync_dist=True)
+                self.log(f"test_ema/{strategy_name}/f1_mean", (metrics["val_micro"] + metrics["val_macro"] + metrics["val_samples"]) / 3.0, sync_dist=True)
+                self.log(f"test_ema/{strategy_name}/mAP", metrics["val_mAP"], sync_dist=True, prog_bar=True)
+                self.log(f"test_ema/{strategy_name}/threshold", metrics["threshold"], sync_dist=True)
+                self.log(f"test_ema/{strategy_name}/easy", metrics["val_easy"], sync_dist=True)
+                self.log(f"test_ema/{strategy_name}/medium", metrics["val_medium"], sync_dist=True)
+                self.log(f"test_ema/{strategy_name}/hard", metrics["val_hard"], sync_dist=True)
+
+            # Backward-compatible aliases (legacy behavior = no inference strategy)
+            f1_dict_ema = dual_f1_dict_ema["no_inference_strategy"]
             self.log("test_ema/f1_micro", f1_dict_ema["val_micro"], sync_dist=True, prog_bar=True)
             self.log("test_ema/f1_macro", f1_dict_ema["val_macro"], sync_dist=True, prog_bar=True)
             self.log("test_ema/f1_samples", f1_dict_ema["val_samples"], sync_dist=True)
+            self.log("test_ema/f1_mean", (f1_dict_ema["val_micro"] + f1_dict_ema["val_macro"] + f1_dict_ema["val_samples"]) / 3.0, sync_dist=True)
             self.log("test_ema/mAP", f1_dict_ema["val_mAP"], sync_dist=True, prog_bar=True)
             self.log("test_ema/threshold", f1_dict_ema["threshold"], sync_dist=True)
+            self.log("test_ema/easy", f1_dict_ema["val_easy"], sync_dist=True)
+            self.log("test_ema/medium", f1_dict_ema["val_medium"], sync_dist=True)
+            self.log("test_ema/hard", f1_dict_ema["val_hard"], sync_dist=True)
             
             self.test_ema_preds_list.clear()
             self.test_ema_targets_list.clear()
@@ -705,4 +747,3 @@ class IntentonomyClipViTModule(LightningModule):
                 },
             }
         return {"optimizer": optimizer}
-

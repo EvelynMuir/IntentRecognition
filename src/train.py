@@ -86,21 +86,31 @@ def train(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         log.info("Starting training!")
         trainer.fit(model=model, datamodule=datamodule, ckpt_path=cfg.get("ckpt_path"), weights_only=False)
 
-    train_metrics = trainer.callback_metrics
+    train_metrics = dict(trainer.callback_metrics)
+    val_best_metrics: Dict[str, Any] = {}
+    best_ckpt_path = None
+
+    if cfg.get("train"):
+        best_ckpt_path = trainer.checkpoint_callback.best_model_path
+        if best_ckpt_path == "":
+            log.warning("Best ckpt not found! Using current weights for validation...")
+            best_ckpt_path = None
+
+        # log.info("Starting validation with best checkpoint!")
+        # trainer.validate(model=model, datamodule=datamodule, ckpt_path=best_ckpt_path, weights_only=False)
+        val_best_metrics = dict(trainer.callback_metrics)
 
     if cfg.get("test"):
         log.info("Starting testing!")
-        ckpt_path = trainer.checkpoint_callback.best_model_path
-        if ckpt_path == "":
+        if best_ckpt_path is None and cfg.get("train"):
             log.warning("Best ckpt not found! Using current weights for testing...")
-            ckpt_path = None
-        trainer.test(model=model, datamodule=datamodule, ckpt_path=ckpt_path, weights_only=False)
-        log.info(f"Best ckpt path: {ckpt_path}")
+        trainer.test(model=model, datamodule=datamodule, ckpt_path=best_ckpt_path, weights_only=False)
+        log.info(f"Best ckpt path: {best_ckpt_path}")
 
-    test_metrics = trainer.callback_metrics
+    test_metrics = dict(trainer.callback_metrics)
 
-    # merge train and test metrics
-    metric_dict = {**train_metrics, **test_metrics}
+    # merge train, best-ckpt validation and test metrics
+    metric_dict = {**train_metrics, **val_best_metrics, **test_metrics}
 
     return metric_dict, object_dict
 
