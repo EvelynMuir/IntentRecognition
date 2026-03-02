@@ -192,7 +192,6 @@ class CLIPBackbone(nn.Module):
         self,
         clip_visual: nn.Module,
         selected_layers: List[int],
-        aligned_dim: int,
         use_cls_token: bool = False,
     ) -> None:
         super().__init__()
@@ -211,8 +210,7 @@ class CLIPBackbone(nn.Module):
                 f"selected_layers={selected_layers} out of range [1, {self.num_blocks}]."
             )
 
-        width = int(self.backbone.conv1.out_channels)
-        self.aligners = nn.ModuleList([nn.Linear(width, aligned_dim) for _ in selected_layers])
+        self.visual_width = int(self.backbone.conv1.out_channels)
 
     def forward(self, images: torch.Tensor) -> List[torch.Tensor]:
         x = self.backbone.conv1(images)
@@ -233,9 +231,40 @@ class CLIPBackbone(nn.Module):
                 selected[idx] = tokens if self.use_cls_token else tokens[:, 1:, :]
 
         outputs = []
-        for i, layer_idx in enumerate(self.selected_layers):
-            outputs.append(self.aligners[i](selected[layer_idx]))
+        for layer_idx in self.selected_layers:
+            outputs.append(selected[layer_idx])
         return outputs
+    
+    def extract_cls_token(self, images: torch.Tensor, layer_idx: Optional[int] = None) -> torch.Tensor:
+        """Extract CLS token from a specific layer.
+        
+        Args:
+            images: Input images [B, 3, H, W]
+            layer_idx: Layer to extract from. If None, uses the last selected layer.
+            
+        Returns:
+            CLS token [B, visual_width]
+        """
+        if layer_idx is None:
+            layer_idx = self.selected_layers[-1]
+        
+        x = self.backbone.conv1(images)
+        bsz, ch, h, w = x.shape
+        x = x.reshape(bsz, ch, h * w).permute(0, 2, 1)
+
+        cls_token = self.backbone.class_embedding.unsqueeze(0).unsqueeze(0).expand(bsz, -1, -1)
+        x = torch.cat([cls_token, x], dim=1)
+        x = x + self.backbone.positional_embedding.unsqueeze(0)
+        x = self.backbone.ln_pre(x)
+
+        x = x.permute(1, 0, 2)
+        for idx, block in enumerate(self.backbone.transformer.resblocks, start=1):
+            x = block(x)
+            if idx == layer_idx:
+                tokens = x.permute(1, 0, 2)
+                return tokens[:, 0, :]  # Extract CLS token at position 0
+        
+        raise ValueError(f"layer_idx={layer_idx} not found in forward pass")
 
 
 class TokenAggregator(nn.Module):
@@ -257,7 +286,9 @@ class IntentQueryBank(nn.Module):
         self,
         clip_model: nn.Module,
         intent_descriptions: List[str],
+        visual_width: int,
         trainable_queries: bool = True,
+        trainable_projection: bool = True,
         prompt_template: str = "A photo that expresses the intent of {}.",
         pre_computed_embeddings: Optional[torch.Tensor] = None,
     ) -> None:
@@ -278,9 +309,19 @@ class IntentQueryBank(nn.Module):
             self.intent_queries = nn.Parameter(text_features.clone())
         else:
             self.register_buffer("intent_queries", text_features)
+        
+        # Project intent queries from text dimension to visual dimension
+        text_dim = text_features.shape[-1]
+        self.query_proj = nn.Linear(text_dim, visual_width, bias=False)
+        
+        # Initialize with orthogonal initialization for stability
+        nn.init.orthogonal_(self.query_proj.weight)
+        
+        if not trainable_projection:
+            self.query_proj.weight.requires_grad = False
 
     def get_queries(self) -> torch.Tensor:
-        return self.intent_queries
+        return self.query_proj(self.intent_queries)
 
 
 class IntentConditionedSlotAttention(nn.Module):
@@ -575,6 +616,7 @@ class CLIPIntentSlotModel(nn.Module):
         intent_description_mode: str = "detailed",
         intent_gemini_file: Optional[str] = None,
         trainable_intent_queries: bool = True,
+        trainable_projection: bool = True,
         freeze_backbone: bool = True,
         use_learnable_temperature: bool = False,
         init_temperature: float = 1.0,
@@ -598,6 +640,10 @@ class CLIPIntentSlotModel(nn.Module):
             for param in self.backbone.parameters():
                 param.requires_grad = True
 
+        # Get visual width from backbone
+        visual_width = int(self.backbone.conv1.out_channels)
+        
+        # Get text dimension for intent query projection
         with torch.no_grad():
             text_dim = self.clip_model.encode_text(clip.tokenize(["dummy"])).shape[-1]
 
@@ -618,25 +664,27 @@ class CLIPIntentSlotModel(nn.Module):
                 num_classes=num_classes,
             )
 
+        # Force use_cls_token=False to ensure slot attention only uses patch tokens
         self.clip_backbone = CLIPBackbone(
             clip_visual=self.backbone,
             selected_layers=selected_layers,
-            aligned_dim=text_dim,
-            use_cls_token=use_cls_token,
+            use_cls_token=False,  # Always False - CLS only for fusion
         )
         self.aggregator = TokenAggregator(
-            dim=text_dim,
+            dim=visual_width,
             num_layers=len(selected_layers),
             use_layernorm=aggregator_layernorm,
         )
         self.intent_bank = IntentQueryBank(
             clip_model=self.clip_model,
             intent_descriptions=descriptions,
+            visual_width=visual_width,
             trainable_queries=trainable_intent_queries,
+            trainable_projection=trainable_projection,
             pre_computed_embeddings=pre_computed_embeddings,
         )
         self.intent_classifier = IntentClassifier(
-            dim=text_dim,
+            dim=visual_width,
             num_intents=num_classes,
             num_slots=num_slots,
             slot_iters=slot_iters,
@@ -655,13 +703,14 @@ class CLIPIntentSlotModel(nn.Module):
     ) -> tuple[torch.Tensor, Optional[torch.Tensor]]:
         tokens_per_layer = self.clip_backbone(images)
         tokens = self.aggregator(tokens_per_layer)
+        
+        # Extract CLS token for fusion (if enabled)
+        # CLS is extracted from the last selected layer using the helper method
         if self.intent_classifier.use_cls_fusion:
-            if self.clip_backbone.use_cls_token:
-                cls_embed = tokens_per_layer[-1][:, 0, :]
-            else:
-                cls_embed = tokens.mean(dim=1)
+            cls_embed = self.clip_backbone.extract_cls_token(images)
         else:
             cls_embed = None
+            
         intent_queries = self.intent_bank.get_queries()
         return self.intent_classifier(
             tokens=tokens,

@@ -13,9 +13,6 @@ except ImportError:
 
 class ClipVisionTransformerLayerCls(nn.Module):
     """CLIP Vision Transformer model for multi-label classification using CLS token from a specific layer.
-    
-    This class wraps CLIP's visual encoder (ViT) as a backbone and extracts CLS token
-    from a specified transformer layer (0-23) for classification.
     """
 
     def __init__(
@@ -54,8 +51,8 @@ class ClipVisionTransformerLayerCls(nn.Module):
         # Validate layer_idx
         if hasattr(self.backbone, 'transformer') and hasattr(self.backbone.transformer, 'resblocks'):
             num_layers = len(self.backbone.transformer.resblocks)
-            if layer_idx < 0 or layer_idx >= num_layers:
-                raise ValueError(f"layer_idx must be in range [0, {num_layers-1}], got {layer_idx}")
+            if layer_idx < 1 or layer_idx > num_layers:
+                raise ValueError(f"layer_idx must be in range [1, {num_layers}], got {layer_idx}")
         else:
             raise ValueError("Could not find transformer.resblocks in CLIP backbone")
         
@@ -111,7 +108,7 @@ class ClipVisionTransformerLayerCls(nn.Module):
         """Extract CLS token from a specific transformer layer.
         
         :param x: Input tensor of shape (batch_size, 3, image_size, image_size).
-        :param layer_idx: Index of transformer layer to extract from (0-23).
+        :param layer_idx: Index of transformer layer to extract from (1-24).
         :return: CLS token features of shape (batch_size, output_dim).
         """
         backbone = self.backbone
@@ -138,7 +135,7 @@ class ClipVisionTransformerLayerCls(nn.Module):
         x = x.permute(1, 0, 2)  # [1+N_patches, B, hidden_dim]
         
         # Forward through transformer blocks up to layer_idx
-        for i in range(layer_idx + 1):
+        for i in range(layer_idx):
             x = backbone.transformer.resblocks[i](x)  # [1+N_patches, B, hidden_dim]
         
         # 6. Extract CLS token (first token)

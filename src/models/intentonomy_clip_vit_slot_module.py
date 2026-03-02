@@ -360,6 +360,7 @@ class IntentClassifier(nn.Module):
         use_proto_classifier: bool = False,
         proto_momentum: float = 0.99,
         use_decoupled_classifier: bool = False,
+        use_late_fusion: bool = False,
     ) -> None:
         super().__init__()
         self.num_intents = num_intents
@@ -367,15 +368,16 @@ class IntentClassifier(nn.Module):
         self.use_cls_fusion = use_cls_fusion
         self.use_proto_classifier = use_proto_classifier
         self.use_decoupled_classifier = use_decoupled_classifier
+        self.use_late_fusion = use_late_fusion
         self.slot_attention = IntentConditionedSlotAttention(
             dim=dim,
             num_slots=num_slots,
             iters=slot_iters,
             use_intent_conditioning=use_intent_conditioning,
         )
-        if use_cls_fusion:
-            self.alpha = nn.Parameter(torch.tensor(float(init_alpha)))
-        else:
+        # Alpha is initialized in the residual fusion section above for late fusion
+        # For backward compatibility with fusion modes not using late fusion
+        if not (use_cls_fusion and use_late_fusion):
             self.register_buffer("alpha", torch.tensor(float(init_alpha)))
         if use_learnable_temperature:
             self.temperature = nn.Parameter(torch.tensor(float(init_temperature)))
@@ -417,6 +419,18 @@ class IntentClassifier(nn.Module):
                 ])
             else:
                 self.intent_classifiers = None
+        
+        # ===== RESIDUAL LOGITS FUSION MODULES (optional) =====
+        # When using cls_fusion with late fusion (residual logits fusion)
+        if use_cls_fusion and use_late_fusion:
+            # Separate heads for cls and slot logits
+            self.cls_head = nn.Linear(self.hidden_dim, self.num_intents, bias=False)
+            self.slot_head = nn.Linear(self.hidden_dim, self.num_intents, bias=False)
+            # Learnable weight for residual fusion: logits = logits_cls + alpha * logits_slot
+            self.alpha = nn.Parameter(torch.tensor(0.0))
+        else:
+            self.cls_head = None
+            self.slot_head = None
 
     def init_prototypes(self, intent_queries: torch.Tensor) -> None:
         """Initialize prototypes from intent queries.
@@ -533,26 +547,64 @@ class IntentClassifier(nn.Module):
             # ========================================================
             # ORIGINAL METHOD (backward compatibility)
             # ========================================================
-            for idx in range(self.num_intents):
-                q = intent_queries[idx].unsqueeze(0).expand(bsz, -1)
-                qn = F.normalize(q, dim=-1)
-
-                slots = self.slot_attention(tokens, q)
-                sn = F.normalize(slots, dim=-1)
+            
+            # Check if using late fusion (residual logits fusion)
+            use_residual_logits_fusion = (self.use_cls_fusion and 
+                                         self.use_late_fusion and
+                                         hasattr(self, 'cls_head') and 
+                                         self.cls_head is not None)
+            
+            if use_residual_logits_fusion:
+                # ========================================================
+                # RESIDUAL LOGITS FUSION: logits = logits_cls + alpha * logits_slot
+                # ========================================================
+                # Generate logits for all intents at once
+                logits_cls_all = self.cls_head(cls_n)  # [B, num_intents]
                 
-                if self.use_cls_fusion:
+                for idx in range(self.num_intents):
+                    q = intent_queries[idx].unsqueeze(0).expand(bsz, -1)
+                    
+                    slots = self.slot_attention(tokens, q)
+                    
+                    # Compute slot summary via attention
+                    sn = F.normalize(slots, dim=-1)
+                    qn = F.normalize(q, dim=-1)
                     attn_logits = (sn * qn.unsqueeze(1)).sum(dim=-1)
                     attn = F.softmax(attn_logits, dim=-1)
-                    slot_summary = (attn.unsqueeze(-1) * slots).sum(dim=1)
+                    slot_summary = (attn.unsqueeze(-1) * slots).sum(dim=1)  # [B, D]
+                    
+                    # Generate slot logits for this intent
+                    logits_slot = self.slot_head(F.normalize(slot_summary, dim=-1))  # [B, num_intents]
+                    
+                    # Residual fusion: combine cls and slot logits
+                    # logits = logits_cls + alpha * logits_slot
+                    score = logits_cls_all[:, idx] + self.alpha * logits_slot[:, idx]
+                    scores.append(score)
+                    
+                    if return_slots:
+                        slots_all.append(slots)
+            else:
+                # Original fusion method
+                for idx in range(self.num_intents):
+                    q = intent_queries[idx].unsqueeze(0).expand(bsz, -1)
+                    qn = F.normalize(q, dim=-1)
 
-                    fused = cls_n + self.alpha * F.normalize(slot_summary, dim=-1)
-                    score = (fused * qn).sum(dim=-1)
-                else:
-                    score = (sn * qn.unsqueeze(1)).sum(dim=-1).sum(dim=-1)
-                
-                scores.append(score)
-                if return_slots:
-                    slots_all.append(slots)
+                    slots = self.slot_attention(tokens, q)
+                    sn = F.normalize(slots, dim=-1)
+                    
+                    if self.use_cls_fusion:
+                        attn_logits = (sn * qn.unsqueeze(1)).sum(dim=-1)
+                        attn = F.softmax(attn_logits, dim=-1)
+                        slot_summary = (attn.unsqueeze(-1) * slots).sum(dim=1)
+
+                        fused = cls_n + self.alpha * F.normalize(slot_summary, dim=-1)
+                        score = (fused * qn).sum(dim=-1)
+                    else:
+                        score = (sn * qn.unsqueeze(1)).sum(dim=-1).sum(dim=-1)
+                    
+                    scores.append(score)
+                    if return_slots:
+                        slots_all.append(slots)
 
         # ============================================================
         logits = torch.stack(scores, dim=1)
@@ -588,6 +640,7 @@ class CLIPIntentSlotModel(nn.Module):
         use_proto_classifier: bool = False,
         proto_momentum: float = 0.99,
         use_decoupled_classifier: bool = False,
+        use_late_fusion: bool = False,
     ) -> None:
         super().__init__()
         if selected_layers is None:
@@ -653,6 +706,7 @@ class CLIPIntentSlotModel(nn.Module):
             use_proto_classifier=use_proto_classifier,
             proto_momentum=proto_momentum,
             use_decoupled_classifier=use_decoupled_classifier,
+            use_late_fusion=use_late_fusion,
         )
 
     def forward(
@@ -703,6 +757,7 @@ class IntentonomyClipViTSlotModule(LightningModule):
         use_proto_classifier: bool = False,
         proto_momentum: float = 0.99,
         use_decoupled_cls_fusion: bool = False,
+        use_late_fusion: bool = False,
     ) -> None:
         super().__init__()
         self.save_hyperparameters(logger=False, ignore=["net", "criterion"])
@@ -717,13 +772,16 @@ class IntentonomyClipViTSlotModule(LightningModule):
         self.use_proto_classifier = use_proto_classifier
         self.proto_momentum = proto_momentum
         self.use_decoupled_cls_fusion = use_decoupled_cls_fusion
+        self.use_late_fusion = use_late_fusion
     
-        if use_cls_fusion:
+        if use_cls_fusion and use_late_fusion:
             with torch.no_grad():
                 classifier = self.net.intent_classifier
-                classifier.alpha.copy_(
-                    torch.tensor(float(init_alpha), device=classifier.alpha.device)
-                )
+                # Only initialize alpha if using late fusion
+                if hasattr(classifier, 'alpha') and isinstance(classifier.alpha, torch.nn.Parameter):
+                    classifier.alpha.copy_(
+                        torch.tensor(float(init_alpha), device=classifier.alpha.device)
+                    )
 
         self.criterion = criterion if criterion is not None else AsymmetricLossOptimized()
 
