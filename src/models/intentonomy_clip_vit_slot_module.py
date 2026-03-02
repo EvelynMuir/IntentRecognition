@@ -357,10 +357,16 @@ class IntentClassifier(nn.Module):
         init_temperature: float = 1.0,
         use_cls_fusion: bool = False,
         init_alpha: float = 1.0,
+        use_proto_classifier: bool = False,
+        proto_momentum: float = 0.99,
+        use_decoupled_classifier: bool = False,
     ) -> None:
         super().__init__()
         self.num_intents = num_intents
+        self.hidden_dim = dim
         self.use_cls_fusion = use_cls_fusion
+        self.use_proto_classifier = use_proto_classifier
+        self.use_decoupled_classifier = use_decoupled_classifier
         self.slot_attention = IntentConditionedSlotAttention(
             dim=dim,
             num_slots=num_slots,
@@ -376,46 +382,185 @@ class IntentClassifier(nn.Module):
         else:
             self.register_buffer("temperature", torch.tensor(float(init_temperature)))
 
+        # ===== PROTOTYPE-BASED CLASSIFIER =====
+        if use_proto_classifier:
+            self.register_buffer(
+                "intent_proto",
+                torch.zeros(self.num_intents, self.hidden_dim)
+            )
+            self.register_buffer("proto_momentum", torch.tensor(float(proto_momentum)))
+            self.register_buffer("proto_initialized", torch.tensor(False, dtype=torch.bool))
+        else:
+            self.register_buffer(
+                "intent_proto",
+                torch.zeros(1)  # dummy buffer, not used
+            )
+            self.register_buffer("proto_momentum", torch.tensor(0.0))
+            self.register_buffer("proto_initialized", torch.tensor(False, dtype=torch.bool))
+
+        # ===== DECOUPLED CLASSIFIER MODULES (optional) =====
+        if use_decoupled_classifier:
+            # (Fix 1) classifier space projection
+            self.intent_proj = nn.Linear(self.hidden_dim, self.hidden_dim, bias=False)
+
+            # (Fix 2) slot importance scorer
+            self.slot_score = nn.Linear(self.hidden_dim, 1)
+
+            # (Fix 3) classifier heads after concat fusion
+            fusion_dim = self.hidden_dim * 2 if self.use_cls_fusion else self.hidden_dim
+
+            # Only create intent_classifiers if not using proto_classifier
+            if not use_proto_classifier:
+                self.intent_classifiers = nn.ModuleList([
+                    nn.Linear(fusion_dim, 1, bias=False)
+                    for _ in range(self.num_intents)
+                ])
+            else:
+                self.intent_classifiers = None
+
+    def init_prototypes(self, intent_queries: torch.Tensor) -> None:
+        """Initialize prototypes from intent queries.
+        
+        Args:
+            intent_queries: [num_intents, D]
+        """
+        if not self.use_proto_classifier:
+            return
+        
+        with torch.no_grad():
+            proto = F.normalize(intent_queries, dim=-1)
+            self.intent_proto.copy_(proto)
+            self.proto_initialized.fill_(True)
+
     def forward(
         self,
         tokens: torch.Tensor,
-        cls_embed: Optional[torch.Tensor],
+        cls_embed: torch.Tensor | None,
         intent_queries: torch.Tensor,
         return_slots: bool = False,
     ) -> tuple[torch.Tensor, Optional[torch.Tensor]]:
+        """
+        tokens: [B, N, D]
+        cls_embed: [B, D]
+        intent_queries: [num_intents, D] (LLM initialized)
+        """
+
         bsz = tokens.shape[0]
         scores = []
         slots_all = []
 
+        # Auto-initialize prototypes on first forward pass during training
+        if self.use_proto_classifier and self.training and not self.proto_initialized:
+            self.init_prototypes(intent_queries)
+
         if self.use_cls_fusion:
             if cls_embed is None:
-                raise ValueError("cls_embed is required when use_cls_fusion=True")
+                raise ValueError("cls_embed required when use_cls_fusion=True")
             cls_n = F.normalize(cls_embed, dim=-1)
 
-        for idx in range(self.num_intents):
-            q = intent_queries[idx].unsqueeze(0).expand(bsz, -1)
-            qn = F.normalize(q, dim=-1)
+        # ============================================================
+        # LOOP OVER INTENTS
+        # ============================================================
 
-            slots = self.slot_attention(tokens, q)
-            sn = F.normalize(slots, dim=-1)
-            if self.use_cls_fusion:
-                attn_logits = (sn * qn.unsqueeze(1)).sum(dim=-1)
+        if self.use_decoupled_classifier:
+            # ========================================================
+            # NEW DECOUPLED CLASSIFIER METHOD
+            # ========================================================
+            for idx in range(self.num_intents):
+
+                # --------------------------------------------------------
+                # Fix 1: separate extractor query & classifier query
+                # --------------------------------------------------------
+                q_extract = intent_queries[idx]              # LLM prior
+                q_extract = q_extract.unsqueeze(0).expand(bsz, -1)
+
+                q_class = self.intent_proj(q_extract)        # learnable classifier space
+                qn = F.normalize(q_class, dim=-1)
+
+                # --------------------------------------------------------
+                # SLOT ATTENTION (unchanged logic)
+                # --------------------------------------------------------
+                slots = self.slot_attention(tokens, q_extract)
+                # slots: [B, K, D]
+
+                sn = F.normalize(slots, dim=-1)
+
+                # --------------------------------------------------------
+                # Fix 2: slot weighting independent of query
+                # --------------------------------------------------------
+                attn_logits = self.slot_score(slots).squeeze(-1)  # [B, K]
                 attn = F.softmax(attn_logits, dim=-1)
-                slot_summary = (attn.unsqueeze(-1) * slots).sum(dim=1)
 
-                fused = cls_n + self.alpha * F.normalize(slot_summary, dim=-1)
-                score = (fused * qn).sum(dim=-1)
-            else:
-                score = (sn * qn.unsqueeze(1)).sum(dim=-1).sum(dim=-1)
-            scores.append(score)
-            if return_slots:
-                slots_all.append(slots)
+                slot_summary = torch.sum(
+                    attn.unsqueeze(-1) * slots,
+                    dim=1
+                )  # [B, D]
 
+                slot_summary = F.normalize(slot_summary, dim=-1)
+
+                # --------------------------------------------------------
+                # Fix 3: CLS fusion via CONCAT (not addition)
+                # --------------------------------------------------------
+                if self.use_cls_fusion:
+                    fused = torch.cat([cls_n, slot_summary], dim=-1)
+                else:
+                    fused = slot_summary
+
+                # --------------------------------------------------------
+                # classification head (decoupled from query)
+                # --------------------------------------------------------
+                if self.use_proto_classifier:
+                    # Prototype-based classification with momentum update
+                    with torch.no_grad():
+                        batch_proto = slot_summary.mean(dim=0)  # [D]
+                        if self.training:
+                            self.intent_proto[idx] = (
+                                self.proto_momentum * self.intent_proto[idx]
+                                + (1 - self.proto_momentum) * batch_proto
+                            )
+                    
+                    proto = F.normalize(self.intent_proto[idx], dim=-1)
+                    score = (slot_summary * proto).sum(dim=-1)
+                else:
+                    # Learnable classifier head
+                    score = self.intent_classifiers[idx](fused).squeeze(-1)
+
+                scores.append(score)
+
+                if return_slots:
+                    slots_all.append(slots)
+        else:
+            # ========================================================
+            # ORIGINAL METHOD (backward compatibility)
+            # ========================================================
+            for idx in range(self.num_intents):
+                q = intent_queries[idx].unsqueeze(0).expand(bsz, -1)
+                qn = F.normalize(q, dim=-1)
+
+                slots = self.slot_attention(tokens, q)
+                sn = F.normalize(slots, dim=-1)
+                
+                if self.use_cls_fusion:
+                    attn_logits = (sn * qn.unsqueeze(1)).sum(dim=-1)
+                    attn = F.softmax(attn_logits, dim=-1)
+                    slot_summary = (attn.unsqueeze(-1) * slots).sum(dim=1)
+
+                    fused = cls_n + self.alpha * F.normalize(slot_summary, dim=-1)
+                    score = (fused * qn).sum(dim=-1)
+                else:
+                    score = (sn * qn.unsqueeze(1)).sum(dim=-1).sum(dim=-1)
+                
+                scores.append(score)
+                if return_slots:
+                    slots_all.append(slots)
+
+        # ============================================================
         logits = torch.stack(scores, dim=1)
         logits = logits / self.temperature.clamp_min(1e-4)
 
         if return_slots:
             return logits, torch.stack(slots_all, dim=1)
+
         return logits, None
 
 
@@ -440,6 +585,9 @@ class CLIPIntentSlotModel(nn.Module):
         init_temperature: float = 1.0,
         use_cls_fusion: bool = False,
         init_alpha: float = 1.0,
+        use_proto_classifier: bool = False,
+        proto_momentum: float = 0.99,
+        use_decoupled_classifier: bool = False,
     ) -> None:
         super().__init__()
         if selected_layers is None:
@@ -502,6 +650,9 @@ class CLIPIntentSlotModel(nn.Module):
             init_temperature=init_temperature,
             use_cls_fusion=use_cls_fusion,
             init_alpha=init_alpha,
+            use_proto_classifier=use_proto_classifier,
+            proto_momentum=proto_momentum,
+            use_decoupled_classifier=use_decoupled_classifier,
         )
 
     def forward(
@@ -549,6 +700,9 @@ class IntentonomyClipViTSlotModule(LightningModule):
         slot_orthogonality_weight: float = 0.1,
         use_cls_fusion: bool = False,
         init_alpha: float = 1.0,
+        use_proto_classifier: bool = False,
+        proto_momentum: float = 0.99,
+        use_decoupled_cls_fusion: bool = False,
     ) -> None:
         super().__init__()
         self.save_hyperparameters(logger=False, ignore=["net", "criterion"])
@@ -560,6 +714,9 @@ class IntentonomyClipViTSlotModule(LightningModule):
         self.slot_orthogonality_weight = slot_orthogonality_weight
         self.use_cls_fusion = use_cls_fusion
         self.init_alpha = init_alpha
+        self.use_proto_classifier = use_proto_classifier
+        self.proto_momentum = proto_momentum
+        self.use_decoupled_cls_fusion = use_decoupled_cls_fusion
     
         if use_cls_fusion:
             with torch.no_grad():
@@ -593,6 +750,11 @@ class IntentonomyClipViTSlotModule(LightningModule):
         self.val_f1_macro_best.reset()
         self.val_preds_list.clear()
         self.val_targets_list.clear()
+        
+        # Initialize prototypes from intent queries for proto-based classifier
+        if self.use_proto_classifier:
+            intent_queries = self.net.intent_bank.get_queries()
+            self.net.intent_classifier.init_prototypes(intent_queries)
 
     def model_step(
         self, batch: Dict[str, torch.Tensor], return_slots: bool = True

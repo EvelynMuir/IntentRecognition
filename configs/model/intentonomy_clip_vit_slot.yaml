@@ -30,6 +30,8 @@ net:
   freeze_backbone: true
   use_learnable_temperature: false
   init_temperature: 1.0
+  use_proto_classifier: false
+  proto_momentum: 0.99
 
 num_classes: 28
 

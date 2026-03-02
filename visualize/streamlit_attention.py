@@ -9,7 +9,7 @@ import numpy as np
 import rootutils
 import streamlit as st
 import torch
-from lightning import seed_everything
+
 from PIL import Image
 import matplotlib.pyplot as plt
 
