@@ -13,11 +13,11 @@ tags: ["intentonomy", "clip-vit", "slot-attention", "intent-conditioned"]
 
 callbacks:
   model_checkpoint:
-    monitor: val/f1_macro
+    monitor: val/f1_mean
     mode: max
 
   early_stopping:
-    monitor: val/f1_macro
+    monitor: val/f1_mean
     mode: max
     patience: 10
 
@@ -30,6 +30,10 @@ logger:
     name: "Intentonomy-CLIP-ViT-IntentSlot"
 
 model:
+  use_cls_fusion: false
+  use_proto_classifier: false
+  use_decoupled_classifier: false
+  use_late_fusion: false
   net:
     clip_model_name: "ViT-L/14"
     selected_layers: [12, 18, 24]

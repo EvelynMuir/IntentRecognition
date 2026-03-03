@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import math
 import os
+import warnings
 from typing import Any, Dict, List, Optional, Tuple
 
 import torch
@@ -756,7 +757,8 @@ class IntentonomyClipViTSlotModule(LightningModule):
         init_alpha: float = 1.0,
         use_proto_classifier: bool = False,
         proto_momentum: float = 0.99,
-        use_decoupled_cls_fusion: bool = False,
+        use_decoupled_classifier: bool = False,
+        use_decoupled_cls_fusion: Optional[bool] = None,
         use_late_fusion: bool = False,
     ) -> None:
         super().__init__()
@@ -771,7 +773,19 @@ class IntentonomyClipViTSlotModule(LightningModule):
         self.init_alpha = init_alpha
         self.use_proto_classifier = use_proto_classifier
         self.proto_momentum = proto_momentum
-        self.use_decoupled_cls_fusion = use_decoupled_cls_fusion
+        if use_decoupled_cls_fusion is not None:
+            warnings.warn(
+                "`use_decoupled_cls_fusion` is deprecated and will be removed in a future version. "
+                "Use `use_decoupled_classifier` instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            effective_use_decoupled_classifier = use_decoupled_cls_fusion
+        else:
+            effective_use_decoupled_classifier = use_decoupled_classifier
+
+        self.use_decoupled_classifier = effective_use_decoupled_classifier
+        self.use_decoupled_cls_fusion = effective_use_decoupled_classifier
         self.use_late_fusion = use_late_fusion
     
         if use_cls_fusion and use_late_fusion:
@@ -792,7 +806,7 @@ class IntentonomyClipViTSlotModule(LightningModule):
         self.val_slot_orth_loss = MeanMetric()
         self.test_slot_orth_loss = MeanMetric()
 
-        self.val_f1_macro_best = MaxMetric()
+        self.val_f1_mean_best = MaxMetric()
         self.val_preds_list = []
         self.val_targets_list = []
         self.test_preds_list = []
@@ -805,7 +819,7 @@ class IntentonomyClipViTSlotModule(LightningModule):
 
     def on_train_start(self) -> None:
         self.val_loss.reset()
-        self.val_f1_macro_best.reset()
+        self.val_f1_mean_best.reset()
         self.val_preds_list.clear()
         self.val_targets_list.clear()
         
@@ -867,12 +881,15 @@ class IntentonomyClipViTSlotModule(LightningModule):
         val_preds_all = torch.cat(self.val_preds_list, dim=0).numpy()
         val_targets_all = torch.cat(self.val_targets_list, dim=0).numpy()
         f1_dict = eval_validation_set(val_preds_all, val_targets_all)
+        val_f1_mean = (f1_dict["val_micro"] + f1_dict["val_macro"] + f1_dict["val_samples"]) / 3.0
 
-        self.val_f1_macro_best(f1_dict["val_macro"])
+        self.val_f1_mean_best(val_f1_mean)
         self.log("val/f1_micro", f1_dict["val_micro"], sync_dist=True, prog_bar=True)
         self.log("val/f1_macro", f1_dict["val_macro"], sync_dist=True, prog_bar=True)
         self.log("val/f1_samples", f1_dict["val_samples"], sync_dist=True)
-        self.log("val/f1_macro_best", self.val_f1_macro_best.compute(), sync_dist=True, prog_bar=True)
+        self.log("val/f1_mean", val_f1_mean, sync_dist=True, prog_bar=True)
+        self.log("val/f1_mean_best", self.val_f1_mean_best.compute(), sync_dist=True, prog_bar=True)
+        self.log("val/f1_macro_best", self.val_f1_mean_best.compute(), sync_dist=True, prog_bar=True)
         self.log("val/mAP", f1_dict["val_mAP"], sync_dist=True, prog_bar=True)
         self.log("val/threshold", f1_dict["threshold"], sync_dist=True)
         self.log("val/easy", f1_dict["val_easy"], sync_dist=True)
@@ -942,7 +959,7 @@ class IntentonomyClipViTSlotModule(LightningModule):
                 "optimizer": optimizer,
                 "lr_scheduler": {
                     "scheduler": scheduler,
-                    "monitor": "val/f1_macro",
+                    "monitor": "val/f1_mean",
                     "interval": "epoch",
                     "frequency": 1,
                 },

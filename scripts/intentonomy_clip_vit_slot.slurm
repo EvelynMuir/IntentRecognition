@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#SBATCH -J Intentonomy-CLIP-ViT-IntentSlot
+#SBATCH -J Intentonomy-CLIP-ViT-IntentSlot-CLSFusion-LLMDes-Separate-Concat-EMA-TextToVisual-NoOrthogonality
 #SBATCH -o output/%x.log
 #SBATCH -e output/%x.err
 #SBATCH -t 2-00:00:00
@@ -14,11 +14,17 @@ cd /share/lmcp/tangyin/projects/IntentRecognition/lightning-hydra
 conda activate intent
 
 python src/train.py experiment=intentonomy_clip_vit_slot logger=tensorboard \
-logger.tensorboard.name="${SLURM_JOB_NAME}" \
+logger.tensorboard.name="Intentonomy-CLIP-ViT-IntentSlot-CLSFusion-LLMDes-Separate-Concat-EMA-TextToVisual-NoOrthogonality" \
 model.net.clip_model_name="ViT-L/14" \
-model.net.selected_layers=[12,18,24] \
+model.net.selected_layers=[24] \
 model.net.num_slots=4 \
 model.net.slot_iters=3 \
 model.net.use_intent_conditioning=true \
-model.slot_orthogonality_weight=0.1 \
-data.batch_size=1024
+model.net.intent_description_mode="llm" \
+model.net.intent_gemini_file="/home/evelynmuir/lambda/projects/IntentRecognition/Intentonomy/data/intent_description_gemini.json" \
+data.batch_size=64 \
+model.optimizer.lr=1e-4 \
++model.use_cls_fusion=true \
++model.use_decoupled_classifier=true \
++model.use_proto_classifier=true \
+model.use_slot_orthogonality=false
