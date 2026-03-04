@@ -9,4 +9,6 @@ batch_size: 32
 num_workers: 4
 pin_memory: True
 image_size: 224
-
+use_fixed_random_slot_perm: false
+fixed_random_slot_perm_tokens: null
+fixed_random_slot_perm_seed: 42

@@ -17,7 +17,7 @@ conda activate /home/evelynmuir/lambda/projects/IntentRecognition/.conda
 # +model.use_decoupled_classifier=false
 
 python src/train.py experiment=intentonomy_clip_vit_slot logger=tensorboard \
-logger.tensorboard.name="Intentonomy-CLIP-ViT-IntentSlot-CLSFusion-LLMDes-Separate-Concat-TextToVisual" \
+logger.tensorboard.name="Intentonomy-CLIP-ViT-IntentSlot-CLSFusion-LLMDes-Separate-Concat-TextToVisual-NoOrthogonality" \
 model.net.clip_model_name="ViT-L/14" \
 model.net.selected_layers=[24] \
 model.net.num_slots=4 \
@@ -29,5 +29,4 @@ data.batch_size=64 \
 model.optimizer.lr=1e-4 \
 model.use_cls_fusion=true \
 model.use_decoupled_classifier=true \
-model.use_proto_classifier=false \
-ckpt_path="logs/train/runs/2026-03-02_14-16-52/checkpoints/epoch_011.ckpt"
+model.use_slot_orthogonality=false

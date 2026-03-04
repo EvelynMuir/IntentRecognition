@@ -8,6 +8,7 @@ defaults:
   - override /model: intentonomy_clip_vit_layer_cls_patch_mean
   - override /callbacks: default
   - override /trainer: default
+  - override /logger: tensorboard
 
 tags: ["intentonomy", "clip-vit", "layer-cls-patch-mean", "mlp"]
 
@@ -21,16 +22,22 @@ callbacks:
     mode: max
     patience: 10
 
-  confusion_matrix:
-    _target_: src.callbacks.confusion_matrix_callback.ConfusionMatrixCallback
-    annotation_file: null
-    output_filename: "confusion_matrix.png"
-    show_values: true
-    dpi: 300
+trainer:
+  max_epochs: 80
+  gradient_clip_val: 1.0
+  num_sanity_val_steps: 0
 
 data:
-  batch_size: 1024
+  batch_size: 64
+  binarize_softprob: true
+
+model:
+  layer_idx: 12
+  net:
+    clip_model_name: "ViT-B/32"
+  optimizer:
+    lr: 2e-4
 
 logger:
   tensorboard:
-    name: "Intentonomy-CLIP-ViT-Layer24-ClsPatchMean"
+    name: "Intentonomy-CLIP-ViT-Layer12-ClsPatchMean"

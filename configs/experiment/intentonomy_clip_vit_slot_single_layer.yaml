@@ -1,0 +1,81 @@
+# @package _global_
+
+# Patch-Slot Classification Configuration (Clean Version)
+# 流程：patch tokens -> slot attention -> flatten -> concat CLS -> MLP
+
+defaults:
+  - override /model: intentonomy_clip_vit_slot
+  - override /data: intentonomy
+  - override /callbacks: default
+  - override /trainer: default
+  - override /logger: tensorboard
+
+tags: ["intentonomy", "clip-vit", "slot-attention", "single-layer-patch-slot"]
+
+callbacks:
+  model_checkpoint:
+    monitor: val/f1_mean
+    mode: max
+
+  early_stopping:
+    monitor: val/f1_mean
+    mode: max
+    patience: 10
+
+trainer:
+  max_epochs: 80
+  gradient_clip_val: 1.0
+  num_sanity_val_steps: 0
+
+model:
+  use_cls_fusion: false
+  use_proto_classifier: false
+  use_decoupled_classifier: false
+  use_late_fusion: false
+
+  # CLIP backbone configuration
+  net:
+    clip_model_name: "ViT-B/32"  # 或 "ViT-L/14" 支持更多层数
+    selected_layers: [12]  # 使用最后一层，或 [24] 如果使用ViT-L/14
+    use_cls_token: true  # 建议启用
+  
+  # Slot attention configuration
+    num_slots: 4
+    slot_iters: 3
+  
+  # New patch-slot classifier (干净版本)
+    use_single_layer_patch_slot: true  # 启用新方法
+  
+  # Freezing
+    freeze_backbone: true
+  slot_orthogonality_weight: 0.1
+
+data:
+  batch_size: 64
+  binarize_softprob: true
+
+logger:
+  tensorboard:
+    name: "Intentonomy-CLIP-ViT-Slot-SingleLayer"
+
+# 模型说明:
+# =========
+# 干净版本流程 (PatchSlotClassifier):
+# 1. 从指定层提取patch tokens
+# 2. 纯slot attention（无intent conditioning）
+# 3. Normalize tokens和cls_embed（保持与baseline一致）
+# 4. Flatten所有slots
+# 5. Concat cls_token
+# 6. 通过单个MLP生成所有intents的logits
+#
+# 简化点:
+# - 无需intent queries
+# - 无intent conditioning
+# - 无temperature scaling
+# - 添加normalization保证稳定性
+#
+# 使用ViT-L/14获取第24层:
+# ========================
+# 如果想要使用第24层patch tokens:
+# 1. clip_model_name: "ViT-L/14"  # ViT-L/14有24层
+# 2. selected_layers: [24]

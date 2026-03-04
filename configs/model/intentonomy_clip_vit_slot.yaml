@@ -4,6 +4,7 @@ use_proto_classifier: false
 proto_momentum: 0.99
 use_decoupled_classifier: false
 use_late_fusion: false
+use_random_slots: false
 
 optimizer:
   _target_: torch.optim.AdamW
@@ -40,6 +41,7 @@ net:
   proto_momentum: ${model.proto_momentum}
   use_decoupled_classifier: ${model.use_decoupled_classifier}
   use_late_fusion: ${model.use_late_fusion}
+  use_random_slots: ${model.use_random_slots}
 
 num_classes: 28
 

@@ -21,7 +21,7 @@ class ClipVisionTransformerLayerCls(nn.Module):
         pretrained: bool = True,
         image_size: int = 224,
         clip_model_name: str = "ViT-B/32",
-        layer_idx: int = 0,
+        layer_idx: int = 1,
     ) -> None:
         """Initialize CLIP Vision Transformer with layer-specific CLS token extraction.
 
@@ -29,7 +29,7 @@ class ClipVisionTransformerLayerCls(nn.Module):
         :param pretrained: Whether to use pretrained CLIP weights.
         :param image_size: Input image size.
         :param clip_model_name: CLIP model name. Options: "ViT-B/32", "ViT-B/16", "ViT-L/14", etc.
-        :param layer_idx: Index of transformer layer to extract CLS token from (0-23).
+        :param layer_idx: 1-based transformer layer index to extract CLS token from.
         """
         super().__init__()
 
@@ -171,4 +171,3 @@ class ClipVisionTransformerLayerCls(nn.Module):
         logits = self.heads(cls_token_features)  # [B, num_classes]
         
         return logits
-

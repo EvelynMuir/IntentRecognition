@@ -1,6 +1,6 @@
 """
 Lightning module for CLIP ViT layer-specific CLS token classification.
-Extracts CLS token from a specified transformer layer (0-23) and trains an MLP classifier.
+Extracts CLS token from a specified transformer layer (1-based) and trains an MLP classifier.
 """
 from typing import Dict, Tuple
 
@@ -13,7 +13,7 @@ from src.models.intentonomy_clip_vit_base_module import IntentonomyClipViTBaseMo
 class IntentonomyClipViTLayerClsModule(IntentonomyClipViTBaseModule):
     """Lightning module for CLIP ViT layer-specific CLS token classification.
     
-    This module extracts CLS token from a specified transformer layer (0-23)
+    This module extracts CLS token from a specified transformer layer (1-based)
     and trains an MLP classifier for multi-label classification.
     """
     
@@ -26,7 +26,7 @@ class IntentonomyClipViTLayerClsModule(IntentonomyClipViTBaseModule):
         compile: bool = False,
         criterion: torch.nn.Module = None,
         # Layer-specific parameters
-        layer_idx: int = 0,
+        layer_idx: int = 1,
         # EMA parameters
         use_ema: bool = True,
         ema_decay: float = 0.9997,
@@ -47,7 +47,7 @@ class IntentonomyClipViTLayerClsModule(IntentonomyClipViTBaseModule):
         :param num_classes: Number of classes.
         :param compile: Whether to compile the model.
         :param criterion: Loss function. If None, will use AsymmetricLossOptimized.
-        :param layer_idx: Index of transformer layer to extract CLS token from (0-23).
+        :param layer_idx: 1-based transformer layer index to extract CLS token from.
         :param use_ema: Whether to use Exponential Moving Average.
         :param ema_decay: Decay factor for EMA.
         :param freeze_backbone: Whether to freeze CLIP ViT backbone.
@@ -190,4 +190,3 @@ class IntentonomyClipViTLayerClsModule(IntentonomyClipViTBaseModule):
                 },
             }
         return {"optimizer": optimizer}
-
