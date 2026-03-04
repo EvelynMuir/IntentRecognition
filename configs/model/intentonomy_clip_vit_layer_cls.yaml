@@ -18,12 +18,12 @@ net:
   pretrained: true
   image_size: 224
   clip_model_name: "ViT-L/14"  # CLIP ViT-L/14 with hidden dimension 1024
-  layer_idx: 0  # Default layer index, can be overridden via command line
+  layer_idx: 1  # 1-based layer index, can be overridden via command line
 
 num_classes: 28
 
-# Layer-specific parameter (can be overridden via command line: model.layer_idx=5)
-layer_idx: 0
+# Layer-specific parameter (1-based, can be overridden via command line: model.layer_idx=5)
+layer_idx: 1
 
 # loss function configuration
 criterion:
@@ -48,4 +48,3 @@ ema_decay: 0.9997
 intent_loss_weight_warmup_epochs: 2
 intent_loss_weight_warmup: 0.2
 intent_loss_weight_normal: 1.0
-

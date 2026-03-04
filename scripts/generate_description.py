@@ -50,7 +50,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.append(str(REPO_ROOT))
 
-from src.models.components.clip_intent_slot import INTENTONOMY_DESCRIPTIONS
+from src.models.intentonomy_clip_vit_slot_module import INTENTONOMY_DESCRIPTIONS
 
 # 请在此处填入你的 Gemini API Key，或者通过环境变量 GEMINI_API_KEY 设置
 API_KEY = os.environ.get("GEMINI_API_KEY", "")

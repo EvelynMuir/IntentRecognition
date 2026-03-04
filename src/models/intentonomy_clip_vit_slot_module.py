@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import math
 import os
+import warnings
 from typing import Any, Dict, List, Optional, Tuple
 
 import torch
@@ -288,6 +289,53 @@ class IntentQueryBank(nn.Module):
         return self.intent_queries
 
 
+class SlotAttention(nn.Module):
+    """Pure Slot Attention without intent conditioning."""
+    
+    def __init__(self, dim: int, num_slots: int = 4, iters: int = 3) -> None:
+        super().__init__()
+        self.dim = dim
+        self.num_slots = num_slots
+        self.iters = iters
+
+        self.slot_mu = nn.Parameter(torch.randn(1, num_slots, dim) * 0.02)
+        self.slot_sigma = nn.Parameter(torch.ones(1, num_slots, dim) * 0.1)
+
+        self.to_q = nn.Linear(dim, dim)
+        self.to_k = nn.Linear(dim, dim)
+        self.to_v = nn.Linear(dim, dim)
+
+        self.norm_slots = nn.LayerNorm(dim)
+        self.norm_mlp = nn.LayerNorm(dim)
+        self.ffn = nn.Sequential(
+            nn.Linear(dim, dim * 2),
+            nn.GELU(),
+            nn.Linear(dim * 2, dim),
+        )
+
+    def forward(self, tokens: torch.Tensor) -> torch.Tensor:
+        """tokens: [B, N, D]"""
+        bsz = tokens.size(0)
+        k = self.to_k(tokens)
+        v = self.to_v(tokens)
+
+        slots = self.slot_mu + torch.randn(
+            bsz, self.num_slots, self.dim, device=tokens.device, dtype=tokens.dtype
+        ) * self.slot_sigma
+
+        scale = 1.0 / math.sqrt(self.dim)
+
+        for _ in range(self.iters):
+            q = self.to_q(slots)
+            logits = torch.matmul(q, k.transpose(-1, -2)) * scale
+            attn = F.softmax(logits, dim=-1)
+            updates = torch.matmul(attn, v)
+            slots = self.norm_slots(slots + updates)
+            slots = slots + self.ffn(self.norm_mlp(slots))
+
+        return slots
+
+
 class IntentConditionedSlotAttention(nn.Module):
     def __init__(
         self,
@@ -345,6 +393,134 @@ class IntentConditionedSlotAttention(nn.Module):
         return slots
 
 
+class PatchSlotClassifier(nn.Module):
+    """
+    Minimal Slot Experiment
+    patch tokens -> slot attention -> flatten -> concat CLS -> MLP
+    """
+
+    def __init__(self, dim: int, num_intents: int, num_slots: int = 4, slot_iters: int = 3) -> None:
+        super().__init__()
+        self.num_slots = num_slots
+        self.num_intents = num_intents
+
+        # 纯 slot attention（无 conditioning）
+        self.slot_attention = SlotAttention(
+            dim=dim,
+            num_slots=num_slots,
+            iters=slot_iters,
+        )
+
+        mlp_input_dim = (1 + num_slots) * dim
+        self.mlp_head = nn.Sequential(
+            nn.Linear(mlp_input_dim, mlp_input_dim // 2),
+            nn.GELU(),
+            nn.Linear(mlp_input_dim // 2, num_intents),
+        )
+
+    def forward(
+        self,
+        tokens: torch.Tensor,
+        cls_embed: torch.Tensor,
+        return_slots: bool = False,
+    ) -> tuple[torch.Tensor, Optional[torch.Tensor]]:
+        """
+        Args:
+            tokens: [B, N, D] patch tokens
+            cls_embed: [B, D] cls embedding
+            return_slots: whether to return slots for visualization
+
+        Returns:
+            logits: [B, num_intents]
+            slots: [B, num_slots, D] if return_slots=True, else None
+        """
+        bsz = tokens.shape[0]
+
+        # normalization（保持和 baseline 一致）
+        tokens = F.normalize(tokens, dim=-1)
+        cls_embed = F.normalize(cls_embed, dim=-1)
+
+        slots = self.slot_attention(tokens)  # [B, K, D]
+
+        slots_flat = slots.reshape(bsz, -1)
+
+        fused = torch.cat([cls_embed, slots_flat], dim=-1)
+
+        logits = self.mlp_head(fused)
+
+        if return_slots:
+            return logits, slots
+
+        return logits, None
+
+
+class RandomSlotClassifier(nn.Module):
+    """
+    Random Slot Baseline
+    tokens -> random K groups -> group mean as fake slots -> flatten -> concat CLS -> MLP
+    """
+
+    def __init__(self, dim: int, num_intents: int, num_slots: int = 4) -> None:
+        super().__init__()
+        self.num_slots = num_slots
+        self.num_intents = num_intents
+
+        mlp_input_dim = (1 + num_slots) * dim
+        self.mlp_head = nn.Sequential(
+            nn.Linear(mlp_input_dim, mlp_input_dim // 2),
+            nn.GELU(),
+            nn.Linear(mlp_input_dim // 2, num_intents),
+        )
+
+    def forward(
+        self,
+        tokens: torch.Tensor,
+        cls_embed: torch.Tensor,
+        token_perm: Optional[torch.Tensor] = None,
+        return_slots: bool = False,
+    ) -> tuple[torch.Tensor, Optional[torch.Tensor]]:
+        """
+        Args:
+            tokens: [B, N, D]
+            cls_embed: [B, D]
+            return_slots: whether to return fake slots
+        """
+        bsz, n_tokens, dim = tokens.shape
+        if self.num_slots > n_tokens:
+            raise ValueError(
+                f"num_slots ({self.num_slots}) cannot exceed number of tokens ({n_tokens})."
+            )
+
+        tokens = F.normalize(tokens, dim=-1)
+        cls_embed = F.normalize(cls_embed, dim=-1)
+
+        # Use dataset-provided fixed perm if available; otherwise random perm every forward.
+        if token_perm is not None:
+            if token_perm.dim() != 2:
+                raise ValueError(
+                    f"token_perm must be 2D [B, N], got shape {tuple(token_perm.shape)}."
+                )
+            if token_perm.shape[0] != bsz or token_perm.shape[1] != n_tokens:
+                raise ValueError(
+                    f"token_perm shape {tuple(token_perm.shape)} does not match tokens "
+                    f"shape [B, N]=[{bsz}, {n_tokens}]."
+                )
+            perm = token_perm.to(device=tokens.device, dtype=torch.long)
+        else:
+            perm = torch.argsort(torch.rand(bsz, n_tokens, device=tokens.device), dim=1)
+
+        tokens_shuffled = tokens.gather(1, perm.unsqueeze(-1).expand(-1, -1, dim))
+        chunks = tokens_shuffled.chunk(self.num_slots, dim=1)
+        fake_slots = torch.stack([c.mean(dim=1) for c in chunks], dim=1)
+
+        fused = torch.cat([cls_embed, fake_slots.reshape(bsz, -1)], dim=-1)
+        logits = self.mlp_head(fused)
+
+        if return_slots:
+            return logits, fake_slots
+        return logits, None
+
+
 class IntentClassifier(nn.Module):
     def __init__(
         self,
@@ -361,6 +537,8 @@ class IntentClassifier(nn.Module):
         proto_momentum: float = 0.99,
         use_decoupled_classifier: bool = False,
         use_late_fusion: bool = False,
+        use_single_layer_patch_slot: bool = False,
+        use_random_slots: bool = False,
     ) -> None:
         super().__init__()
         self.num_intents = num_intents
@@ -369,12 +547,39 @@ class IntentClassifier(nn.Module):
         self.use_proto_classifier = use_proto_classifier
         self.use_decoupled_classifier = use_decoupled_classifier
         self.use_late_fusion = use_late_fusion
-        self.slot_attention = IntentConditionedSlotAttention(
-            dim=dim,
-            num_slots=num_slots,
-            iters=slot_iters,
-            use_intent_conditioning=use_intent_conditioning,
-        )
+        self.use_single_layer_patch_slot = use_single_layer_patch_slot
+        self.use_random_slots = use_random_slots
+
+        if self.use_single_layer_patch_slot and self.use_random_slots:
+            raise ValueError(
+                "use_single_layer_patch_slot and use_random_slots cannot both be True."
+            )
+
+        # 如果使用新的patch-slot分类器，创建它
+        if use_single_layer_patch_slot:
+            self.patch_slot_classifier = PatchSlotClassifier(
+                dim=dim,
+                num_intents=num_intents,
+                num_slots=num_slots,
+                slot_iters=slot_iters,
+            )
+            self.random_slot_classifier = None
+        elif use_random_slots:
+            self.patch_slot_classifier = None
+            self.random_slot_classifier = RandomSlotClassifier(
+                dim=dim,
+                num_intents=num_intents,
+                num_slots=num_slots,
+            )
+        else:
+            self.patch_slot_classifier = None
+            self.random_slot_classifier = None
+            self.slot_attention = IntentConditionedSlotAttention(
+                dim=dim,
+                num_slots=num_slots,
+                iters=slot_iters,
+                use_intent_conditioning=use_intent_conditioning,
+            )
         # Alpha is initialized in the residual fusion section above for late fusion
         # For backward compatibility with fusion modes not using late fusion
         if not (use_cls_fusion and use_late_fusion):
@@ -451,6 +656,7 @@ class IntentClassifier(nn.Module):
         tokens: torch.Tensor,
         cls_embed: torch.Tensor | None,
         intent_queries: torch.Tensor,
+        token_perm: Optional[torch.Tensor] = None,
         return_slots: bool = False,
     ) -> tuple[torch.Tensor, Optional[torch.Tensor]]:
         """
@@ -458,6 +664,25 @@ class IntentClassifier(nn.Module):
         cls_embed: [B, D]
         intent_queries: [num_intents, D] (LLM initialized)
         """
+
+        # 路由到新的patch-slot分类器
+        if self.use_single_layer_patch_slot:
+            if cls_embed is None:
+                raise ValueError("cls_embed required when use_single_layer_patch_slot=True")
+            return self.patch_slot_classifier(
+                tokens=tokens,
+                cls_embed=cls_embed,
+                return_slots=return_slots,
+            )
+        if self.use_random_slots:
+            if cls_embed is None:
+                raise ValueError("cls_embed required when use_random_slots=True")
+            return self.random_slot_classifier(
+                tokens=tokens,
+                cls_embed=cls_embed,
+                token_perm=token_perm,
+                return_slots=return_slots,
+            )
 
         bsz = tokens.shape[0]
         scores = []
@@ -641,10 +866,19 @@ class CLIPIntentSlotModel(nn.Module):
         proto_momentum: float = 0.99,
         use_decoupled_classifier: bool = False,
         use_late_fusion: bool = False,
+        use_single_layer_patch_slot: bool = False,
+        use_random_slots: bool = False,
     ) -> None:
         super().__init__()
         if selected_layers is None:
             selected_layers = [6, 9, 12]
+        if use_cls_token:
+            warnings.warn(
+                "`use_cls_token=True` is ignored in CLIPIntentSlotModel. "
+                "Slot methods in this module now always use patch tokens only.",
+                UserWarning,
+                stacklevel=2,
+            )
 
         self.clip_model, _ = clip.load(clip_model_name, device="cpu")
         self.clip_model.eval()
@@ -680,7 +914,7 @@ class CLIPIntentSlotModel(nn.Module):
             clip_visual=self.backbone,
             selected_layers=selected_layers,
             aligned_dim=text_dim,
-            use_cls_token=use_cls_token,
+            use_cls_token=False,
         )
         self.aggregator = TokenAggregator(
             dim=text_dim,
@@ -707,18 +941,25 @@ class CLIPIntentSlotModel(nn.Module):
             proto_momentum=proto_momentum,
             use_decoupled_classifier=use_decoupled_classifier,
             use_late_fusion=use_late_fusion,
+            use_single_layer_patch_slot=use_single_layer_patch_slot,
+            use_random_slots=use_random_slots,
         )
 
     def forward(
-        self, images: torch.Tensor, return_slots: bool = False
+        self,
+        images: torch.Tensor,
+        token_perm: Optional[torch.Tensor] = None,
+        return_slots: bool = False,
     ) -> tuple[torch.Tensor, Optional[torch.Tensor]]:
         tokens_per_layer = self.clip_backbone(images)
         tokens = self.aggregator(tokens_per_layer)
-        if self.intent_classifier.use_cls_fusion:
-            if self.clip_backbone.use_cls_token:
-                cls_embed = tokens_per_layer[-1][:, 0, :]
-            else:
-                cls_embed = tokens.mean(dim=1)
+        need_cls_embed = (
+            self.intent_classifier.use_cls_fusion
+            or self.intent_classifier.use_single_layer_patch_slot
+            or self.intent_classifier.use_random_slots
+        )
+        if need_cls_embed:
+            cls_embed = tokens.mean(dim=1)
         else:
             cls_embed = None
         intent_queries = self.intent_bank.get_queries()
@@ -726,13 +967,19 @@ class CLIPIntentSlotModel(nn.Module):
             tokens=tokens,
             cls_embed=cls_embed,
             intent_queries=intent_queries,
+            token_perm=token_perm,
             return_slots=return_slots,
         )
 
 
 def slot_orthogonality_loss(slots: torch.Tensor) -> torch.Tensor:
     """Compute ||S S^T - I||_F for normalized slots."""
-    # slots: [B, I, K, D]
+    # slots: [B, I, K, D] or [B, K, D]
+    if slots.dim() == 3:
+        slots = slots.unsqueeze(1)
+    elif slots.dim() != 4:
+        raise ValueError(f"Expected slots to be 3D or 4D, got shape {tuple(slots.shape)}")
+
     slots = F.normalize(slots, dim=-1)
     gram = torch.matmul(slots, slots.transpose(-1, -2))
     k = slots.size(-2)
@@ -756,8 +1003,11 @@ class IntentonomyClipViTSlotModule(LightningModule):
         init_alpha: float = 1.0,
         use_proto_classifier: bool = False,
         proto_momentum: float = 0.99,
-        use_decoupled_cls_fusion: bool = False,
+        use_decoupled_classifier: bool = False,
+        use_decoupled_cls_fusion: Optional[bool] = None,
         use_late_fusion: bool = False,
+        use_single_layer_patch_slot: bool = False,
+        use_random_slots: bool = False,
     ) -> None:
         super().__init__()
         self.save_hyperparameters(logger=False, ignore=["net", "criterion"])
@@ -771,7 +1021,21 @@ class IntentonomyClipViTSlotModule(LightningModule):
         self.init_alpha = init_alpha
         self.use_proto_classifier = use_proto_classifier
         self.proto_momentum = proto_momentum
-        self.use_decoupled_cls_fusion = use_decoupled_cls_fusion
+        self.use_single_layer_patch_slot = use_single_layer_patch_slot
+        self.use_random_slots = use_random_slots
+        if use_decoupled_cls_fusion is not None:
+            warnings.warn(
+                "`use_decoupled_cls_fusion` is deprecated and will be removed in a future version. "
+                "Use `use_decoupled_classifier` instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+            effective_use_decoupled_classifier = use_decoupled_cls_fusion
+        else:
+            effective_use_decoupled_classifier = use_decoupled_classifier
+
+        self.use_decoupled_classifier = effective_use_decoupled_classifier
+        self.use_decoupled_cls_fusion = effective_use_decoupled_classifier
         self.use_late_fusion = use_late_fusion
     
         if use_cls_fusion and use_late_fusion:
@@ -792,6 +1056,7 @@ class IntentonomyClipViTSlotModule(LightningModule):
         self.val_slot_orth_loss = MeanMetric()
         self.test_slot_orth_loss = MeanMetric()
 
+        self.val_f1_mean_best = MaxMetric()
         self.val_f1_macro_best = MaxMetric()
         self.val_preds_list = []
         self.val_targets_list = []
@@ -799,12 +1064,16 @@ class IntentonomyClipViTSlotModule(LightningModule):
         self.test_targets_list = []
 
     def forward(
-        self, x: torch.Tensor, return_slots: bool = False
+        self,
+        x: torch.Tensor,
+        token_perm: Optional[torch.Tensor] = None,
+        return_slots: bool = False,
     ) -> Tuple[torch.Tensor, Optional[torch.Tensor]]:
-        return self.net(x, return_slots=return_slots)
+        return self.net(x, token_perm=token_perm, return_slots=return_slots)
 
     def on_train_start(self) -> None:
         self.val_loss.reset()
+        self.val_f1_mean_best.reset()
         self.val_f1_macro_best.reset()
         self.val_preds_list.clear()
         self.val_targets_list.clear()
@@ -819,8 +1088,9 @@ class IntentonomyClipViTSlotModule(LightningModule):
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         x = batch["image"]
         y = batch["labels"]
+        token_perm = batch.get("token_perm")
 
-        logits, slots = self.forward(x, return_slots=return_slots)
+        logits, slots = self.forward(x, token_perm=token_perm, return_slots=return_slots)
         cls_loss = self.criterion(logits, y)
 
         if self.use_slot_orthogonality and slots is not None:
@@ -867,11 +1137,15 @@ class IntentonomyClipViTSlotModule(LightningModule):
         val_preds_all = torch.cat(self.val_preds_list, dim=0).numpy()
         val_targets_all = torch.cat(self.val_targets_list, dim=0).numpy()
         f1_dict = eval_validation_set(val_preds_all, val_targets_all)
+        val_f1_mean = (f1_dict["val_micro"] + f1_dict["val_macro"] + f1_dict["val_samples"]) / 3.0
 
+        self.val_f1_mean_best(val_f1_mean)
         self.val_f1_macro_best(f1_dict["val_macro"])
         self.log("val/f1_micro", f1_dict["val_micro"], sync_dist=True, prog_bar=True)
         self.log("val/f1_macro", f1_dict["val_macro"], sync_dist=True, prog_bar=True)
         self.log("val/f1_samples", f1_dict["val_samples"], sync_dist=True)
+        self.log("val/f1_mean", val_f1_mean, sync_dist=True, prog_bar=True)
+        self.log("val/f1_mean_best", self.val_f1_mean_best.compute(), sync_dist=True, prog_bar=True)
         self.log("val/f1_macro_best", self.val_f1_macro_best.compute(), sync_dist=True, prog_bar=True)
         self.log("val/mAP", f1_dict["val_mAP"], sync_dist=True, prog_bar=True)
         self.log("val/threshold", f1_dict["threshold"], sync_dist=True)
@@ -942,7 +1216,7 @@ class IntentonomyClipViTSlotModule(LightningModule):
                 "optimizer": optimizer,
                 "lr_scheduler": {
                     "scheduler": scheduler,
-                    "monitor": "val/f1_macro",
+                    "monitor": "val/f1_mean",
                     "interval": "epoch",
                     "frequency": 1,
                 },

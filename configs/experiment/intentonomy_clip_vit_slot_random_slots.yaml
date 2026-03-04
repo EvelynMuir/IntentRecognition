@@ -1,7 +1,7 @@
 # @package _global_
 
 # to execute this experiment run:
-# python src/train.py experiment=intentonomy_clip_vit_slot
+# python src/train.py experiment=intentonomy_clip_vit_slot_random_slots
 
 defaults:
   - override /data: intentonomy
@@ -9,7 +9,7 @@ defaults:
   - override /callbacks: default
   - override /trainer: default
 
-tags: ["intentonomy", "clip-vit", "slot-attention", "intent-conditioned"]
+tags: ["intentonomy", "clip-vit", "slot-attention", "random-slots"]
 
 callbacks:
   model_checkpoint:
@@ -24,23 +24,27 @@ callbacks:
 data:
   batch_size: 1024
   binarize_softprob: true
+  use_fixed_random_slot_perm: true
+  # ViT-B/32 + image_size=224 + selected_layers=[12] -> 7*7*1 = 49 tokens
+  fixed_random_slot_perm_tokens: 49
+  fixed_random_slot_perm_seed: 42
 
 logger:
   tensorboard:
-    name: "Intentonomy-CLIP-ViT-IntentSlot"
+    name: "Intentonomy-CLIP-ViT-RandomSlots"
 
 model:
   use_cls_fusion: false
   use_proto_classifier: false
   use_decoupled_classifier: false
   use_late_fusion: false
+  use_random_slots: true
   net:
-    clip_model_name: "ViT-L/14"
-    selected_layers: [12, 18, 24]
+    clip_model_name: "ViT-B/32"
+    selected_layers: [12]
+    use_cls_token: true
     num_slots: 4
     slot_iters: 3
-    use_cls_token: false
-    use_intent_conditioning: true
-    trainable_intent_queries: true
+    use_single_layer_patch_slot: false
     freeze_backbone: true
   slot_orthogonality_weight: 0.1

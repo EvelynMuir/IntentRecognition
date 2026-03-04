@@ -1,4 +1,10 @@
 _target_: src.models.intentonomy_clip_vit_slot_module.IntentonomyClipViTSlotModule
+use_cls_fusion: false
+use_proto_classifier: false
+proto_momentum: 0.99
+use_decoupled_classifier: false
+use_late_fusion: false
+use_random_slots: false
 
 optimizer:
   _target_: torch.optim.AdamW
@@ -30,8 +36,12 @@ net:
   freeze_backbone: true
   use_learnable_temperature: false
   init_temperature: 1.0
-  use_proto_classifier: false
-  proto_momentum: 0.99
+  use_cls_fusion: ${model.use_cls_fusion}
+  use_proto_classifier: ${model.use_proto_classifier}
+  proto_momentum: ${model.proto_momentum}
+  use_decoupled_classifier: ${model.use_decoupled_classifier}
+  use_late_fusion: ${model.use_late_fusion}
+  use_random_slots: ${model.use_random_slots}
 
 num_classes: 28
 

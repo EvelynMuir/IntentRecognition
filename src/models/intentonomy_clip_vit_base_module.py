@@ -586,8 +586,9 @@ class IntentonomyClipViTBaseModule(LightningModule):
         
         Handles:
         1. Removes EMA model weights to avoid resume load mismatches
-        2. Removes torch.compile's _orig_mod wrapper prefixes
-        3. Handles nested prefixes like ema_model.module.net._orig_mod.*
+        2. Normalizes torch.compile's _orig_mod wrapper prefixes
+        3. Adapts checkpoint key format to current model (compiled/uncompiled)
+        4. Handles nested prefixes like ema_model.module.net._orig_mod.*
         """
         state_dict = checkpoint.get("state_dict")
         if not state_dict:
@@ -604,8 +605,7 @@ class IntentonomyClipViTBaseModule(LightningModule):
                 keys_to_remove.append(key)
                 continue
             
-            # Handle torch.compile's _orig_mod wrapper in different contexts
-            # Remove _orig_mod wrappers: net._orig_mod.* -> net.*
+            # Handle torch.compile's _orig_mod wrapper in different contexts.
             if ".net._orig_mod." in new_key:
                 new_key = new_key.replace(".net._orig_mod.", ".net.")
             elif new_key.startswith("net._orig_mod."):
@@ -621,6 +621,21 @@ class IntentonomyClipViTBaseModule(LightningModule):
         # Apply renames
         for old_key, new_key in keys_to_rename.items():
             state_dict[new_key] = state_dict.pop(old_key)
+
+        # If current model is compiled, its state_dict expects `net._orig_mod.*` keys.
+        # Align checkpoint keys to the current model expectation.
+        model_state_keys = self.state_dict().keys()
+        model_expects_compiled_net = any(k.startswith("net._orig_mod.") for k in model_state_keys)
+
+        if model_expects_compiled_net:
+            keys_to_reprefix = []
+            for key in list(state_dict.keys()):
+                if key.startswith("net.") and not key.startswith("net._orig_mod."):
+                    keys_to_reprefix.append(key)
+
+            for old_key in keys_to_reprefix:
+                new_key = "net._orig_mod." + old_key[len("net."):]
+                state_dict[new_key] = state_dict.pop(old_key)
     
     def setup(self, stage: str) -> None:
         """Lightning hook that is called at the beginning of fit, validate, test, or predict."""

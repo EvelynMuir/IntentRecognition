@@ -24,6 +24,9 @@ class IntentonomyDataset(Dataset):
         image_dir: str,
         transform: Optional[transforms.Compose] = None,
         binarize_softprob: bool = False,
+        use_fixed_random_slot_perm: bool = False,
+        fixed_random_slot_perm_tokens: Optional[int] = None,
+        fixed_random_slot_perm_seed: int = 42,
     ):
         """Initialize Intentonomy dataset.
 
@@ -31,10 +34,16 @@ class IntentonomyDataset(Dataset):
         :param image_dir: Directory containing images.
         :param transform: Optional transform to be applied on images.
         :param binarize_softprob: If True, when use_softprob is True, convert soft prob > 0 to 1.0. Default False.
+        :param use_fixed_random_slot_perm: If True, pre-generate a fixed token permutation per image.
+        :param fixed_random_slot_perm_tokens: Number of tokens to permute (must match model token count).
+        :param fixed_random_slot_perm_seed: RNG seed used for fixed token permutations.
         """
         self.image_dir = Path(image_dir)
         self.transform = transform
         self.binarize_softprob = binarize_softprob
+        self.use_fixed_random_slot_perm = use_fixed_random_slot_perm
+        self.fixed_random_slot_perm_tokens = fixed_random_slot_perm_tokens
+        self.fixed_random_slot_perm_seed = fixed_random_slot_perm_seed
 
         # Load annotations
         with open(annotation_file, "r") as f:
@@ -85,6 +94,23 @@ class IntentonomyDataset(Dataset):
             if image_path.exists() and image_id in self.annotations:
                 self.images.append((image_id, image_path))
 
+        self.fixed_token_perms: Optional[torch.Tensor] = None
+        if self.use_fixed_random_slot_perm:
+            if self.fixed_random_slot_perm_tokens is None or self.fixed_random_slot_perm_tokens <= 0:
+                raise ValueError(
+                    "fixed_random_slot_perm_tokens must be a positive integer when "
+                    "use_fixed_random_slot_perm=True."
+                )
+            generator = torch.Generator()
+            generator.manual_seed(int(self.fixed_random_slot_perm_seed))
+            self.fixed_token_perms = torch.stack(
+                [
+                    torch.randperm(self.fixed_random_slot_perm_tokens, generator=generator)
+                    for _ in range(len(self.images))
+                ],
+                dim=0,
+            ).long()
+
     def __len__(self) -> int:
         """Return the size of the dataset."""
         return len(self.images)
@@ -117,7 +143,10 @@ class IntentonomyDataset(Dataset):
             labels = torch.zeros(self.num_classes, dtype=torch.float32)
             labels[annotation_data] = 1.0
 
-        return {"image": image, "labels": labels, "image_id": image_id}
+        sample = {"image": image, "labels": labels, "image_id": image_id}
+        if self.fixed_token_perms is not None:
+            sample["token_perm"] = self.fixed_token_perms[idx]
+        return sample
 
 
 class IntentonomyDataModule(LightningDataModule):
@@ -156,6 +185,9 @@ class IntentonomyDataModule(LightningDataModule):
         pin_memory: bool = True,
         image_size: int = 224,
         binarize_softprob: bool = False,
+        use_fixed_random_slot_perm: bool = False,
+        fixed_random_slot_perm_tokens: Optional[int] = None,
+        fixed_random_slot_perm_seed: int = 42,
     ) -> None:
         """Initialize a `IntentonomyDataModule`.
 
@@ -170,6 +202,9 @@ class IntentonomyDataModule(LightningDataModule):
         :param pin_memory: Whether to pin memory.
         :param image_size: Image size for resizing.
         :param binarize_softprob: If True, when use_softprob is True, convert soft prob > 0 to 1.0. Default False.
+        :param use_fixed_random_slot_perm: If True, pre-generate a fixed token permutation per image.
+        :param fixed_random_slot_perm_tokens: Number of tokens to permute (must match model token count).
+        :param fixed_random_slot_perm_seed: RNG seed used for fixed token permutations.
         """
         super().__init__()
 
@@ -265,6 +300,9 @@ class IntentonomyDataModule(LightningDataModule):
                     image_dir=self.hparams.image_dir,
                     transform=self.train_transform,
                     binarize_softprob=self.hparams.binarize_softprob,
+                    use_fixed_random_slot_perm=self.hparams.use_fixed_random_slot_perm,
+                    fixed_random_slot_perm_tokens=self.hparams.fixed_random_slot_perm_tokens,
+                    fixed_random_slot_perm_seed=self.hparams.fixed_random_slot_perm_seed,
                 )
                 # Get num_classes from dataset
                 self._num_classes = self.data_train.num_classes
@@ -280,6 +318,9 @@ class IntentonomyDataModule(LightningDataModule):
                     image_dir=self.hparams.image_dir,
                     transform=self.val_test_transform,
                     binarize_softprob=self.hparams.binarize_softprob,
+                    use_fixed_random_slot_perm=self.hparams.use_fixed_random_slot_perm,
+                    fixed_random_slot_perm_tokens=self.hparams.fixed_random_slot_perm_tokens,
+                    fixed_random_slot_perm_seed=self.hparams.fixed_random_slot_perm_seed,
                 )
 
         if stage == "test" or stage is None:
@@ -292,6 +333,9 @@ class IntentonomyDataModule(LightningDataModule):
                     image_dir=self.hparams.image_dir,
                     transform=self.val_test_transform,
                     binarize_softprob=self.hparams.binarize_softprob,
+                    use_fixed_random_slot_perm=self.hparams.use_fixed_random_slot_perm,
+                    fixed_random_slot_perm_tokens=self.hparams.fixed_random_slot_perm_tokens,
+                    fixed_random_slot_perm_seed=self.hparams.fixed_random_slot_perm_seed,
                 )
                 # Get num_classes from dataset if not set
                 if self._num_classes is None:
@@ -358,4 +402,3 @@ class IntentonomyDataModule(LightningDataModule):
         :param state_dict: The datamodule state returned by `self.state_dict()`.
         """
         pass
-
