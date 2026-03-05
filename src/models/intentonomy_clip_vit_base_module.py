@@ -118,6 +118,9 @@ class IntentonomyClipViTBaseModule(LightningModule):
         self.val_targets_list = []
         self.test_preds_list = []
         self.test_targets_list = []
+        # Snapshot for callbacks that run after test_epoch_end.
+        self.test_preds_all = None
+        self.test_targets_all = None
         
         # EMA model
         self.ema_model = None
@@ -507,6 +510,8 @@ class IntentonomyClipViTBaseModule(LightningModule):
         if len(self.test_preds_list) > 0:
             test_preds_all = torch.cat(self.test_preds_list, dim=0).numpy()
             test_targets_all = torch.cat(self.test_targets_list, dim=0).numpy()
+            self.test_preds_all = test_preds_all
+            self.test_targets_all = test_targets_all
             
             dual_f1_dict = eval_test_set_both_strategies(test_preds_all, test_targets_all)
             for strategy_name, metrics in dual_f1_dict.items():
@@ -585,25 +590,25 @@ class IntentonomyClipViTBaseModule(LightningModule):
         """Clean and fix state_dict during checkpoint loading.
         
         Handles:
-        1. Removes EMA model weights to avoid resume load mismatches
+        1. Removes all EMA keys from checkpoint state_dict
         2. Normalizes torch.compile's _orig_mod wrapper prefixes
         3. Adapts checkpoint key format to current model (compiled/uncompiled)
-        4. Handles nested prefixes like ema_model.module.net._orig_mod.*
         """
         state_dict = checkpoint.get("state_dict")
         if not state_dict:
             return
 
-        keys_to_remove = []
+        # Always discard EMA state from checkpoint to avoid EMA key mismatch during load.
+        keys_to_remove = [k for k in list(state_dict.keys()) if k.startswith("ema_model.")]
+        self.ema_model = None
+        self.use_ema = False
         keys_to_rename = {}
         
         for key in list(state_dict.keys()):
-            new_key = key
-            
-            # Remove entire ema_model.* entries (they will be recreated on_train_start)
             if key.startswith("ema_model."):
-                keys_to_remove.append(key)
                 continue
+
+            new_key = key
             
             # Handle torch.compile's _orig_mod wrapper in different contexts.
             if ".net._orig_mod." in new_key:
@@ -620,6 +625,8 @@ class IntentonomyClipViTBaseModule(LightningModule):
         
         # Apply renames
         for old_key, new_key in keys_to_rename.items():
+            if old_key not in state_dict:
+                continue
             state_dict[new_key] = state_dict.pop(old_key)
 
         # If current model is compiled, its state_dict expects `net._orig_mod.*` keys.

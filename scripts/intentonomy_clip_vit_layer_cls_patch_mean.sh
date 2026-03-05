@@ -3,14 +3,19 @@
 source /home/evelynmuir/softwares/miniconda3/etc/profile.d/conda.sh
 conda activate /home/evelynmuir/lambda/projects/IntentRecognition/.conda
 
-# python src/train.py experiment=intentonomy_clip_vit_layer_cls_patch_mean \
-# logger=tensorboard \
-# logger.tensorboard.name="Intentonomy-CLIP-ViT-Layer24-ClsPatchMean" \
-# model.net.clip_model_name="ViT-L/14" \
-# model.layer_idx=24 \
-# model.net.layer_idx=24 \
-# data.batch_size=64 \
-# model.optimizer.lr=1e-4
+python src/train.py experiment=intentonomy_clip_vit_layer_cls_patch_mean \
+  logger=tensorboard \
+  logger.tensorboard.name="Intentonomy-CLIP-ViT-Layer24-ClsPatchMean-SemanticWeighted" \
+  model.net.clip_model_name="ViT-L/14" \
+  model.layer_idx=24 \
+  model.net.layer_idx=24 \
+  data.batch_size=64 \
+  model.optimizer.lr=1e-4 \
+  model.use_ema=false \
+  model.use_semantic_weighted_loss=true \
+  ckpt_path="logs/train/runs/2026-03-05_12-15-15/checkpoints/epoch_008.ckpt" \
+  train=False \
+  test=True \
 
 # Usage:
 #   bash scripts/intentonomy_clip_vit_layer_cls_patch_mean.sh [CKPT_PATH] [LAYER_IDX] [CLIP_MODEL] [BATCH_SIZE]
@@ -23,19 +28,35 @@ conda activate /home/evelynmuir/lambda/projects/IntentRecognition/.conda
 # - src/eval.py runs both validation and test.
 # - Do NOT pass `experiment=...` to eval; eval config doesn't include that defaults group.
 
-CKPT_PATH="${1:-logs/train/runs/2026-03-03_16-34-30/checkpoints/epoch_017.ckpt}"
+# CKPT_PATH="${1:-logs/train/runs/2026-03-03_16-34-30/checkpoints/epoch_017.ckpt}"
 LAYER_IDX="${2:-24}"
 CLIP_MODEL="${3:-ViT-L/14}"
 BATCH_SIZE="${4:-64}"
 
-python src/eval.py \
-  model=intentonomy_clip_vit_layer_cls_patch_mean \
-  data=intentonomy \
-  trainer=default \
-  logger=tensorboard \
-  logger.tensorboard.name="Intentonomy-CLIP-ViT-Layer${LAYER_IDX}-ClsPatchMean-Eval" \
-  model.net.clip_model_name="${CLIP_MODEL}" \
-  model.layer_idx="${LAYER_IDX}" \
-  model.net.layer_idx="${LAYER_IDX}" \
-  data.batch_size="${BATCH_SIZE}" \
-  ckpt_path="${CKPT_PATH}"
+# python src/eval.py \
+#   model=intentonomy_clip_vit_layer_cls_patch_mean \
+#   data=intentonomy \
+#   trainer=default \
+#   logger=tensorboard \
+#   logger.tensorboard.name="Intentonomy-CLIP-ViT-Layer${LAYER_IDX}-ClsPatchMean-Eval" \
+#   model.net.clip_model_name="${CLIP_MODEL}" \
+#   model.layer_idx="${LAYER_IDX}" \
+#   model.net.layer_idx="${LAYER_IDX}" \
+#   data.batch_size="${BATCH_SIZE}" \
+#   ckpt_path="${CKPT_PATH}"
+
+# python src/train.py \
+#   experiment=intentonomy_clip_vit_layer_cls_patch_mean \
+#   train=False \
+#   test=True \
+#   ckpt_path=logs/train/runs/2026-03-03_16-34-30/checkpoints/epoch_017.ckpt \
+#   logger=tensorboard \
+#   logger.tensorboard.name="Intentonomy-CLIP-ViT-Layer24-ClsPatchMean-ConfMat" \
+#   model.net.clip_model_name="${CLIP_MODEL}" \
+#   model.layer_idx="${LAYER_IDX}" \
+#   model.net.layer_idx="${LAYER_IDX}" \
+#   +callbacks.confusion_matrix._target_=src.callbacks.confusion_matrix_callback.ConfusionMatrixCallback \
+#   +callbacks.confusion_matrix.annotation_file=null \
+#   +callbacks.confusion_matrix.output_filename=confusion_matrix_cls_mean_patch.png \
+#   +callbacks.confusion_matrix.show_values=true \
+#   +callbacks.confusion_matrix.dpi=300

@@ -55,5 +55,8 @@ criterion:
 
 use_slot_orthogonality: true
 slot_orthogonality_weight: 0.1
+intent_loss_weight_warmup_epochs: 2
+intent_loss_weight_warmup: 0.2
+intent_loss_weight_normal: 1.0
 
 compile: true

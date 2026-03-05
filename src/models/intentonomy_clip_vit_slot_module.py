@@ -1008,6 +1008,9 @@ class IntentonomyClipViTSlotModule(LightningModule):
         use_late_fusion: bool = False,
         use_single_layer_patch_slot: bool = False,
         use_random_slots: bool = False,
+        intent_loss_weight_warmup_epochs: int = 2,
+        intent_loss_weight_warmup: float = 0.2,
+        intent_loss_weight_normal: float = 1.0,
     ) -> None:
         super().__init__()
         self.save_hyperparameters(logger=False, ignore=["net", "criterion"])
@@ -1023,6 +1026,9 @@ class IntentonomyClipViTSlotModule(LightningModule):
         self.proto_momentum = proto_momentum
         self.use_single_layer_patch_slot = use_single_layer_patch_slot
         self.use_random_slots = use_random_slots
+        self.intent_loss_weight_warmup_epochs = intent_loss_weight_warmup_epochs
+        self.intent_loss_weight_warmup = intent_loss_weight_warmup
+        self.intent_loss_weight_normal = intent_loss_weight_normal
         if use_decoupled_cls_fusion is not None:
             warnings.warn(
                 "`use_decoupled_cls_fusion` is deprecated and will be removed in a future version. "
@@ -1084,7 +1090,10 @@ class IntentonomyClipViTSlotModule(LightningModule):
             self.net.intent_classifier.init_prototypes(intent_queries)
 
     def model_step(
-        self, batch: Dict[str, torch.Tensor], return_slots: bool = True
+        self,
+        batch: Dict[str, torch.Tensor],
+        return_slots: bool = True,
+        intent_loss_weight: float = 1.0,
     ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
         x = batch["image"]
         y = batch["labels"]
@@ -1092,21 +1101,36 @@ class IntentonomyClipViTSlotModule(LightningModule):
 
         logits, slots = self.forward(x, token_perm=token_perm, return_slots=return_slots)
         cls_loss = self.criterion(logits, y)
+        weighted_cls_loss = cls_loss * intent_loss_weight
 
         if self.use_slot_orthogonality and slots is not None:
             orth_loss = slot_orthogonality_loss(slots)
         else:
             orth_loss = torch.tensor(0.0, device=logits.device, dtype=logits.dtype)
 
-        loss = cls_loss + self.slot_orthogonality_weight * orth_loss
+        loss = weighted_cls_loss + self.slot_orthogonality_weight * orth_loss
         preds = torch.sigmoid(logits)
         return loss, orth_loss, preds, y
 
     def training_step(self, batch: Dict[str, torch.Tensor], batch_idx: int) -> torch.Tensor:
-        loss, orth_loss, _, _ = self.model_step(batch, return_slots=True)
+        if self.current_epoch < self.intent_loss_weight_warmup_epochs:
+            intent_loss_weight = self.intent_loss_weight_warmup
+        else:
+            intent_loss_weight = self.intent_loss_weight_normal
+
+        loss, orth_loss, _, _ = self.model_step(
+            batch, return_slots=True, intent_loss_weight=intent_loss_weight
+        )
         self.train_loss(loss)
         self.train_slot_orth_loss(orth_loss)
         self.log("train/loss", self.train_loss, on_step=False, on_epoch=True, prog_bar=True)
+        self.log(
+            "train/intent_loss_weight",
+            intent_loss_weight,
+            on_step=False,
+            on_epoch=True,
+            prog_bar=False,
+        )
         self.log(
             "train/slot_orth_loss",
             self.train_slot_orth_loss,

@@ -4,10 +4,11 @@ This module concatenates the CLS token and mean-pooled patch tokens from a speci
 then classifies with MLP.
 """
 
-from typing import Dict, Tuple
+from typing import Dict, Optional, Tuple
 
 import torch
 
+from src.models.components.aslloss import AsymmetricLossOptimized
 from src.models.intentonomy_clip_vit_base_module import IntentonomyClipViTBaseModule
 
 
@@ -36,6 +37,10 @@ class IntentonomyClipViTLayerClsPatchMeanModule(IntentonomyClipViTBaseModule):
         intent_loss_weight_warmup_epochs: int = 2,
         intent_loss_weight_warmup: float = 0.2,
         intent_loss_weight_normal: float = 1.0,
+        use_semantic_weighted_loss: bool = False,
+        alpha: float = 0.2,
+        intent_gemini_file: Optional[str] = None,
+        semantic_sim_clamp_min: Optional[float] = 0.0,
     ) -> None:
         """Initialize the module.
         
@@ -54,6 +59,10 @@ class IntentonomyClipViTLayerClsPatchMeanModule(IntentonomyClipViTBaseModule):
         :param intent_loss_weight_warmup_epochs: Number of epochs with reduced intent loss weight.
         :param intent_loss_weight_warmup: Intent loss weight during warmup epochs.
         :param intent_loss_weight_normal: Intent loss weight after warmup.
+        :param use_semantic_weighted_loss: Whether to apply semantic weighted ASL in model_step.
+        :param alpha: Scaling factor for semantic class weights.
+        :param intent_gemini_file: Path to LLM intent description JSON for text embedding averages.
+        :param semantic_sim_clamp_min: Optional lower bound for semantic cosine similarity.
         """
         super().__init__(
             net=net,
@@ -75,9 +84,83 @@ class IntentonomyClipViTLayerClsPatchMeanModule(IntentonomyClipViTBaseModule):
 
         self.save_hyperparameters(logger=False, ignore=["net", "criterion"])
         self.layer_idx = layer_idx
+        self.use_semantic_weighted_loss = use_semantic_weighted_loss
+        self.alpha = alpha
+        self.intent_gemini_file = intent_gemini_file
+        self.semantic_sim_clamp_min = semantic_sim_clamp_min
+
+        self.register_buffer(
+            "semantic_weight",
+            torch.eye(num_classes, dtype=torch.float32),
+            persistent=True,
+        )
+        self.semantic_weight_ready = False
+
+        if self.use_semantic_weighted_loss:
+            self.semantic_weight = self._build_semantic_weight_matrix(
+                num_classes=num_classes,
+                intent_gemini_file=intent_gemini_file,
+                semantic_sim_clamp_min=semantic_sim_clamp_min,
+            )
+            self.semantic_weight_ready = True
 
         if hasattr(self.net, "layer_idx"):
             self.net.layer_idx = layer_idx
+
+    def _build_semantic_weight_matrix(
+        self,
+        num_classes: int,
+        intent_gemini_file: Optional[str],
+        semantic_sim_clamp_min: Optional[float],
+    ) -> torch.Tensor:
+        """Build semantic class weight matrix from CLIP text embeddings averaged over LLM descriptions."""
+        if intent_gemini_file is None:
+            raise ValueError(
+                "intent_gemini_file must be provided when use_semantic_weighted_loss=True."
+            )
+        if not hasattr(self.net, "clip_model"):
+            raise ValueError(
+                "Current net does not expose clip_model required for text encoding."
+            )
+
+        from src.models.intentonomy_clip_vit_slot_module import _compute_intent_embeddings_from_gemini
+
+        with torch.no_grad():
+            text_embeddings = _compute_intent_embeddings_from_gemini(
+                clip_model=self.net.clip_model,
+                gemini_file=intent_gemini_file,
+                num_classes=num_classes,
+            ).float()
+
+            if text_embeddings.shape[0] != num_classes:
+                raise ValueError(
+                    f"Expected {num_classes} class text embeddings, got {text_embeddings.shape[0]}."
+                )
+
+            semantic_sim = torch.matmul(text_embeddings, text_embeddings.t())
+            if semantic_sim_clamp_min is not None:
+                semantic_sim = semantic_sim.clamp(min=semantic_sim_clamp_min)
+            semantic_weight = 1.0 - semantic_sim
+
+        return semantic_weight.to(dtype=torch.float32)
+
+    def _compute_semantic_weighted_asl_loss(
+        self,
+        logits: torch.Tensor,
+        targets: torch.Tensor,
+    ) -> torch.Tensor:
+        """Compute semantic-weighted ASL using per-class losses."""
+        if not isinstance(self.criterion, AsymmetricLossOptimized):
+            raise TypeError(
+                "Semantic weighted loss requires AsymmetricLossOptimized criterion."
+            )
+
+        loss_per_class = self.criterion(logits, targets, reduction="none")
+        semantic_weight = self.semantic_weight.to(device=targets.device, dtype=targets.dtype)
+        weight = torch.matmul(targets, semantic_weight)
+        weight = 1.0 + self.alpha * weight
+        weighted_loss = loss_per_class * weight
+        return weighted_loss.mean()
 
     def forward(
         self, x: torch.Tensor, return_slots: bool | None = None
@@ -109,7 +192,7 @@ class IntentonomyClipViTLayerClsPatchMeanModule(IntentonomyClipViTBaseModule):
                  For this module, vq_loss and perplexity are always 0.
         """
         images = batch["image"]
-        targets = batch["labels"]
+        targets = batch["labels"].float()
 
         # Use EMA model if requested
         if use_ema_model and self.ema_model is not None:
@@ -121,7 +204,12 @@ class IntentonomyClipViTLayerClsPatchMeanModule(IntentonomyClipViTBaseModule):
         logits = model(images)
         
         # Compute loss
-        loss = self.criterion(logits, targets)
+        if self.use_semantic_weighted_loss:
+            if not self.semantic_weight_ready:
+                raise RuntimeError("semantic_weight is not initialized.")
+            loss = self._compute_semantic_weighted_asl_loss(logits, targets)
+        else:
+            loss = self.criterion(logits, targets)
         loss = loss * intent_loss_weight
 
         # Get predictions (probabilities)

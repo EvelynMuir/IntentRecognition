@@ -1,4 +1,4 @@
-_target_: src.models.intentonomy_clip_vit_layer_cls_patch_mean_module.IntentonomyClipViTLayerClsPatchMeanModule
+_target_: src.models.intentonomy_clip_vit_intent_conditioned_calibration_module.IntentonomyClipViTIntentConditionedCalibrationModule
 
 optimizer:
   _target_: torch.optim.AdamW
@@ -13,16 +13,22 @@ scheduler:
   eta_min: 1e-6
 
 net:
-  _target_: src.models.components.clip_vit_layer_cls_patch_mean.ClipVisionTransformerLayerClsPatchMean
+  _target_: src.models.components.clip_vit_intent_conditioned_calibration.ClipVisionTransformerIntentConditionedCalibration
   num_classes: 28
   pretrained: true
   image_size: 224
   clip_model_name: "ViT-L/14"
   layer_idx: 24
+  intent_description_mode: "llm"
+  intent_gemini_file: null
+  intent_descriptions: null
+  prompt_template: "A photo that expresses the intent of {}."
+  lambda_init: 0.1
+  use_vector_lambda: false
+  mlp_hidden_dim: null
+  use_logit_correlation: false
 
 num_classes: 28
-
-layer_idx: 24
 
 criterion:
   _target_: src.models.components.aslloss.AsymmetricLossOptimized
@@ -33,16 +39,12 @@ criterion:
   disable_torch_grad_focal_loss: false
 
 freeze_backbone: true
+unfreeze_last_n_blocks: 0
 compile: true
 
-use_ema: false
+use_ema: true
 ema_decay: 0.9997
 
 intent_loss_weight_warmup_epochs: 2
 intent_loss_weight_warmup: 0.2
 intent_loss_weight_normal: 1.0
-
-use_semantic_weighted_loss: false
-alpha: 0.2
-intent_gemini_file: /home/evelynmuir/lambda/projects/IntentRecognition/Intentonomy/data/intent_description_gemini.json
-semantic_sim_clamp_min: 0.0

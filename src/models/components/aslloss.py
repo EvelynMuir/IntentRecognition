@@ -69,12 +69,13 @@ class AsymmetricLossOptimized(nn.Module):
 
         self.targets = self.anti_targets = self.xs_pos = self.xs_neg = self.asymmetric_w = self.loss = None
 
-    def forward(self, x, y):
+    def forward(self, x, y, reduction: str = "mean"):
         """"
         Parameters
         ----------
         x: input logits
         y: targets (multi-label binarized vector)
+        reduction: "mean" (default), "sum", or "none"
         """
 
         self.targets = y
@@ -107,6 +108,16 @@ class AsymmetricLossOptimized(nn.Module):
                 self.asymmetric_w = torch.pow(1 - self.xs_pos - self.xs_neg,
                                               self.gamma_pos * self.targets + self.gamma_neg * self.anti_targets)
                 self.loss *= self.asymmetric_w
-        _loss = - self.loss.sum(dim=1)
-        return _loss.mean()
+        loss_per_class = -self.loss
+
+        if reduction == "none":
+            return loss_per_class
+
+        loss_per_sample = loss_per_class.sum(dim=1)
+        if reduction == "sum":
+            return loss_per_sample.sum()
+        if reduction == "mean":
+            return loss_per_sample.mean()
+
+        raise ValueError(f"Invalid reduction: {reduction}. Expected 'none', 'sum', or 'mean'.")
 

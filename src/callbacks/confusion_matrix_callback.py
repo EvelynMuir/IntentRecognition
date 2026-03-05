@@ -62,13 +62,20 @@ class ConfusionMatrixCallback(Callback):
             print("Warning: Module does not have test_preds_list or test_targets_list. Skipping confusion matrix generation.")
             return
         
-        if len(pl_module.test_preds_list) == 0:
-            print("Warning: test_preds_list is empty. Skipping confusion matrix generation.")
+        # Collect all predictions and targets. Some modules clear test_*_list in on_test_epoch_end,
+        # so we also support cached numpy snapshots.
+        if len(pl_module.test_preds_list) > 0:
+            test_preds_all = torch.cat(pl_module.test_preds_list, dim=0).numpy()  # [N, num_classes]
+            test_targets_all = torch.cat(pl_module.test_targets_list, dim=0).numpy()  # [N, num_classes]
+        elif hasattr(pl_module, "test_preds_all") and hasattr(pl_module, "test_targets_all"):
+            if pl_module.test_preds_all is None or pl_module.test_targets_all is None:
+                print("Warning: test predictions cache is empty. Skipping confusion matrix generation.")
+                return
+            test_preds_all = pl_module.test_preds_all
+            test_targets_all = pl_module.test_targets_all
+        else:
+            print("Warning: test_preds_list is empty and no cached test predictions found. Skipping confusion matrix generation.")
             return
-        
-        # Collect all predictions and targets
-        test_preds_all = torch.cat(pl_module.test_preds_list, dim=0).numpy()  # [N, num_classes]
-        test_targets_all = torch.cat(pl_module.test_targets_list, dim=0).numpy()  # [N, num_classes]
         
         print(f"Collected {len(test_preds_all)} test predictions for confusion matrix")
         
@@ -81,6 +88,7 @@ class ConfusionMatrixCallback(Callback):
         binary_preds = (test_preds_all >= threshold).astype(np.int32)
         
         # Get class names
+        class_names = [f"Class_{i}" for i in range(test_targets_all.shape[1])]
         if self.annotation_file is None:
             # Try to infer from default location
             project_root = Path(__file__).resolve().parent.parent.parent
@@ -88,14 +96,13 @@ class ConfusionMatrixCallback(Callback):
             annotation_file = annotation_dir / "intentonomy_test2020.json"
             if annotation_file.exists():
                 self.annotation_file = str(annotation_file)
+                class_names = get_class_names(str(annotation_file))
             else:
                 print(f"Warning: Could not find annotation file at {annotation_file}. Using default class names.")
-                class_names = [f"Class_{i}" for i in range(test_targets_all.shape[1])]
         else:
             annotation_file = Path(self.annotation_file)
             if not annotation_file.exists():
                 print(f"Warning: Annotation file not found at {self.annotation_file}. Using default class names.")
-                class_names = [f"Class_{i}" for i in range(test_targets_all.shape[1])]
             else:
                 class_names = get_class_names(str(annotation_file))
         
@@ -175,4 +182,3 @@ class ConfusionMatrixCallback(Callback):
         plt.close()
         
         print(f"Confusion matrix saved to: {output_path}")
-
