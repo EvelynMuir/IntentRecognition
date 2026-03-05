@@ -1,0 +1,57 @@
+_target_: src.models.intentonomy_clip_vit_icrn_module.IntentonomyClipViTICRNModule
+
+optimizer:
+  _target_: torch.optim.AdamW
+  _partial_: true
+  lr: 5e-3
+  weight_decay: 0.01
+
+scheduler:
+  _target_: torch.optim.lr_scheduler.CosineAnnealingLR
+  _partial_: true
+  T_max: 50
+  eta_min: 1e-6
+
+net:
+  _target_: src.models.components.clip_vit_icrn.ClipVisionTransformerICRN
+  num_classes: 28
+  pretrained: true
+  image_size: 224
+  clip_model_name: "ViT-L/14"
+  concept_list: null
+  intent_concepts_gemini_file: /home/evelynmuir/lambda/projects/IntentRecognition/Intentonomy/data/intent_concepts_gemini.json
+  concept_prompt_template: "A photo of {}."
+  use_cls_patch_concat: true
+  l2_normalize_visual: true
+  graph_use_relu: false
+  graph_temperature: 1.0
+  init_with_llm_prior: true
+  intent_gemini_file: null
+  intent_descriptions: null
+  intent_prompt_template: "A photo that expresses the intent of {}."
+
+num_classes: 28
+
+criterion:
+  _target_: src.models.components.aslloss.AsymmetricLossOptimized
+  gamma_neg: 2
+  gamma_pos: 0
+  clip: 0.05
+  eps: 1e-5
+  disable_torch_grad_focal_loss: false
+
+freeze_backbone: true
+unfreeze_last_n_blocks: 0
+compile: true
+
+use_ema: true
+ema_decay: 0.9997
+
+intent_loss_weight_warmup_epochs: 2
+intent_loss_weight_warmup: 0.2
+intent_loss_weight_normal: 1.0
+
+use_prior_regularization: true
+lambda_prior: 0.1
+use_sparse_regularization: false
+lambda_sparse: 0.01

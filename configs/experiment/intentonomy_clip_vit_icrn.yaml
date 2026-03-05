@@ -1,0 +1,44 @@
+# @package _global_
+
+# to execute this experiment run:
+# python src/train.py experiment=intentonomy_clip_vit_icrn
+
+defaults:
+  - override /data: intentonomy
+  - override /model: intentonomy_clip_vit_icrn
+  - override /callbacks: default
+  - override /trainer: default
+  - override /logger: tensorboard
+
+tags: ["intentonomy", "clip-vit", "icrn"]
+
+callbacks:
+  model_checkpoint:
+    monitor: val/f1_macro
+    mode: max
+
+  early_stopping:
+    monitor: val/f1_macro
+    mode: max
+    patience: 10
+
+trainer:
+  max_epochs: 80
+  gradient_clip_val: 1.0
+  num_sanity_val_steps: 0
+
+data:
+  batch_size: 64
+  binarize_softprob: true
+
+model:
+  net:
+    clip_model_name: "ViT-L/14"
+    init_with_llm_prior: true
+    intent_concepts_gemini_file: /home/evelynmuir/lambda/projects/IntentRecognition/Intentonomy/data/intent_concepts_gemini.json
+  optimizer:
+    lr: 2e-4
+
+logger:
+  tensorboard:
+    name: "Intentonomy-CLIP-ViT-ICRN"
