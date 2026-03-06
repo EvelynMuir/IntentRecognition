@@ -19,12 +19,25 @@ net:
   image_size: 224
   clip_model_name: "ViT-L/14"
   concept_list: null
-  intent_concepts_gemini_file: /home/evelynmuir/lambda/projects/IntentRecognition/Intentonomy/data/intent_concepts_gemini.json
+  concepts_file: /home/evelynmuir/lambda/projects/IntentRecognition/Intentonomy/data/concepts.json
+  intent2concepts_file: /home/evelynmuir/lambda/projects/IntentRecognition/Intentonomy/data/intent2concepts.json
   concept_prompt_template: "A photo of {}."
   use_cls_patch_concat: true
   l2_normalize_visual: true
+  use_visual_adapter: true
+  adapter_hidden_ratio: 0.25
+  adapter_dropout: 0.1
+  renormalize_after_adapter: true
+  concept_temperature: 0.2
   graph_use_relu: false
   graph_temperature: 1.0
+  graph_topk: 16
+  graph_residual_alpha: 0.5
+  base_dropout: 0.1
+  base_hidden_dim: null
+  base_layer_idx: 24
+  alpha_init: 0.0
+  cls_mean_patch_ckpt_path: null
   init_with_llm_prior: true
   intent_gemini_file: null
   intent_descriptions: null
@@ -53,5 +66,13 @@ intent_loss_weight_normal: 1.0
 
 use_prior_regularization: true
 lambda_prior: 0.1
+prior_regularization_start_epoch: 0
 use_sparse_regularization: false
 lambda_sparse: 0.01
+
+lr_base_head: 1e-4
+lr_concept_branch: 5e-4
+lr_alpha: 1e-3
+use_alpha_regularization: true
+lambda_alpha_nonneg: 0.05
+lambda_alpha_l2: 0.001

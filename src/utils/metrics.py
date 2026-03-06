@@ -215,22 +215,26 @@ def compute_f1(
     f1["micro"] = f1_score(
         y_true=multihot_targets,
         y_pred=predict_labels,
-        average="micro"
+        average="micro",
+        zero_division=0,
     )
     f1["samples"] = f1_score(
         y_true=multihot_targets,
         y_pred=predict_labels,
-        average="samples"
+        average="samples",
+        zero_division=0,
     )
     f1["macro"] = f1_score(
         y_true=multihot_targets,
         y_pred=predict_labels,
-        average="macro"
+        average="macro",
+        zero_division=0,
     )
     f1["none"] = f1_score(
         y_true=multihot_targets,
         y_pred=predict_labels,
-        average=None
+        average=None,
+        zero_division=0,
     )
     return f1["micro"], f1["samples"], f1["macro"], f1["none"]
 
