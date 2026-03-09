@@ -593,6 +593,7 @@ class IntentonomyClipViTBaseModule(LightningModule):
         1. Removes all EMA keys from checkpoint state_dict
         2. Normalizes torch.compile's _orig_mod wrapper prefixes
         3. Adapts checkpoint key format to current model (compiled/uncompiled)
+        4. Backfills newly added non-trainable buffers for older checkpoints
         """
         state_dict = checkpoint.get("state_dict")
         if not state_dict:
@@ -643,6 +644,14 @@ class IntentonomyClipViTBaseModule(LightningModule):
             for old_key in keys_to_reprefix:
                 new_key = "net._orig_mod." + old_key[len("net."):]
                 state_dict[new_key] = state_dict.pop(old_key)
+
+        # Older checkpoints predate the semantic_weight buffer used by the
+        # layer-cls-patch-mean family. Keep loading backward-compatible by
+        # falling back to the freshly initialized identity matrix.
+        if "semantic_weight" not in state_dict and hasattr(self, "semantic_weight"):
+            semantic_weight = getattr(self, "semantic_weight")
+            if torch.is_tensor(semantic_weight):
+                state_dict["semantic_weight"] = semantic_weight.detach().clone()
     
     def setup(self, stage: str) -> None:
         """Lightning hook that is called at the beginning of fit, validate, test, or predict."""

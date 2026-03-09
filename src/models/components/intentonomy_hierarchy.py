@@ -6,7 +6,7 @@ captures the 28 fine classes together with three coarse levels (18, 15, 9).
 
 from __future__ import annotations
 
-from typing import List, Sequence
+from typing import Dict, List, Sequence
 
 import torch
 import torch.nn.functional as F
@@ -71,6 +71,56 @@ INTENTONOMY_HIERARCHY: List[List[List[int]]] = [
     HIERARCHY_LEVEL_2,
     HIERARCHY_LEVEL_3,
 ]
+
+
+def build_child_to_parent_index(
+    groups: Sequence[Sequence[int]],
+    num_children: int | None = None,
+) -> List[int]:
+    """Build a dense child->parent index mapping from grouped child indices."""
+    if num_children is None:
+        num_children = max(child_idx for children in groups for child_idx in children) + 1
+
+    mapping = [-1] * int(num_children)
+    for parent_idx, child_indices in enumerate(groups):
+        for child_idx in child_indices:
+            if mapping[child_idx] != -1:
+                raise ValueError(f"Child index {child_idx} is assigned to multiple parents.")
+            mapping[child_idx] = parent_idx
+
+    missing_children = [idx for idx, parent_idx in enumerate(mapping) if parent_idx < 0]
+    if missing_children:
+        raise ValueError(f"Missing parent assignments for child indices: {missing_children}")
+
+    return mapping
+
+
+def compose_index_maps(
+    child_to_parent: Sequence[int],
+    parent_to_grandparent: Sequence[int],
+) -> List[int]:
+    """Compose two dense index mappings into a single child->grandparent mapping."""
+    return [int(parent_to_grandparent[parent_idx]) for parent_idx in child_to_parent]
+
+
+FINE_TO_LEVEL_1: List[int] = build_child_to_parent_index(HIERARCHY_LEVEL_1, num_children=28)
+LEVEL_1_TO_LEVEL_2: List[int] = build_child_to_parent_index(
+    HIERARCHY_LEVEL_2, num_children=len(HIERARCHY_LEVEL_1)
+)
+LEVEL_2_TO_LEVEL_3: List[int] = build_child_to_parent_index(
+    HIERARCHY_LEVEL_3, num_children=len(HIERARCHY_LEVEL_2)
+)
+FINE_TO_LEVEL_2: List[int] = compose_index_maps(FINE_TO_LEVEL_1, LEVEL_1_TO_LEVEL_2)
+FINE_TO_LEVEL_3: List[int] = compose_index_maps(FINE_TO_LEVEL_2, LEVEL_2_TO_LEVEL_3)
+
+
+def get_fine_to_hierarchy_indices() -> Dict[str, List[int]]:
+    """Return dense fine-label index mappings for every hierarchy level."""
+    return {
+        "level_1": list(FINE_TO_LEVEL_1),
+        "level_2": list(FINE_TO_LEVEL_2),
+        "level_3": list(FINE_TO_LEVEL_3),
+    }
 
 
 def aggregate_parent_probs(
