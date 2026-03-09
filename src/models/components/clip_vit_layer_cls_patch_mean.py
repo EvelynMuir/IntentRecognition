@@ -53,17 +53,18 @@ class ClipVisionTransformerLayerClsPatchMean(nn.Module):
         if layer_idx < 1 or layer_idx > self.num_layers:
             raise ValueError(f"layer_idx must be in range [1, {self.num_layers}], got {layer_idx}")
 
-        if "ViT-B/32" in clip_model_name:
-            self.hidden_dim = 512
-        elif "ViT-B/16" in clip_model_name:
-            self.hidden_dim = 768
-        elif "ViT-L/14" in clip_model_name:
-            self.hidden_dim = 1024
+        # Rely on the loaded CLIP backbone instead of model-name heuristics. In
+        # OpenAI CLIP, ViT-B/32 projects to 512-dim output but its transformer
+        # hidden width is 768, so hard-coding from model name is error-prone.
+        if hasattr(self.backbone, "width"):
+            self.hidden_dim = self.backbone.width
+        elif hasattr(self.backbone, "transformer") and hasattr(self.backbone.transformer, "width"):
+            self.hidden_dim = self.backbone.transformer.width
         else:
-            if hasattr(self.backbone, "width"):
-                self.hidden_dim = self.backbone.width
-            elif hasattr(self.backbone, "transformer") and hasattr(self.backbone.transformer, "width"):
-                self.hidden_dim = self.backbone.transformer.width
+            if "ViT-L/14" in clip_model_name:
+                self.hidden_dim = 1024
+            elif "ViT-B/16" in clip_model_name or "ViT-B/32" in clip_model_name:
+                self.hidden_dim = 768
             else:
                 self.hidden_dim = getattr(self.backbone, "output_dim", 512)
 
