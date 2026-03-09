@@ -6,16 +6,6 @@
 - 当前项目决策：**停止继续使用 ICRN 作为主训练方案**。
 - 本文档保留 ICRN 的完整设计、实验与调试记录，用于后续复盘。
 
-# TODO
-1. [x] 将 icrn 作为 `cls_mean_patch + concept` 双分支：
-   - `z_base = MLP([CLS ; mean_patch])`
-   - `logits = z_base + alpha * z_concept`
-   - `self.alpha = nn.Parameter(torch.tensor(0.0))`
-2. [x] 训练时加载 `cls_mean_patch` 权重，并做分组学习率：
-   - baseline head: `1e-4`（实现后通过迭代验证，小样本更稳配置为 `0.0`，见下方记录）
-   - concept branch: `5e-4`
-   - alpha: `1e-3`（实现后通过迭代验证，小样本更稳配置为 `1e-4`，见下方记录）
-
 ## 2026-03-06 TODO-2 实施与迭代记录
 
 ### 实施内容

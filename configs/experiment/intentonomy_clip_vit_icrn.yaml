@@ -35,9 +35,28 @@ model:
   net:
     clip_model_name: "ViT-L/14"
     init_with_llm_prior: true
-    intent_concepts_gemini_file: /home/evelynmuir/lambda/projects/IntentRecognition/Intentonomy/data/intent_concepts_gemini.json
+    concepts_file: /home/evelynmuir/lambda/projects/IntentRecognition/Intentonomy/data/concepts.json
+    intent2concepts_file: /home/evelynmuir/lambda/projects/IntentRecognition/Intentonomy/data/intent2concepts.json
+    use_visual_adapter: true
+    adapter_hidden_ratio: 0.25
+    adapter_dropout: 0.1
+    concept_temperature: 0.2
+    graph_topk: 16
+    graph_residual_alpha: 0.5
+    base_layer_idx: 24
+    alpha_init: 0.0
+    cls_mean_patch_ckpt_path: /home/evelynmuir/lambda/projects/IntentRecognition/lightning-hydra/logs/train/runs/2026-03-05_12-15-15/checkpoints/epoch_008.ckpt
+  use_prior_regularization: false
+  lambda_prior: 0.0
+  prior_regularization_start_epoch: 8
+  lr_base_head: 0.0
+  lr_concept_branch: 5e-4
+  lr_alpha: 1e-4
+  use_alpha_regularization: true
+  lambda_alpha_nonneg: 0.05
+  lambda_alpha_l2: 0.001
   optimizer:
-    lr: 2e-4
+    lr: 5e-4
 
 logger:
   tensorboard:

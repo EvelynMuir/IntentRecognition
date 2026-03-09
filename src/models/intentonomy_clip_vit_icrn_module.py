@@ -30,8 +30,15 @@ class IntentonomyClipViTICRNModule(IntentonomyClipViTBaseModule):
         intent_loss_weight_normal: float = 1.0,
         use_prior_regularization: bool = True,
         lambda_prior: float = 0.1,
+        prior_regularization_start_epoch: int = 0,
         use_sparse_regularization: bool = False,
         lambda_sparse: float = 0.01,
+        lr_base_head: float = 1e-4,
+        lr_concept_branch: float = 5e-4,
+        lr_alpha: float = 1e-3,
+        use_alpha_regularization: bool = True,
+        lambda_alpha_nonneg: float = 0.05,
+        lambda_alpha_l2: float = 0.001,
     ) -> None:
         super().__init__(
             net=net,
@@ -54,8 +61,15 @@ class IntentonomyClipViTICRNModule(IntentonomyClipViTBaseModule):
         self.save_hyperparameters(logger=False, ignore=["net", "criterion"])
         self.use_prior_regularization = use_prior_regularization
         self.lambda_prior = lambda_prior
+        self.prior_regularization_start_epoch = max(int(prior_regularization_start_epoch), 0)
         self.use_sparse_regularization = use_sparse_regularization
         self.lambda_sparse = lambda_sparse
+        self.lr_base_head = lr_base_head
+        self.lr_concept_branch = lr_concept_branch
+        self.lr_alpha = lr_alpha
+        self.use_alpha_regularization = use_alpha_regularization
+        self.lambda_alpha_nonneg = lambda_alpha_nonneg
+        self.lambda_alpha_l2 = lambda_alpha_l2
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.net(x)
@@ -84,10 +98,13 @@ class IntentonomyClipViTICRNModule(IntentonomyClipViTBaseModule):
 
         prior_loss = torch.tensor(0.0, device=logits.device)
         sparse_loss = torch.tensor(0.0, device=logits.device)
+        alpha_nonneg_loss = torch.tensor(0.0, device=logits.device)
+        alpha_l2_loss = torch.tensor(0.0, device=logits.device)
 
         if (
             aux is not None
             and self.use_prior_regularization
+            and self.current_epoch >= self.prior_regularization_start_epoch
             and aux.get("prior_target") is not None
             and hasattr(self.net, "intent_composition")
         ):
@@ -100,13 +117,28 @@ class IntentonomyClipViTICRNModule(IntentonomyClipViTBaseModule):
         if aux is not None and self.use_sparse_regularization and "concept_activation" in aux:
             sparse_loss = torch.mean(torch.abs(aux["concept_activation"]))
 
-        loss = cls_loss + self.lambda_prior * prior_loss + self.lambda_sparse * sparse_loss
+        if aux is not None and self.use_alpha_regularization and aux.get("alpha") is not None:
+            alpha = aux["alpha"]
+            alpha_nonneg_loss = torch.relu(-alpha) ** 2
+            alpha_l2_loss = alpha**2
+
+        loss = (
+            cls_loss
+            + self.lambda_prior * prior_loss
+            + self.lambda_sparse * sparse_loss
+            + self.lambda_alpha_nonneg * alpha_nonneg_loss
+            + self.lambda_alpha_l2 * alpha_l2_loss
+        )
         loss = loss * intent_loss_weight
 
         if self.training and not use_ema_model:
             self.log("train/loss_cls", cls_loss.detach(), on_step=False, on_epoch=True, prog_bar=False)
             self.log("train/loss_prior", prior_loss.detach(), on_step=False, on_epoch=True, prog_bar=False)
             self.log("train/loss_sparse", sparse_loss.detach(), on_step=False, on_epoch=True, prog_bar=False)
+            self.log("train/loss_alpha_nonneg", alpha_nonneg_loss.detach(), on_step=False, on_epoch=True, prog_bar=False)
+            self.log("train/loss_alpha_l2", alpha_l2_loss.detach(), on_step=False, on_epoch=True, prog_bar=False)
+            if hasattr(self.net, "alpha"):
+                self.log("train/alpha", self.net.alpha.detach(), on_step=False, on_epoch=True, prog_bar=False)
 
         preds = torch.sigmoid(logits)
         vq_loss = torch.tensor(0.0, device=loss.device)
@@ -115,18 +147,46 @@ class IntentonomyClipViTICRNModule(IntentonomyClipViTBaseModule):
         return loss, preds, targets, vq_loss, perplexity
 
     def configure_optimizers(self):
-        if hasattr(self.hparams.optimizer, "keywords"):
-            base_lr = self.hparams.optimizer.keywords.get("lr", 0.005)
-        else:
-            base_lr = 0.005
-
         param_groups = []
+        seen_param_ids = set()
 
-        trainable_non_backbone = [
-            p for n, p in self.net.named_parameters() if p.requires_grad and not n.startswith("backbone.")
-        ]
-        if trainable_non_backbone:
-            param_groups.append({"params": trainable_non_backbone, "lr": base_lr})
+        def add_group(params, lr):
+            unique_params = []
+            for p in params:
+                if not p.requires_grad:
+                    continue
+                pid = id(p)
+                if pid in seen_param_ids:
+                    continue
+                seen_param_ids.add(pid)
+                unique_params.append(p)
+            if unique_params:
+                param_groups.append({"params": unique_params, "lr": lr})
+
+        def normalize_name(name: str) -> str:
+            # torch.compile wraps parameters under `_orig_mod.*`
+            return name.replace("_orig_mod.", "")
+
+        base_head_params = []
+        alpha_params = []
+        concept_branch_params = []
+        for n, p in self.net.named_parameters():
+            if not p.requires_grad:
+                continue
+            n_norm = normalize_name(n)
+            if n_norm.startswith("backbone."):
+                continue
+            if n_norm.startswith("base_head."):
+                base_head_params.append(p)
+                continue
+            if n_norm == "alpha":
+                alpha_params.append(p)
+                continue
+            concept_branch_params.append(p)
+
+        add_group(base_head_params, self.lr_base_head)
+        add_group(alpha_params, self.lr_alpha)
+        add_group(concept_branch_params, self.lr_concept_branch)
 
         if self.unfreeze_last_n_blocks > 0:
             vit_blocks_params = []
@@ -137,12 +197,14 @@ class IntentonomyClipViTICRNModule(IntentonomyClipViTBaseModule):
                 start_idx = total_blocks - self.unfreeze_last_n_blocks
                 for i in range(start_idx, total_blocks):
                     vit_blocks_params.extend([p for p in resblocks[i].parameters() if p.requires_grad])
-
-            if vit_blocks_params:
-                param_groups.append({"params": vit_blocks_params, "lr": self.lr_vit})
+            add_group(vit_blocks_params, self.lr_vit)
 
         if not param_groups:
-            param_groups = [{"params": [p for p in self.parameters() if p.requires_grad]}]
+            fallback_params = [p for p in self.parameters() if p.requires_grad and id(p) not in seen_param_ids]
+            if fallback_params:
+                param_groups = [{"params": fallback_params}]
+            else:
+                raise RuntimeError("No trainable parameters found for optimizer.")
 
         optimizer = self.hparams.optimizer(params=param_groups)
 

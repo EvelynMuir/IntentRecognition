@@ -132,9 +132,12 @@ class IntentonomyDataset(Dataset):
 
         # Get labels (multi-label)
         annotation_data = self.annotations[image_id]
+        soft_labels: Optional[torch.Tensor] = None
         if self.use_softprob:
-            # Use softprob directly (already a probability vector)
-            labels = torch.tensor(annotation_data, dtype=torch.float32)
+            # Keep the original annotation agreement scores so models can use them as
+            # confidence targets even when the training labels are binarized.
+            soft_labels = torch.tensor(annotation_data, dtype=torch.float32)
+            labels = soft_labels
             if self.binarize_softprob:
                 # Convert soft prob > 0 to 1.0, others to 0.0
                 labels = (labels > 0).float()
@@ -142,8 +145,14 @@ class IntentonomyDataset(Dataset):
             # Convert category_ids to one-hot encoding
             labels = torch.zeros(self.num_classes, dtype=torch.float32)
             labels[annotation_data] = 1.0
+            soft_labels = labels.clone()
 
-        sample = {"image": image, "labels": labels, "image_id": image_id}
+        sample = {
+            "image": image,
+            "labels": labels,
+            "soft_labels": soft_labels,
+            "image_id": image_id,
+        }
         if self.fixed_token_perms is not None:
             sample["token_perm"] = self.fixed_token_perms[idx]
         return sample
