@@ -23,6 +23,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from scripts.analyze_text_prior_boundary import (
     DEFAULT_BASELINE_CKPT,
+    _normalize_source_name,
     _assert_same_ids,
     _build_dataset,
     _build_hard_case_rows,
@@ -76,7 +77,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--sources",
         type=str,
-        default="short,detailed,mixed",
+        default="lexical,canonical,scenario,discriminative,lexical_plus_canonical",
         help="Comma-separated sources for learnable fusion.",
     )
     parser.add_argument(
@@ -358,13 +359,18 @@ def main() -> None:
 
     text_pools = _build_text_pools(class_names, gemini_file)
     prompt_embeddings_per_class = {
-        "short": _encode_text_pool_per_class(clip_model, text_pools["short"], wrap_prompt=True),
-        "detailed": _encode_text_pool_per_class(clip_model, text_pools["detailed"], wrap_prompt=True),
-        "llm": _encode_text_pool_per_class(clip_model, text_pools["llm"], wrap_prompt=False),
-        "mixed": _encode_text_pool_per_class(clip_model, text_pools["mixed"], wrap_prompt=False),
+        "lexical": _encode_text_pool_per_class(clip_model, text_pools["lexical"], wrap_prompt=True),
+        "canonical": _encode_text_pool_per_class(clip_model, text_pools["canonical"], wrap_prompt=True),
+        "scenario": _encode_text_pool_per_class(clip_model, text_pools["scenario"], wrap_prompt=False),
+        "discriminative": _encode_text_pool_per_class(
+            clip_model, text_pools["discriminative"], wrap_prompt=False
+        ),
+        "lexical_plus_canonical": _encode_text_pool_per_class(
+            clip_model, text_pools["lexical_plus_canonical"], wrap_prompt=False
+        ),
     }
 
-    source_names = _parse_str_list(args.sources)
+    source_names = [_normalize_source_name(x) for x in _parse_str_list(args.sources)]
     fusion_modes = _parse_str_list(args.fusion_modes)
     mlp_feature_sets = _parse_str_list(args.mlp_feature_sets)
     learning_rates = _parse_float_list(args.learning_rates)

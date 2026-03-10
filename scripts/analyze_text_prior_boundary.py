@@ -56,7 +56,36 @@ DEFAULT_BASELINE_CKPT = (
     PROJECT_ROOT / "logs" / "train" / "runs" / "2026-03-03_16-34-30" / "checkpoints" / "epoch_017.ckpt"
 )
 DEFAULT_PROMPT_TEMPLATE = "A photo that expresses the intent of {}."
-LLM_TEXT_KEYS = ("Core Difference", "Visual Elements", "Text Query")
+INTENTONOMY_LEXICAL_PHRASES = [
+    "being attractive",
+    "beating others in competition",
+    "communicating and expressing myself",
+    "being creative and unique",
+    "exploration and adventure",
+    "having an easy and comfortable life",
+    "enjoying life",
+    "appreciating fine architecture",
+    "appreciating artwork",
+    "appreciating other cultures",
+    "being a good parent and emotionally close to my children",
+    "being happy and content",
+    "being ambitious and hard-working",
+    "achieving harmony and oneness",
+    "being physically active, fit, and healthy",
+    "being in love",
+    "being in love with animals",
+    "inspiring and influencing others",
+    "keeping things manageable and making plans",
+    "experiencing natural beauty",
+    "being passionate about something",
+    "being playful and lighthearted",
+    "sharing my feelings with others",
+    "having close friends and social belonging",
+    "being successful in my occupation",
+    "teaching others",
+    "keeping things in order",
+    "having work I really like",
+]
 
 
 def _parse_args() -> argparse.Namespace:
@@ -115,14 +144,17 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--text-sources",
         type=str,
-        default="short,detailed,llm",
-        help="Comma-separated text sources to evaluate. Supported: short,detailed,llm.",
+        default="lexical,canonical,scenario,discriminative",
+        help=(
+            "Comma-separated text sources to evaluate. Supported: "
+            "lexical,canonical,scenario,discriminative."
+        ),
     )
     parser.add_argument(
         "--rerank-source",
         type=str,
-        default="llm",
-        choices=["short", "detailed", "llm"],
+        default="scenario",
+        choices=["lexical", "canonical", "scenario", "discriminative"],
         help="Which text prior to use for TODO-2 reranking and TODO-4 hard-case export.",
     )
     parser.add_argument(
@@ -214,7 +246,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--semantic-sources",
         type=str,
-        default="short,detailed,llm,mixed",
+        default="lexical,canonical,scenario,discriminative,lexical_plus_canonical",
         help="Comma-separated prompt source variants for semantic local reranking.",
     )
     parser.add_argument(
@@ -279,6 +311,17 @@ def _parse_bool_list(raw: str) -> List[bool]:
             raise ValueError(f"Unsupported boolean token: {item}")
         values.append(mapping[token])
     return values
+
+
+def _normalize_source_name(name: str) -> str:
+    token = str(name).strip().lower()
+    aliases = {
+        "short": "lexical",
+        "detailed": "canonical",
+        "llm": "scenario",
+        "mixed": "lexical_plus_canonical",
+    }
+    return aliases.get(token, token)
 
 
 def _resolve_run_dir(run_dir_arg: str | None, ckpt_path_arg: str | None) -> Path:
@@ -558,35 +601,43 @@ def _build_text_pools(
     class_names: Sequence[str],
     gemini_file: Path,
 ) -> Dict[str, List[List[str]]]:
-    short_pools = [[name] for name in class_names]
-    detailed_pools = [[desc] for desc in INTENTONOMY_DESCRIPTIONS[: len(class_names)]]
+    lexical_pools = [[phrase] for phrase in INTENTONOMY_LEXICAL_PHRASES[: len(class_names)]]
+    canonical_pools = [[desc] for desc in INTENTONOMY_DESCRIPTIONS[: len(class_names)]]
 
     data = json.loads(gemini_file.read_text(encoding="utf-8"))
-    llm_pools: List[List[str]] = []
+    scenario_pools: List[List[str]] = []
+    discriminative_pools: List[List[str]] = []
     for index, item in enumerate(data[: len(class_names)]):
-        texts: List[str] = [str(item.get("intent", class_names[index]))]
+        scenario_texts: List[str] = []
+        discriminative_texts: List[str] = []
         for desc in item.get("description", []):
-            for key in LLM_TEXT_KEYS:
-                texts.append(str(desc.get(key, "")))
-        llm_pools.append(_ordered_unique(texts))
+            scenario_texts.append(str(desc.get("Text Query", "")))
+            discriminative_texts.append(str(desc.get("Core Difference", "")))
+        scenario_pools.append(_ordered_unique(scenario_texts))
+        discriminative_pools.append(_ordered_unique(discriminative_texts))
 
-    while len(llm_pools) < len(class_names):
-        llm_pools.append([class_names[len(llm_pools)]])
+    while len(scenario_pools) < len(class_names):
+        scenario_pools.append([canonical_pools[len(scenario_pools)][0]])
+    while len(discriminative_pools) < len(class_names):
+        discriminative_pools.append([canonical_pools[len(discriminative_pools)][0]])
 
-    mixed_pools = []
+    lexical_plus_canonical_pools = []
     for idx in range(len(class_names)):
-        mixed_pools.append(
+        lexical_plus_canonical_pools.append(
             _ordered_unique(
-                [DEFAULT_PROMPT_TEMPLATE.format(text) for text in short_pools[idx] + detailed_pools[idx]]
-                + llm_pools[idx]
+                [
+                    DEFAULT_PROMPT_TEMPLATE.format(text)
+                    for text in lexical_pools[idx] + canonical_pools[idx]
+                ]
             )
         )
 
     return {
-        "short": short_pools,
-        "detailed": detailed_pools,
-        "llm": llm_pools[: len(class_names)],
-        "mixed": mixed_pools[: len(class_names)],
+        "lexical": lexical_pools,
+        "canonical": canonical_pools,
+        "scenario": scenario_pools[: len(class_names)],
+        "discriminative": discriminative_pools[: len(class_names)],
+        "lexical_plus_canonical": lexical_plus_canonical_pools[: len(class_names)],
     }
 
 
@@ -1046,7 +1097,7 @@ def main() -> None:
     _assert_same_ids("val", val_base["image_ids"], val_clip["image_ids"])
     _assert_same_ids("test", test_base["image_ids"], test_clip["image_ids"])
 
-    zero_shot_sources = _parse_str_list(args.text_sources)
+    zero_shot_sources = [_normalize_source_name(x) for x in _parse_str_list(args.text_sources)]
     rerank_modes = _parse_str_list(args.rerank_modes)
     rerank_topk_list = _parse_int_list(args.topk_list)
     rerank_alpha_list = _parse_float_list(args.rerank_alpha_list)
@@ -1059,7 +1110,7 @@ def main() -> None:
     uncertainty_delta_list = _parse_float_list(args.uncertainty_delta_list)
     uncertainty_tau_list = _parse_float_list(args.uncertainty_tau_list)
     positive_only_options = _parse_bool_list(args.positive_only_options)
-    semantic_sources = _parse_str_list(args.semantic_sources)
+    semantic_sources = [_normalize_source_name(x) for x in _parse_str_list(args.semantic_sources)]
     semantic_aggregation_modes = _parse_str_list(args.semantic_aggregation_modes)
     comparative_modes = _parse_str_list(args.comparative_modes)
 
@@ -1078,15 +1129,24 @@ def main() -> None:
 
     text_pools = _build_text_pools(class_names, gemini_file)
     text_embeddings = {
-        "short": _encode_text_pool(clip_model, text_pools["short"], wrap_prompt=True),
-        "detailed": _encode_text_pool(clip_model, text_pools["detailed"], wrap_prompt=True),
-        "llm": _encode_text_pool(clip_model, text_pools["llm"], wrap_prompt=False),
+        "lexical": _encode_text_pool(clip_model, text_pools["lexical"], wrap_prompt=True),
+        "canonical": _encode_text_pool(clip_model, text_pools["canonical"], wrap_prompt=True),
+        "scenario": _encode_text_pool(clip_model, text_pools["scenario"], wrap_prompt=False),
+        "discriminative": _encode_text_pool(clip_model, text_pools["discriminative"], wrap_prompt=False),
+        "lexical_plus_canonical": _encode_text_pool(
+            clip_model, text_pools["lexical_plus_canonical"], wrap_prompt=False
+        ),
     }
     prompt_embeddings_per_class = {
-        "short": _encode_text_pool_per_class(clip_model, text_pools["short"], wrap_prompt=True),
-        "detailed": _encode_text_pool_per_class(clip_model, text_pools["detailed"], wrap_prompt=True),
-        "llm": _encode_text_pool_per_class(clip_model, text_pools["llm"], wrap_prompt=False),
-        "mixed": _encode_text_pool_per_class(clip_model, text_pools["mixed"], wrap_prompt=False),
+        "lexical": _encode_text_pool_per_class(clip_model, text_pools["lexical"], wrap_prompt=True),
+        "canonical": _encode_text_pool_per_class(clip_model, text_pools["canonical"], wrap_prompt=True),
+        "scenario": _encode_text_pool_per_class(clip_model, text_pools["scenario"], wrap_prompt=False),
+        "discriminative": _encode_text_pool_per_class(
+            clip_model, text_pools["discriminative"], wrap_prompt=False
+        ),
+        "lexical_plus_canonical": _encode_text_pool_per_class(
+            clip_model, text_pools["lexical_plus_canonical"], wrap_prompt=False
+        ),
     }
 
     text_logits = {}
@@ -1138,32 +1198,32 @@ def main() -> None:
         }
 
     zero_shot_comparisons = {}
-    if "short" in zero_shot_sources:
+    if "lexical" in zero_shot_sources:
         for source_name in zero_shot_sources:
-            if source_name == "short":
+            if source_name == "lexical":
                 continue
-            zero_shot_comparisons[f"{source_name}_minus_short"] = {
+            zero_shot_comparisons[f"{source_name}_minus_lexical"] = {
                 "val_macro_gain": float(
-                    zero_shot_results[source_name]["val"]["macro"] - zero_shot_results["short"]["val"]["macro"]
+                    zero_shot_results[source_name]["val"]["macro"] - zero_shot_results["lexical"]["val"]["macro"]
                 ),
                 "val_hard_gain": float(
-                    zero_shot_results[source_name]["val"]["hard"] - zero_shot_results["short"]["val"]["hard"]
+                    zero_shot_results[source_name]["val"]["hard"] - zero_shot_results["lexical"]["val"]["hard"]
                 ),
                 "test_macro_gain": float(
-                    zero_shot_results[source_name]["test"]["macro"] - zero_shot_results["short"]["test"]["macro"]
+                    zero_shot_results[source_name]["test"]["macro"] - zero_shot_results["lexical"]["test"]["macro"]
                 ),
                 "test_hard_gain": float(
-                    zero_shot_results[source_name]["test"]["hard"] - zero_shot_results["short"]["test"]["hard"]
+                    zero_shot_results[source_name]["test"]["hard"] - zero_shot_results["lexical"]["test"]["hard"]
                 ),
                 "test_top_gain_classes": class_gain_rows(
-                    np.asarray(zero_shot_results["short"]["test"]["per_class_f1"], dtype=np.float32),
+                    np.asarray(zero_shot_results["lexical"]["test"]["per_class_f1"], dtype=np.float32),
                     np.asarray(zero_shot_results[source_name]["test"]["per_class_f1"], dtype=np.float32),
                     class_names,
                     top_n=8,
                 ),
             }
 
-    rerank_source = args.rerank_source
+    rerank_source = _normalize_source_name(args.rerank_source)
     rerank_records_internal: List[Dict[str, Any]] = []
     baseline_test_per_class = baseline_metrics["test"]["per_class_f1"]
     for topk in rerank_topk_list:
