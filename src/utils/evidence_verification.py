@@ -1457,6 +1457,49 @@ def _sorted_topk_candidate_indices(
     return np.take_along_axis(topk_idx, order, axis=1)
 
 
+CONFUSION_AWARE_ROUTER_TRIGGER_MODES = {
+    "always",
+    "margin_only",
+    "confusion_only",
+    "margin_confusion",
+    "confusion_top2_only",
+    "confusion_top3_only",
+    "margin_and_confusion_top2",
+    "margin_or_confusion_top2",
+    "margin_and_confusion_top3",
+    "margin_or_confusion_top3",
+}
+
+
+def _normalize_router_trigger_mode(trigger_mode: str) -> str:
+    mode = str(trigger_mode).strip().lower().replace(" ", "_")
+    aliases = {
+        "margin_confusion_top2": "margin_or_confusion_top2",
+        "margin_confusion_top3": "margin_or_confusion_top3",
+    }
+    canonical = aliases.get(mode, mode)
+    if canonical not in CONFUSION_AWARE_ROUTER_TRIGGER_MODES:
+        raise ValueError(f"Unsupported trigger_mode: {trigger_mode}")
+    return canonical
+
+
+def _resolve_router_trigger_spec(trigger_mode: str) -> tuple[str, str]:
+    normalized = _normalize_router_trigger_mode(trigger_mode)
+    mapping = {
+        "always": ("always", "broad"),
+        "margin_only": ("margin_only", "broad"),
+        "confusion_only": ("confusion_only", "broad"),
+        "margin_confusion": ("margin_or_confusion", "broad"),
+        "confusion_top2_only": ("confusion_only", "top2"),
+        "confusion_top3_only": ("confusion_only", "top3"),
+        "margin_and_confusion_top2": ("margin_and_confusion", "top2"),
+        "margin_or_confusion_top2": ("margin_or_confusion", "top2"),
+        "margin_and_confusion_top3": ("margin_and_confusion", "top3"),
+        "margin_or_confusion_top3": ("margin_or_confusion", "top3"),
+    }
+    return mapping[normalized]
+
+
 def _candidate_pairs_from_neighborhood(neighborhood: Sequence[int]) -> List[tuple[int, int]]:
     output: List[tuple[int, int]] = []
     ordered = [int(class_idx) for class_idx in neighborhood]
@@ -1468,11 +1511,91 @@ def _candidate_pairs_from_neighborhood(neighborhood: Sequence[int]) -> List[tupl
     return output
 
 
+def _normalize_confusion_pair(pair: Sequence[int] | tuple[int, int]) -> tuple[int, int]:
+    if len(pair) != 2:
+        raise ValueError(f"Expected confusion pair of length 2, got {pair}")
+    class_i = int(pair[0])
+    class_j = int(pair[1])
+    if class_i == class_j:
+        raise ValueError(f"Confusion pair must contain distinct classes, got {pair}")
+    return tuple(sorted((class_i, class_j)))
+
+
+def _pair_hits_confusion(
+    class_i: int,
+    class_j: int,
+    neighbor_sets: Sequence[set[int]],
+    allowed_confusion_pairs: set[tuple[int, int]] | None = None,
+) -> bool:
+    if class_i == class_j:
+        return False
+    pair = tuple(sorted((int(class_i), int(class_j))))
+    if allowed_confusion_pairs is not None and pair not in allowed_confusion_pairs:
+        return False
+    return int(class_j) in neighbor_sets[int(class_i)] or int(class_i) in neighbor_sets[int(class_j)]
+
+
+def _collect_confusion_hit_pairs(
+    ordered: Sequence[int],
+    neighbor_sets: Sequence[set[int]],
+    confusion_scope: str,
+    router_anchor_topn: int,
+    allowed_confusion_pairs: set[tuple[int, int]] | None = None,
+) -> tuple[List[tuple[int, int]], List[int]]:
+    ordered_ids = [int(class_idx) for class_idx in ordered]
+    pair_hits: set[tuple[int, int]] = set()
+    neighborhood_hits: set[int] = set()
+
+    if confusion_scope == "broad":
+        anchor_limit = max(1, min(int(router_anchor_topn), len(ordered_ids)))
+        for anchor in ordered_ids[:anchor_limit]:
+            for other in ordered_ids:
+                if int(other) == int(anchor):
+                    continue
+                if _pair_hits_confusion(
+                    anchor,
+                    other,
+                    neighbor_sets,
+                    allowed_confusion_pairs=allowed_confusion_pairs,
+                ):
+                    pair = tuple(sorted((int(anchor), int(other))))
+                    pair_hits.add(pair)
+                    neighborhood_hits.add(int(anchor))
+                    neighborhood_hits.add(int(other))
+    elif confusion_scope == "top2":
+        if len(ordered_ids) >= 2:
+            pair = tuple(sorted((int(ordered_ids[0]), int(ordered_ids[1]))))
+            if _pair_hits_confusion(
+                pair[0],
+                pair[1],
+                neighbor_sets,
+                allowed_confusion_pairs=allowed_confusion_pairs,
+            ):
+                pair_hits.add(pair)
+                neighborhood_hits.update(pair)
+    elif confusion_scope == "top3":
+        for pair in _candidate_pairs_from_neighborhood(ordered_ids[: min(3, len(ordered_ids))]):
+            if _pair_hits_confusion(
+                pair[0],
+                pair[1],
+                neighbor_sets,
+                allowed_confusion_pairs=allowed_confusion_pairs,
+            ):
+                pair_hits.add(pair)
+                neighborhood_hits.update(pair)
+    else:
+        raise ValueError(f"Unsupported confusion_scope: {confusion_scope}")
+
+    selected_neighborhood = [class_idx for class_idx in ordered_ids if int(class_idx) in neighborhood_hits]
+    return sorted(pair_hits), selected_neighborhood
+
+
 def build_confusion_aware_router(
     candidate_logits: np.ndarray,
     confusion_neighborhoods: Sequence[Sequence[int]],
     pairwise_profiles: Mapping[str, Any] | None = None,
     selected_experts: Sequence[str] | None = None,
+    allowed_confusion_pairs: Iterable[Sequence[int] | tuple[int, int]] | None = None,
     topk: int = 10,
     margin_tau: float = 0.5,
     trigger_mode: str = "margin_confusion",
@@ -1496,16 +1619,28 @@ def build_confusion_aware_router(
             f"confusion_neighborhoods length {len(confusion_neighborhoods)} != num_classes {num_classes}"
         )
 
-    trigger_mode = str(trigger_mode).strip().lower()
+    trigger_mode = _normalize_router_trigger_mode(trigger_mode)
+    trigger_logic, confusion_scope = _resolve_router_trigger_spec(trigger_mode)
     dispatch_mode = str(dispatch_mode).strip().lower()
-    if trigger_mode not in {"always", "margin_only", "confusion_only", "margin_confusion"}:
-        raise ValueError(f"Unsupported trigger_mode: {trigger_mode}")
     if dispatch_mode not in {"all", "routed"}:
         raise ValueError(f"Unsupported dispatch_mode: {dispatch_mode}")
     if dispatch_mode == "routed" and pairwise_profiles is None:
         raise ValueError("pairwise_profiles is required when dispatch_mode='routed'.")
 
     ordered_topk = _sorted_topk_candidate_indices(scores, topk=topk)
+    neighbor_sets = [
+        {
+            int(idx)
+            for idx in row
+            if 0 <= int(idx) < num_classes and int(idx) != class_idx
+        }
+        for class_idx, row in enumerate(confusion_neighborhoods)
+    ]
+    normalized_allowed_pairs = (
+        {_normalize_confusion_pair(pair) for pair in allowed_confusion_pairs}
+        if allowed_confusion_pairs is not None
+        else None
+    )
     top1 = ordered_topk[:, 0]
     top2 = ordered_topk[:, 1]
     margins = np.maximum(scores[np.arange(num_samples), top1] - scores[np.arange(num_samples), top2], 0.0)
@@ -1522,39 +1657,24 @@ def build_confusion_aware_router(
 
     for sample_idx in range(num_samples):
         ordered = [int(idx) for idx in ordered_topk[sample_idx].tolist()]
-        confusion_pair_set: set[tuple[int, int]] = set()
-        confusion_neighborhood_set: set[int] = set()
-        anchor_limit = max(1, min(int(router_anchor_topn), len(ordered)))
-
-        for anchor in ordered[:anchor_limit]:
-            anchor_neighbors = {
-                int(idx)
-                for idx in confusion_neighborhoods[int(anchor)]
-                if 0 <= int(idx) < num_classes and int(idx) != int(anchor)
-            }
-            for other in ordered:
-                if int(other) == int(anchor):
-                    continue
-                reverse_neighbors = {
-                    int(idx)
-                    for idx in confusion_neighborhoods[int(other)]
-                    if 0 <= int(idx) < num_classes and int(idx) != int(other)
-                }
-                if int(other) in anchor_neighbors or int(anchor) in reverse_neighbors:
-                    pair = tuple(sorted((int(anchor), int(other))))
-                    confusion_pair_set.add(pair)
-                    confusion_neighborhood_set.add(int(anchor))
-                    confusion_neighborhood_set.add(int(other))
-
-        confusion_hit = len(confusion_pair_set) > 0
+        confusion_pairs, confusion_neighborhood = _collect_confusion_hit_pairs(
+            ordered,
+            neighbor_sets,
+            confusion_scope=confusion_scope,
+            router_anchor_topn=int(router_anchor_topn),
+            allowed_confusion_pairs=normalized_allowed_pairs,
+        )
+        confusion_hit = len(confusion_pairs) > 0
         confusion_trigger_mask[sample_idx] = bool(confusion_hit)
 
-        if trigger_mode == "always":
+        if trigger_logic == "always":
             trigger = True
-        elif trigger_mode == "margin_only":
+        elif trigger_logic == "margin_only":
             trigger = bool(margin_trigger_mask[sample_idx])
-        elif trigger_mode == "confusion_only":
+        elif trigger_logic == "confusion_only":
             trigger = bool(confusion_hit)
+        elif trigger_logic == "margin_and_confusion":
+            trigger = bool(margin_trigger_mask[sample_idx] and confusion_hit)
         else:
             trigger = bool(margin_trigger_mask[sample_idx] or confusion_hit)
 
@@ -1565,11 +1685,14 @@ def build_confusion_aware_router(
 
         if trigger:
             if confusion_hit:
-                neighborhood = [class_idx for class_idx in ordered if int(class_idx) in confusion_neighborhood_set]
+                neighborhood = list(confusion_neighborhood)
+                if confusion_scope in {"top2", "top3"}:
+                    pairs = [(int(class_i), int(class_j)) for class_i, class_j in confusion_pairs]
             if len(neighborhood) < 2:
                 fallback_topn = max(2, min(int(margin_fallback_topn), len(ordered)))
                 neighborhood = ordered[:fallback_topn]
-            pairs = _candidate_pairs_from_neighborhood(neighborhood)
+            if not pairs:
+                pairs = _candidate_pairs_from_neighborhood(neighborhood)
             if len(pairs) == 0 and len(ordered) >= 2:
                 neighborhood = ordered[:2]
                 pairs = _candidate_pairs_from_neighborhood(neighborhood)
@@ -1619,7 +1742,7 @@ def build_confusion_aware_router(
         selected_pairs.append([(int(class_i), int(class_j)) for class_i, class_j in pairs])
         selected_expert_rows.append([str(expert) for expert in routed_experts])
         expert_weight_rows.append({str(key): float(value) for key, value in weight_map.items()})
-        confusion_hit_pairs.append([(int(class_i), int(class_j)) for class_i, class_j in sorted(confusion_pair_set)])
+        confusion_hit_pairs.append([(int(class_i), int(class_j)) for class_i, class_j in confusion_pairs])
 
     return {
         "topk_indices": ordered_topk.astype(np.int64),
@@ -1633,6 +1756,8 @@ def build_confusion_aware_router(
         "expert_weights": expert_weight_rows,
         "confusion_hit_pairs": confusion_hit_pairs,
         "trigger_mode": trigger_mode,
+        "trigger_logic": trigger_logic,
+        "confusion_scope": confusion_scope,
         "dispatch_mode": dispatch_mode,
         "margin_tau": float(margin_tau),
     }

@@ -58,6 +58,7 @@ from scripts.analyze_text_prior_boundary import (
 )
 from src.utils.decision_rule_calibration import search_classwise_thresholds
 from src.utils.evidence_verification import (
+    CONFUSION_AWARE_ROUTER_TRIGGER_MODES,
     DEFAULT_EXPERT_PROMPTS,
     EXPERT_NAMES,
     build_benchmark_expert_phrase_banks,
@@ -152,7 +153,13 @@ def _parse_args() -> argparse.Namespace:
         "--trigger-modes",
         type=str,
         default="margin_confusion,always,margin_only,confusion_only",
-        help="Comma-separated trigger modes. Supported: margin_confusion,always,margin_only,confusion_only.",
+        help=(
+            "Comma-separated trigger modes. "
+            "Supported: always,margin_only,confusion_only,margin_confusion,"
+            "confusion_top2_only,confusion_top3_only,"
+            "margin_and_confusion_top2,margin_or_confusion_top2,"
+            "margin_and_confusion_top3,margin_or_confusion_top3."
+        ),
     )
     parser.add_argument(
         "--margin-tau-list",
@@ -175,6 +182,12 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--router-anchor-topn", type=int, default=3)
     parser.add_argument("--margin-fallback-topn", type=int, default=2)
     parser.add_argument("--max-routed-experts", type=int, default=2)
+    parser.add_argument(
+        "--main-trigger-mode",
+        type=str,
+        default="margin_confusion",
+        help="Preferred trigger mode used for the legacy per-dispatch summary when present.",
+    )
     parser.add_argument(
         "--subset-margin-tau",
         type=float,
@@ -379,22 +392,33 @@ def _router_stats(router_outputs: Mapping[str, Any], experts: Sequence[str]) -> 
             expert_hist[str(expert)] = int(expert_hist.get(str(expert), 0) + 1)
 
     triggered = np.where(trigger_mask)[0]
+    neighborhood_sizes_all = [len(neighborhood) for neighborhood in neighborhoods]
+    pair_counts_all = [len(sample_pairs) for sample_pairs in pairs]
+    specialist_counts_all = [len(sample_experts) for sample_experts in selected_experts]
     neighborhood_sizes = [len(neighborhoods[idx]) for idx in triggered.tolist()]
     pair_counts = [len(pairs[idx]) for idx in triggered.tolist()]
     specialist_counts = [len(selected_experts[idx]) for idx in triggered.tolist()]
+
+    avg_neighborhood_size = float(np.mean(neighborhood_sizes_all)) if neighborhood_sizes_all else 0.0
+    avg_pairs_resolved = float(np.mean(pair_counts_all)) if pair_counts_all else 0.0
+    avg_specialists_called = float(np.mean(specialist_counts_all)) if specialist_counts_all else 0.0
+    avg_neighborhood_size_triggered = float(np.mean(neighborhood_sizes)) if neighborhood_sizes else 0.0
+    avg_pairs_resolved_triggered = float(np.mean(pair_counts)) if pair_counts else 0.0
+    avg_specialists_called_triggered = float(np.mean(specialist_counts)) if specialist_counts else 0.0
 
     return {
         "trigger_rate": float(trigger_mask.mean()),
         "margin_trigger_rate": float(margin_trigger_mask.mean()),
         "confusion_trigger_rate": float(confusion_trigger_mask.mean()),
-        "avg_neighborhood_size_triggered": float(np.mean(neighborhood_sizes)) if neighborhood_sizes else 0.0,
-        "avg_pair_count_triggered": float(np.mean(pair_counts)) if pair_counts else 0.0,
-        "avg_specialists_triggered": float(np.mean(specialist_counts)) if specialist_counts else 0.0,
-        "avg_specialists_all_samples": (
-            float(sum(len(row) for row in selected_experts) / len(selected_experts))
-            if selected_experts
-            else 0.0
-        ),
+        "avg_specialists_called": avg_specialists_called,
+        "avg_neighborhood_size": avg_neighborhood_size,
+        "avg_pairs_resolved": avg_pairs_resolved,
+        "avg_neighborhood_size_triggered": avg_neighborhood_size_triggered,
+        "avg_pairs_resolved_triggered": avg_pairs_resolved_triggered,
+        "avg_specialists_called_triggered": avg_specialists_called_triggered,
+        "avg_pair_count_triggered": avg_pairs_resolved_triggered,
+        "avg_specialists_triggered": avg_specialists_called_triggered,
+        "avg_specialists_all_samples": avg_specialists_called,
         "expert_call_histogram": expert_hist,
     }
 
@@ -417,10 +441,40 @@ def _update_best_record(
         store[str(key)] = record
 
 
+def _router_best_row(key: str, record: Mapping[str, Any]) -> Dict[str, Any]:
+    config = record["config"]
+    test_metrics = record["classwise"]["test"]
+    router_stats = record["router_test_stats"]
+    return {
+        "key": str(key),
+        "dispatch_mode": str(config["dispatch_mode"]),
+        "trigger_mode": str(config["trigger_mode"]),
+        "confusion_scope": str(record["router_test"]["confusion_scope"]),
+        "trigger_logic": str(record["router_test"]["trigger_logic"]),
+        "margin_tau": float(config["margin_tau"]),
+        "beta": float(config["beta"]),
+        "macro": float(test_metrics["macro"]) * 100.0,
+        "micro": float(test_metrics["micro"]) * 100.0,
+        "samples": float(test_metrics["samples"]) * 100.0,
+        "mAP": float(test_metrics["mAP"]),
+        "hard": float(test_metrics["hard"]) * 100.0,
+        "trigger_rate": float(router_stats["trigger_rate"]),
+        "margin_trigger_rate": float(router_stats["margin_trigger_rate"]),
+        "confusion_trigger_rate": float(router_stats["confusion_trigger_rate"]),
+        "avg_specialists_called": float(router_stats["avg_specialists_called"]),
+        "avg_neighborhood_size": float(router_stats["avg_neighborhood_size"]),
+        "avg_pairs_resolved": float(router_stats["avg_pairs_resolved"]),
+        "avg_specialists_called_triggered": float(router_stats["avg_specialists_called_triggered"]),
+        "avg_neighborhood_size_triggered": float(router_stats["avg_neighborhood_size_triggered"]),
+        "avg_pairs_resolved_triggered": float(router_stats["avg_pairs_resolved_triggered"]),
+    }
+
+
 def main() -> None:
     args = _parse_args()
     dispatch_modes = _parse_str_list(args.dispatch_modes)
-    trigger_modes = _parse_str_list(args.trigger_modes)
+    trigger_modes = [str(mode).strip().lower().replace(" ", "_") for mode in _parse_str_list(args.trigger_modes)]
+    main_trigger_mode = str(args.main_trigger_mode).strip().lower().replace(" ", "_")
     margin_tau_list = _parse_float_list(args.margin_tau_list)
     v3_beta_list = _parse_float_list(args.v3_beta_list)
     profile_topn_list = _parse_profile_topn_list(args.profile_topn)
@@ -746,13 +800,14 @@ def main() -> None:
 
     search_rows: List[Dict[str, Any]] = []
     best_by_dispatch_trigger: Dict[str, Dict[str, Any]] = {}
+    best_overall_by_dispatch: Dict[str, Dict[str, Any]] = {}
     best_main_by_dispatch: Dict[str, Dict[str, Any]] = {}
 
     for dispatch_mode in dispatch_modes:
         if dispatch_mode not in {"all", "routed"}:
             raise ValueError(f"Unsupported dispatch mode: {dispatch_mode}")
         for trigger_mode in trigger_modes:
-            if trigger_mode not in {"always", "margin_only", "confusion_only", "margin_confusion"}:
+            if trigger_mode not in CONFUSION_AWARE_ROUTER_TRIGGER_MODES:
                 raise ValueError(f"Unsupported trigger mode: {trigger_mode}")
             for margin_tau in margin_tau_list:
                 router_val = build_confusion_aware_router(
@@ -840,6 +895,8 @@ def main() -> None:
                         "method": "confusion_aware_v3_mvp",
                         "dispatch_mode": dispatch_mode,
                         "trigger_mode": trigger_mode,
+                        "confusion_scope": str(router_test["confusion_scope"]),
+                        "trigger_logic": str(router_test["trigger_logic"]),
                         "margin_tau": float(margin_tau),
                         "beta": float(beta),
                         "relation_variant": str(args.relation_variant),
@@ -850,12 +907,26 @@ def main() -> None:
                         "test_macro_global": float(v3_eval["global"]["test"]["macro"]),
                         "val_macro_classwise": float(v3_eval["classwise"]["val"]["macro"]),
                         "test_macro_classwise": float(v3_eval["classwise"]["test"]["macro"]),
+                        "val_micro_classwise": float(v3_eval["classwise"]["val"]["micro"]),
+                        "test_micro_classwise": float(v3_eval["classwise"]["test"]["micro"]),
+                        "val_samples_classwise": float(v3_eval["classwise"]["val"]["samples"]),
+                        "test_samples_classwise": float(v3_eval["classwise"]["test"]["samples"]),
+                        "val_map_classwise": float(v3_eval["classwise"]["val"]["mAP"]),
+                        "test_map_classwise": float(v3_eval["classwise"]["test"]["mAP"]),
                         "val_hard_classwise": float(v3_eval["classwise"]["val"]["hard"]),
                         "test_hard_classwise": float(v3_eval["classwise"]["test"]["hard"]),
                         "val_trigger_rate": float(router_val_stats["trigger_rate"]),
+                        "val_margin_trigger_rate": float(router_val_stats["margin_trigger_rate"]),
+                        "val_confusion_trigger_rate": float(router_val_stats["confusion_trigger_rate"]),
                         "test_trigger_rate": float(router_test_stats["trigger_rate"]),
-                        "test_avg_specialists_triggered": float(router_test_stats["avg_specialists_triggered"]),
+                        "test_margin_trigger_rate": float(router_test_stats["margin_trigger_rate"]),
+                        "test_confusion_trigger_rate": float(router_test_stats["confusion_trigger_rate"]),
+                        "test_avg_specialists_called": float(router_test_stats["avg_specialists_called"]),
+                        "test_avg_neighborhood_size": float(router_test_stats["avg_neighborhood_size"]),
+                        "test_avg_pairs_resolved": float(router_test_stats["avg_pairs_resolved"]),
+                        "test_avg_specialists_triggered": float(router_test_stats["avg_specialists_called_triggered"]),
                         "test_avg_neighborhood_size_triggered": float(router_test_stats["avg_neighborhood_size_triggered"]),
+                        "test_avg_pairs_resolved_triggered": float(router_test_stats["avg_pairs_resolved_triggered"]),
                     }
                     search_rows.append(row)
 
@@ -879,41 +950,69 @@ def main() -> None:
                         key=f"{dispatch_mode}::{trigger_mode}",
                         record=record,
                     )
-                    if trigger_mode == "margin_confusion":
+                    _update_best_record(best_overall_by_dispatch, key=dispatch_mode, record=record)
+                    if trigger_mode == main_trigger_mode:
                         _update_best_record(best_main_by_dispatch, key=dispatch_mode, record=record)
-
-    if "all" not in best_main_by_dispatch or "routed" not in best_main_by_dispatch:
-        raise RuntimeError("Failed to produce both all-specialists and routed-specialists v3 records.")
-
-    best_v3_all = best_main_by_dispatch["all"]
-    best_v3_routed = best_main_by_dispatch["routed"]
 
     candidate_recall = _candidate_recall_stats(slr_test_logits, test_base["labels"], int(args.topk))
     oracle_topk = _oracle_multilabel_metrics(slr_test_logits, test_base["labels"], int(args.topk))
 
-    low_margin_mask = np.asarray(best_v3_routed["router_test"]["top1_margin"], dtype=np.float32) < float(args.subset_margin_tau)
-    confusion_mask = np.asarray(best_v3_routed["router_test"]["confusion_trigger_mask"], dtype=np.bool_)
-    routed_trigger_mask = np.asarray(best_v3_routed["router_test"]["trigger_mask"], dtype=np.bool_)
-    reference_pairs = best_v3_routed["router_test"]["selected_pairs"]
+    router_probe_test = {
+        "broad": build_confusion_aware_router(
+            slr_test_logits,
+            confusion_neighborhoods=confusion_hard_negative_ids,
+            topk=int(args.topk),
+            margin_tau=0.0,
+            trigger_mode="confusion_only",
+            dispatch_mode="all",
+            router_anchor_topn=int(args.router_anchor_topn),
+            margin_fallback_topn=int(args.margin_fallback_topn),
+        ),
+        "top2": build_confusion_aware_router(
+            slr_test_logits,
+            confusion_neighborhoods=confusion_hard_negative_ids,
+            topk=int(args.topk),
+            margin_tau=0.0,
+            trigger_mode="confusion_top2_only",
+            dispatch_mode="all",
+            router_anchor_topn=int(args.router_anchor_topn),
+            margin_fallback_topn=int(args.margin_fallback_topn),
+        ),
+        "top3": build_confusion_aware_router(
+            slr_test_logits,
+            confusion_neighborhoods=confusion_hard_negative_ids,
+            topk=int(args.topk),
+            margin_tau=0.0,
+            trigger_mode="confusion_top3_only",
+            dispatch_mode="all",
+            router_anchor_topn=int(args.router_anchor_topn),
+            margin_fallback_topn=int(args.margin_fallback_topn),
+        ),
+    }
+    low_margin_mask = np.asarray(router_probe_test["broad"]["top1_margin"], dtype=np.float32) < float(args.subset_margin_tau)
+    subset_masks = {
+        "low_margin": low_margin_mask,
+        "broad_confusion": np.asarray(router_probe_test["broad"]["confusion_trigger_mask"], dtype=np.bool_),
+        "top2_confusion": np.asarray(router_probe_test["top2"]["confusion_trigger_mask"], dtype=np.bool_),
+        "top3_confusion": np.asarray(router_probe_test["top3"]["confusion_trigger_mask"], dtype=np.bool_),
+    }
 
     method_logits = {
         "slr_c": slr_test_logits.astype(np.float32),
         "v2_best": v2_test_logits.astype(np.float32),
-        "v3_all": np.asarray(best_v3_all["test_logits"], dtype=np.float32),
-        "v3_routed": np.asarray(best_v3_routed["test_logits"], dtype=np.float32),
     }
     method_scores = {
         "slr_c": slr_test_scores.astype(np.float32),
         "v2_best": v2_test_scores.astype(np.float32),
-        "v3_all": np.asarray(best_v3_all["test_scores"], dtype=np.float32),
-        "v3_routed": np.asarray(best_v3_routed["test_scores"], dtype=np.float32),
     }
     method_thresholds = {
         "slr_c": np.asarray(slr_eval["classwise"]["val"]["class_thresholds"], dtype=np.float32),
         "v2_best": np.asarray(v2_eval["classwise"]["val"]["class_thresholds"], dtype=np.float32),
-        "v3_all": np.asarray(best_v3_all["classwise"]["val"]["class_thresholds"], dtype=np.float32),
-        "v3_routed": np.asarray(best_v3_routed["classwise"]["val"]["class_thresholds"], dtype=np.float32),
     }
+    for key, record in best_by_dispatch_trigger.items():
+        method_logits[key] = np.asarray(record["test_logits"], dtype=np.float32)
+        method_scores[key] = np.asarray(record["test_scores"], dtype=np.float32)
+        method_thresholds[key] = np.asarray(record["classwise"]["val"]["class_thresholds"], dtype=np.float32)
 
     hard_subset_eval = {
         subset_name: {
@@ -925,53 +1024,69 @@ def main() -> None:
             )
             for method_name in method_scores
         }
-        for subset_name, subset_mask in {
-            "low_margin": low_margin_mask,
-            "confusion_hit": confusion_mask,
-            "routed_triggered": routed_trigger_mask,
-        }.items()
+        for subset_name, subset_mask in subset_masks.items()
     }
 
-    disambiguation_eval = {
-        method_name: {
-            "top2_accuracy_routed_triggered": _top2_disambiguation_accuracy(
-                slr_test_logits,
-                method_logits[method_name],
-                test_base["labels"],
-                sample_mask=routed_trigger_mask,
-            ),
-            "pairwise_ranking_routed_pairs": _pairwise_ranking_accuracy(
-                method_logits[method_name],
-                test_base["labels"],
-                reference_pairs,
-                sample_mask=routed_trigger_mask,
-            ),
+    disambiguation_eval = {}
+    for key, record in best_by_dispatch_trigger.items():
+        trigger_mask = np.asarray(record["router_test"]["trigger_mask"], dtype=np.bool_)
+        reference_pairs = record["router_test"]["selected_pairs"]
+        disambiguation_eval[key] = {
+            method_name: {
+                "top2_accuracy_triggered": _top2_disambiguation_accuracy(
+                    slr_test_logits,
+                    method_logits[method_name],
+                    test_base["labels"],
+                    sample_mask=trigger_mask,
+                ),
+                "pairwise_ranking_triggered_pairs": _pairwise_ranking_accuracy(
+                    method_logits[method_name],
+                    test_base["labels"],
+                    reference_pairs,
+                    sample_mask=trigger_mask,
+                ),
+            }
+            for method_name in ["slr_c", "v2_best", key]
         }
-        for method_name in method_logits
-    }
 
-    per_class_gains_all = class_gain_rows(
-        np.asarray(slr_eval["classwise"]["test"]["per_class_f1"], dtype=np.float32),
-        np.asarray(best_v3_all["classwise"]["test"]["per_class_f1"], dtype=np.float32),
-        class_names,
-        top_n=min(10, len(class_names)),
-    )
-    per_class_gains_routed = class_gain_rows(
-        np.asarray(slr_eval["classwise"]["test"]["per_class_f1"], dtype=np.float32),
-        np.asarray(best_v3_routed["classwise"]["test"]["per_class_f1"], dtype=np.float32),
-        class_names,
-        top_n=min(10, len(class_names)),
-    )
+    per_class_gains_vs_slr = {}
+    gain_source = best_main_by_dispatch if best_main_by_dispatch else best_overall_by_dispatch
+    for dispatch_mode, record in gain_source.items():
+        per_class_gains_vs_slr[dispatch_mode] = class_gain_rows(
+            np.asarray(slr_eval["classwise"]["test"]["per_class_f1"], dtype=np.float32),
+            np.asarray(record["classwise"]["test"]["per_class_f1"], dtype=np.float32),
+            class_names,
+            top_n=min(10, len(class_names)),
+        )
 
     comparison_rows = [
         _comparison_row("baseline", baseline_eval),
         _comparison_row("scenario_slr_c", slr_eval),
         _comparison_row("v2_best_reference", v2_eval),
-        _comparison_row("v3_all_specialists", best_v3_all),
-        _comparison_row("v3_routed_specialists", best_v3_routed),
     ]
+    for dispatch_mode in dispatch_modes:
+        record = best_main_by_dispatch.get(dispatch_mode) or best_overall_by_dispatch.get(dispatch_mode)
+        if record is None:
+            continue
+        trigger_mode = str(record["config"]["trigger_mode"])
+        if trigger_mode == "margin_confusion" and dispatch_mode in {"all", "routed"}:
+            label = f"v3_{dispatch_mode}_specialists"
+        else:
+            label = f"{dispatch_mode}_{trigger_mode}"
+        comparison_rows.append(_comparison_row(label, record))
+
+    router_best_rows = []
+    for dispatch_mode in dispatch_modes:
+        for trigger_mode in trigger_modes:
+            key = f"{dispatch_mode}::{trigger_mode}"
+            record = best_by_dispatch_trigger.get(key)
+            if record is None:
+                continue
+            router_best_rows.append(_router_best_row(key, record))
+
     _write_csv(output_dir / "phase1_comparison.csv", comparison_rows)
     _write_csv(output_dir / "v3_search_results.csv", search_rows)
+    _write_csv(output_dir / "router_best_by_config.csv", router_best_rows)
 
     diagnostics = {
         "candidate_recall_topk": candidate_recall,
@@ -989,33 +1104,42 @@ def main() -> None:
                 topk_mask=None,
             ),
         },
-        "v3_all": {
-            "verification_gap": _verification_gap(
-                slr_test_logits,
-                np.asarray(best_v3_all["resolved_test"]["resolved_scores"], dtype=np.float32),
-                test_base["labels"],
-                int(args.topk),
-            ),
-            "correlation": _pearson_correlation(
-                slr_test_logits,
-                np.asarray(best_v3_all["resolved_test"]["resolved_scores"], dtype=np.float32),
-                topk_mask=None,
-            ),
-        },
-        "v3_routed": {
-            "verification_gap": _verification_gap(
-                slr_test_logits,
-                np.asarray(best_v3_routed["resolved_test"]["resolved_scores"], dtype=np.float32),
-                test_base["labels"],
-                int(args.topk),
-            ),
-            "correlation": _pearson_correlation(
-                slr_test_logits,
-                np.asarray(best_v3_routed["resolved_test"]["resolved_scores"], dtype=np.float32),
-                topk_mask=None,
-            ),
+        "best_overall_by_dispatch": {
+            dispatch_mode: {
+                "config": record["config"],
+                "verification_gap": _verification_gap(
+                    slr_test_logits,
+                    np.asarray(record["resolved_test"]["resolved_scores"], dtype=np.float32),
+                    test_base["labels"],
+                    int(args.topk),
+                ),
+                "correlation": _pearson_correlation(
+                    slr_test_logits,
+                    np.asarray(record["resolved_test"]["resolved_scores"], dtype=np.float32),
+                    topk_mask=None,
+                ),
+            }
+            for dispatch_mode, record in best_overall_by_dispatch.items()
         },
     }
+    if best_main_by_dispatch:
+        diagnostics["best_main_by_dispatch"] = {
+            dispatch_mode: {
+                "config": record["config"],
+                "verification_gap": _verification_gap(
+                    slr_test_logits,
+                    np.asarray(record["resolved_test"]["resolved_scores"], dtype=np.float32),
+                    test_base["labels"],
+                    int(args.topk),
+                ),
+                "correlation": _pearson_correlation(
+                    slr_test_logits,
+                    np.asarray(record["resolved_test"]["resolved_scores"], dtype=np.float32),
+                    topk_mask=None,
+                ),
+            }
+            for dispatch_mode, record in best_main_by_dispatch.items()
+        }
 
     summary = {
         "run_dir": str(run_dir),
@@ -1040,6 +1164,7 @@ def main() -> None:
             "trigger_modes": trigger_modes,
             "margin_tau_list": margin_tau_list,
             "v3_beta_list": v3_beta_list,
+            "main_trigger_mode": main_trigger_mode,
             "router_anchor_topn": int(args.router_anchor_topn),
             "margin_fallback_topn": int(args.margin_fallback_topn),
             "max_routed_experts": int(args.max_routed_experts),
@@ -1057,35 +1182,49 @@ def main() -> None:
             "classwise": _bundle_summary(v2_eval["classwise"], include_per_class=True),
         },
         "v3_main": {
-            "all": {
-                "config": best_v3_all["config"],
-                "global": _bundle_summary(best_v3_all["global"], include_per_class=True),
-                "classwise": _bundle_summary(best_v3_all["classwise"], include_per_class=True),
-                "router_test_stats": best_v3_all["router_test_stats"],
-            },
-            "routed": {
-                "config": best_v3_routed["config"],
-                "global": _bundle_summary(best_v3_routed["global"], include_per_class=True),
-                "classwise": _bundle_summary(best_v3_routed["classwise"], include_per_class=True),
-                "router_test_stats": best_v3_routed["router_test_stats"],
-            },
+            dispatch_mode: {
+                "config": record["config"],
+                "global": _bundle_summary(record["global"], include_per_class=True),
+                "classwise": _bundle_summary(record["classwise"], include_per_class=True),
+                "router_test_stats": record["router_test_stats"],
+            }
+            for dispatch_mode, record in best_main_by_dispatch.items()
+        },
+        "best_overall_by_dispatch": {
+            dispatch_mode: {
+                "config": record["config"],
+                "global": _bundle_summary(record["global"], include_per_class=True),
+                "classwise": _bundle_summary(record["classwise"], include_per_class=True),
+                "router_test_stats": record["router_test_stats"],
+            }
+            for dispatch_mode, record in best_overall_by_dispatch.items()
         },
         "best_by_dispatch_trigger": {
             key: {
                 "config": record["config"],
                 "classwise": _bundle_summary(record["classwise"], include_per_class=False),
                 "router_test_stats": record["router_test_stats"],
+                "router_test": {
+                    "trigger_logic": record["router_test"]["trigger_logic"],
+                    "confusion_scope": record["router_test"]["confusion_scope"],
+                    "trigger_mode": record["router_test"]["trigger_mode"],
+                },
             }
             for key, record in best_by_dispatch_trigger.items()
         },
+        "router_best_by_config": router_best_rows,
         "phase1_comparison": comparison_rows,
         "hard_subset_eval": hard_subset_eval,
         "disambiguation_eval": disambiguation_eval,
         "diagnostics": diagnostics,
-        "per_class_gains_vs_slr": {
-            "v3_all": per_class_gains_all,
-            "v3_routed": per_class_gains_routed,
+        "subset_masks": {
+            subset_name: {
+                "num_samples": int(np.asarray(subset_mask, dtype=np.bool_).sum()),
+                "ratio": float(np.asarray(subset_mask, dtype=np.bool_).mean()),
+            }
+            for subset_name, subset_mask in subset_masks.items()
         },
+        "per_class_gains_vs_slr": per_class_gains_vs_slr,
     }
     (output_dir / "summary.json").write_text(
         json.dumps(_json_ready(summary), ensure_ascii=False, indent=2),

@@ -91,6 +91,100 @@ def test_build_confusion_aware_router_routes_to_strongest_specialist() -> None:
     assert router["expert_weights"] == [{"object": 1.0}]
 
 
+def test_build_confusion_aware_router_top2_and_top3_scopes_differ() -> None:
+    candidate_logits = np.asarray([[3.0, 2.9, 2.8, 0.1]], dtype=np.float32)
+    confusion_neighborhoods = [
+        [2],
+        [2],
+        [0, 1],
+        [],
+    ]
+
+    top2_router = build_confusion_aware_router(
+        candidate_logits,
+        confusion_neighborhoods=confusion_neighborhoods,
+        topk=3,
+        margin_tau=0.05,
+        trigger_mode="confusion_top2_only",
+        dispatch_mode="all",
+    )
+    top3_router = build_confusion_aware_router(
+        candidate_logits,
+        confusion_neighborhoods=confusion_neighborhoods,
+        topk=3,
+        margin_tau=0.05,
+        trigger_mode="confusion_top3_only",
+        dispatch_mode="all",
+    )
+
+    np.testing.assert_array_equal(top2_router["trigger_mask"], np.asarray([False]))
+    assert top2_router["selected_neighborhoods"] == [[]]
+    assert top2_router["selected_pairs"] == [[]]
+    assert top2_router["confusion_scope"] == "top2"
+
+    np.testing.assert_array_equal(top3_router["trigger_mask"], np.asarray([True]))
+    assert top3_router["selected_neighborhoods"] == [[0, 1, 2]]
+    assert top3_router["selected_pairs"] == [[(0, 2), (1, 2)]]
+    assert top3_router["confusion_scope"] == "top3"
+
+
+def test_build_confusion_aware_router_margin_and_confusion_top2_requires_both() -> None:
+    candidate_logits = np.asarray(
+        [
+            [2.0, 0.1, 1.9],
+            [2.5, 2.0, 0.2],
+        ],
+        dtype=np.float32,
+    )
+    confusion_neighborhoods = [
+        [2],
+        [0],
+        [0],
+    ]
+
+    router = build_confusion_aware_router(
+        candidate_logits,
+        confusion_neighborhoods=confusion_neighborhoods,
+        topk=2,
+        margin_tau=0.2,
+        trigger_mode="margin_and_confusion_top2",
+        dispatch_mode="all",
+    )
+
+    np.testing.assert_array_equal(router["margin_trigger_mask"], np.asarray([True, False]))
+    np.testing.assert_array_equal(router["confusion_trigger_mask"], np.asarray([True, True]))
+    np.testing.assert_array_equal(router["trigger_mask"], np.asarray([True, False]))
+    assert router["selected_neighborhoods"] == [[0, 2], []]
+    assert router["selected_pairs"] == [[(0, 2)], []]
+    assert router["trigger_logic"] == "margin_and_confusion"
+
+
+def test_build_confusion_aware_router_broad_scope_keeps_full_neighborhood_pairs() -> None:
+    candidate_logits = np.asarray([[3.0, 2.9, 2.8, 0.1]], dtype=np.float32)
+    confusion_neighborhoods = [
+        [2],
+        [2],
+        [0, 1],
+        [],
+    ]
+
+    router = build_confusion_aware_router(
+        candidate_logits,
+        confusion_neighborhoods=confusion_neighborhoods,
+        topk=3,
+        margin_tau=0.05,
+        trigger_mode="margin_confusion",
+        dispatch_mode="all",
+        router_anchor_topn=3,
+    )
+
+    np.testing.assert_array_equal(router["trigger_mask"], np.asarray([True]))
+    assert router["selected_neighborhoods"] == [[0, 1, 2]]
+    assert router["selected_pairs"] == [[(0, 1), (0, 2), (1, 2)]]
+    assert router["confusion_hit_pairs"] == [[(0, 2), (1, 2)]]
+    assert router["confusion_scope"] == "broad"
+
+
 def test_resolve_routed_specialist_evidence_only_updates_selected_neighborhood() -> None:
     relation_bundle = {
         "selected_experts": ["object", "scene"],
