@@ -1441,6 +1441,369 @@ def compute_pairwise_comparative_scores(
     return output
 
 
+def _sorted_topk_candidate_indices(
+    candidate_logits: np.ndarray,
+    topk: int,
+) -> np.ndarray:
+    scores = np.asarray(candidate_logits, dtype=np.float32)
+    if scores.ndim != 2:
+        raise ValueError(f"Expected [num_samples, num_classes], got shape {scores.shape}")
+
+    num_classes = scores.shape[1]
+    topk = max(1, min(int(topk), num_classes))
+    topk_idx = np.argpartition(-scores, kth=topk - 1, axis=1)[:, :topk]
+    topk_scores = np.take_along_axis(scores, topk_idx, axis=1)
+    order = np.argsort(-topk_scores, axis=1)
+    return np.take_along_axis(topk_idx, order, axis=1)
+
+
+def _candidate_pairs_from_neighborhood(neighborhood: Sequence[int]) -> List[tuple[int, int]]:
+    output: List[tuple[int, int]] = []
+    ordered = [int(class_idx) for class_idx in neighborhood]
+    for left_idx, class_i in enumerate(ordered):
+        for class_j in ordered[left_idx + 1 :]:
+            if class_i == class_j:
+                continue
+            output.append((int(class_i), int(class_j)))
+    return output
+
+
+def build_confusion_aware_router(
+    candidate_logits: np.ndarray,
+    confusion_neighborhoods: Sequence[Sequence[int]],
+    pairwise_profiles: Mapping[str, Any] | None = None,
+    selected_experts: Sequence[str] | None = None,
+    topk: int = 10,
+    margin_tau: float = 0.5,
+    trigger_mode: str = "margin_confusion",
+    dispatch_mode: str = "all",
+    router_anchor_topn: int = 3,
+    margin_fallback_topn: int = 2,
+    max_routed_experts: int = 2,
+) -> Dict[str, Any]:
+    experts = _resolve_selected_experts(
+        selected_experts if selected_experts is not None else pairwise_profiles.get("selected_experts")
+        if pairwise_profiles is not None
+        else None
+    )
+    scores = np.asarray(candidate_logits, dtype=np.float32)
+    if scores.ndim != 2 or scores.shape[1] < 2:
+        raise ValueError(f"Expected [num_samples, num_classes>=2], got shape {scores.shape}")
+
+    num_samples, num_classes = scores.shape
+    if len(confusion_neighborhoods) != num_classes:
+        raise ValueError(
+            f"confusion_neighborhoods length {len(confusion_neighborhoods)} != num_classes {num_classes}"
+        )
+
+    trigger_mode = str(trigger_mode).strip().lower()
+    dispatch_mode = str(dispatch_mode).strip().lower()
+    if trigger_mode not in {"always", "margin_only", "confusion_only", "margin_confusion"}:
+        raise ValueError(f"Unsupported trigger_mode: {trigger_mode}")
+    if dispatch_mode not in {"all", "routed"}:
+        raise ValueError(f"Unsupported dispatch_mode: {dispatch_mode}")
+    if dispatch_mode == "routed" and pairwise_profiles is None:
+        raise ValueError("pairwise_profiles is required when dispatch_mode='routed'.")
+
+    ordered_topk = _sorted_topk_candidate_indices(scores, topk=topk)
+    top1 = ordered_topk[:, 0]
+    top2 = ordered_topk[:, 1]
+    margins = np.maximum(scores[np.arange(num_samples), top1] - scores[np.arange(num_samples), top2], 0.0)
+
+    trigger_mask = np.zeros(num_samples, dtype=np.bool_)
+    margin_trigger_mask = margins < float(margin_tau)
+    confusion_trigger_mask = np.zeros(num_samples, dtype=np.bool_)
+
+    selected_neighborhoods: List[List[int]] = []
+    selected_pairs: List[List[tuple[int, int]]] = []
+    selected_expert_rows: List[List[str]] = []
+    expert_weight_rows: List[Dict[str, float]] = []
+    confusion_hit_pairs: List[List[tuple[int, int]]] = []
+
+    for sample_idx in range(num_samples):
+        ordered = [int(idx) for idx in ordered_topk[sample_idx].tolist()]
+        confusion_pair_set: set[tuple[int, int]] = set()
+        confusion_neighborhood_set: set[int] = set()
+        anchor_limit = max(1, min(int(router_anchor_topn), len(ordered)))
+
+        for anchor in ordered[:anchor_limit]:
+            anchor_neighbors = {
+                int(idx)
+                for idx in confusion_neighborhoods[int(anchor)]
+                if 0 <= int(idx) < num_classes and int(idx) != int(anchor)
+            }
+            for other in ordered:
+                if int(other) == int(anchor):
+                    continue
+                reverse_neighbors = {
+                    int(idx)
+                    for idx in confusion_neighborhoods[int(other)]
+                    if 0 <= int(idx) < num_classes and int(idx) != int(other)
+                }
+                if int(other) in anchor_neighbors or int(anchor) in reverse_neighbors:
+                    pair = tuple(sorted((int(anchor), int(other))))
+                    confusion_pair_set.add(pair)
+                    confusion_neighborhood_set.add(int(anchor))
+                    confusion_neighborhood_set.add(int(other))
+
+        confusion_hit = len(confusion_pair_set) > 0
+        confusion_trigger_mask[sample_idx] = bool(confusion_hit)
+
+        if trigger_mode == "always":
+            trigger = True
+        elif trigger_mode == "margin_only":
+            trigger = bool(margin_trigger_mask[sample_idx])
+        elif trigger_mode == "confusion_only":
+            trigger = bool(confusion_hit)
+        else:
+            trigger = bool(margin_trigger_mask[sample_idx] or confusion_hit)
+
+        neighborhood: List[int] = []
+        pairs: List[tuple[int, int]] = []
+        routed_experts: List[str] = []
+        weight_map: Dict[str, float] = {}
+
+        if trigger:
+            if confusion_hit:
+                neighborhood = [class_idx for class_idx in ordered if int(class_idx) in confusion_neighborhood_set]
+            if len(neighborhood) < 2:
+                fallback_topn = max(2, min(int(margin_fallback_topn), len(ordered)))
+                neighborhood = ordered[:fallback_topn]
+            pairs = _candidate_pairs_from_neighborhood(neighborhood)
+            if len(pairs) == 0 and len(ordered) >= 2:
+                neighborhood = ordered[:2]
+                pairs = _candidate_pairs_from_neighborhood(neighborhood)
+
+            if dispatch_mode == "all":
+                routed_experts = list(experts)
+                uniform_weight = 1.0 / float(len(routed_experts))
+                weight_map = {expert: uniform_weight for expert in routed_experts}
+            else:
+                expert_strengths: Dict[str, float] = {}
+                for expert in experts:
+                    expert_profile = pairwise_profiles["profiles"][expert]
+                    strength = 0.0
+                    for class_i, class_j in pairs:
+                        weight_i = np.asarray(expert_profile["weights"][class_i][class_j], dtype=np.float32)
+                        weight_j = np.asarray(expert_profile["weights"][class_j][class_i], dtype=np.float32)
+                        if weight_i.size > 0:
+                            strength += float(np.abs(weight_i).sum())
+                        if weight_j.size > 0:
+                            strength += float(np.abs(weight_j).sum())
+                    expert_strengths[expert] = float(strength)
+
+                ranked_experts = [
+                    expert
+                    for expert, _ in sorted(expert_strengths.items(), key=lambda item: (-float(item[1]), str(item[0])))
+                ]
+                positive_ranked = [expert for expert in ranked_experts if float(expert_strengths[expert]) > 0.0]
+                if positive_ranked:
+                    routed_experts = positive_ranked[: max(1, int(max_routed_experts))]
+                else:
+                    routed_experts = ranked_experts[: max(1, min(int(max_routed_experts), len(ranked_experts)))]
+                if not routed_experts:
+                    routed_experts = list(experts)
+
+                routed_total = float(sum(expert_strengths[expert] for expert in routed_experts))
+                if routed_total > 0.0:
+                    weight_map = {
+                        expert: float(expert_strengths[expert]) / routed_total
+                        for expert in routed_experts
+                    }
+                else:
+                    uniform_weight = 1.0 / float(len(routed_experts))
+                    weight_map = {expert: uniform_weight for expert in routed_experts}
+
+        trigger_mask[sample_idx] = bool(trigger)
+        selected_neighborhoods.append([int(class_idx) for class_idx in neighborhood])
+        selected_pairs.append([(int(class_i), int(class_j)) for class_i, class_j in pairs])
+        selected_expert_rows.append([str(expert) for expert in routed_experts])
+        expert_weight_rows.append({str(key): float(value) for key, value in weight_map.items()})
+        confusion_hit_pairs.append([(int(class_i), int(class_j)) for class_i, class_j in sorted(confusion_pair_set)])
+
+    return {
+        "topk_indices": ordered_topk.astype(np.int64),
+        "top1_margin": margins.astype(np.float32),
+        "trigger_mask": trigger_mask,
+        "margin_trigger_mask": margin_trigger_mask,
+        "confusion_trigger_mask": confusion_trigger_mask,
+        "selected_neighborhoods": selected_neighborhoods,
+        "selected_pairs": selected_pairs,
+        "selected_experts": selected_expert_rows,
+        "expert_weights": expert_weight_rows,
+        "confusion_hit_pairs": confusion_hit_pairs,
+        "trigger_mode": trigger_mode,
+        "dispatch_mode": dispatch_mode,
+        "margin_tau": float(margin_tau),
+    }
+
+
+def compute_specialist_pairwise_evidence(
+    expert_phrase_scores: Mapping[str, np.ndarray],
+    pairwise_profiles: Mapping[str, Any],
+    router_outputs: Mapping[str, Any],
+    selected_experts: Sequence[str] | None = None,
+    activation_topm: int | None = 5,
+    activation_positive_only: bool = True,
+) -> Dict[str, Any]:
+    experts = _resolve_selected_experts(
+        selected_experts if selected_experts is not None else pairwise_profiles.get("selected_experts")
+    )
+    trigger_mask = np.asarray(router_outputs.get("trigger_mask", []), dtype=np.bool_)
+    selected_pairs = list(router_outputs.get("selected_pairs", []))
+    if trigger_mask.ndim != 1:
+        raise ValueError("router_outputs['trigger_mask'] must be a 1D array-like object.")
+    if len(selected_pairs) != int(trigger_mask.shape[0]):
+        raise ValueError(
+            f"router_outputs['selected_pairs'] length {len(selected_pairs)} != trigger rows {trigger_mask.shape[0]}"
+        )
+
+    active_scores: Dict[str, np.ndarray] = {}
+    num_samples = None
+    num_classes = None
+    for expert in experts:
+        sample_scores = np.asarray(expert_phrase_scores[expert], dtype=np.float32)
+        working = np.maximum(sample_scores, 0.0) if activation_positive_only else sample_scores
+        active_scores[expert] = _topk_row_sparsify(working, top_k=activation_topm)
+        if num_samples is None:
+            num_samples = int(active_scores[expert].shape[0])
+        elif int(active_scores[expert].shape[0]) != int(num_samples):
+            raise ValueError("All expert_phrase_scores must share the same number of rows.")
+
+        expert_profile = pairwise_profiles["profiles"][expert]
+        relation_matrix = np.asarray(expert_profile["relation_matrix"], dtype=np.float32)
+        if num_classes is None:
+            num_classes = int(relation_matrix.shape[0])
+
+    if num_samples is None or num_classes is None:
+        raise ValueError("No experts were provided for specialist evidence computation.")
+    if int(trigger_mask.shape[0]) != int(num_samples):
+        raise ValueError(f"router trigger rows {trigger_mask.shape[0]} != sample rows {num_samples}")
+
+    expert_scores = {
+        expert: np.zeros((num_samples, num_classes), dtype=np.float32)
+        for expert in experts
+    }
+    pair_counts = np.zeros((num_samples, num_classes), dtype=np.float32)
+
+    for sample_idx in range(num_samples):
+        if not bool(trigger_mask[sample_idx]):
+            continue
+        for class_i, class_j in selected_pairs[sample_idx]:
+            class_i = int(class_i)
+            class_j = int(class_j)
+            pair_counts[sample_idx, class_i] += 1.0
+            pair_counts[sample_idx, class_j] += 1.0
+
+            for expert in experts:
+                expert_profile = pairwise_profiles["profiles"][expert]
+                active = active_scores[expert][sample_idx]
+
+                idx_i = np.asarray(expert_profile["indices"][class_i][class_j], dtype=np.int64)
+                weight_i = np.asarray(expert_profile["weights"][class_i][class_j], dtype=np.float32)
+                score_i = float(active[idx_i] @ weight_i) if idx_i.size > 0 else 0.0
+
+                idx_j = np.asarray(expert_profile["indices"][class_j][class_i], dtype=np.int64)
+                weight_j = np.asarray(expert_profile["weights"][class_j][class_i], dtype=np.float32)
+                score_j = float(active[idx_j] @ weight_j) if idx_j.size > 0 else 0.0
+
+                margin = float(score_i - score_j)
+                expert_scores[expert][sample_idx, class_i] += margin
+                expert_scores[expert][sample_idx, class_j] -= margin
+
+    return {
+        "selected_experts": experts,
+        "expert_scores": expert_scores,
+        "pair_counts": pair_counts,
+    }
+
+
+def resolve_routed_specialist_evidence(
+    specialist_evidence: Mapping[str, Any],
+    router_outputs: Mapping[str, Any],
+    selected_experts: Sequence[str] | None = None,
+    aggregate_mode: str = "mean",
+) -> Dict[str, Any]:
+    experts = _resolve_selected_experts(
+        selected_experts if selected_experts is not None else specialist_evidence.get("selected_experts")
+    )
+    expert_scores = specialist_evidence.get("expert_scores", {})
+    pair_counts = np.asarray(specialist_evidence.get("pair_counts", []), dtype=np.float32)
+    trigger_mask = np.asarray(router_outputs.get("trigger_mask", []), dtype=np.bool_)
+    selected_expert_rows = list(router_outputs.get("selected_experts", []))
+    expert_weight_rows = list(router_outputs.get("expert_weights", []))
+
+    if pair_counts.ndim != 2:
+        raise ValueError("specialist_evidence['pair_counts'] must be a 2D array.")
+    if int(trigger_mask.shape[0]) != int(pair_counts.shape[0]):
+        raise ValueError(f"router trigger rows {trigger_mask.shape[0]} != pair_counts rows {pair_counts.shape[0]}")
+    if len(selected_expert_rows) != int(trigger_mask.shape[0]):
+        raise ValueError(
+            f"router_outputs['selected_experts'] length {len(selected_expert_rows)} != trigger rows {trigger_mask.shape[0]}"
+        )
+    if len(expert_weight_rows) != int(trigger_mask.shape[0]):
+        raise ValueError(
+            f"router_outputs['expert_weights'] length {len(expert_weight_rows)} != trigger rows {trigger_mask.shape[0]}"
+        )
+
+    resolved_scores = np.zeros_like(pair_counts, dtype=np.float32)
+    weighted_expert_scores = {
+        expert: np.zeros_like(pair_counts, dtype=np.float32)
+        for expert in experts
+    }
+
+    for sample_idx in range(pair_counts.shape[0]):
+        if not bool(trigger_mask[sample_idx]):
+            continue
+        sample_experts = [str(expert) for expert in selected_expert_rows[sample_idx] if str(expert) in experts]
+        if not sample_experts:
+            continue
+        sample_weights = {
+            str(expert): float(weight)
+            for expert, weight in expert_weight_rows[sample_idx].items()
+            if str(expert) in sample_experts
+        }
+        if not sample_weights:
+            uniform_weight = 1.0 / float(len(sample_experts))
+            sample_weights = {expert: uniform_weight for expert in sample_experts}
+
+        total_weight = float(sum(sample_weights.values()))
+        if total_weight <= 0.0:
+            uniform_weight = 1.0 / float(len(sample_experts))
+            sample_weights = {expert: uniform_weight for expert in sample_experts}
+        else:
+            sample_weights = {
+                expert: float(weight) / total_weight
+                for expert, weight in sample_weights.items()
+            }
+
+        for expert in sample_experts:
+            sample_score = np.asarray(expert_scores[expert][sample_idx], dtype=np.float32)
+            weighted_score = float(sample_weights[expert]) * sample_score
+            weighted_expert_scores[expert][sample_idx] = weighted_score.astype(np.float32)
+            resolved_scores[sample_idx] += weighted_score
+
+    if aggregate_mode == "mean":
+        valid_mask = pair_counts > 0.0
+        resolved_scores[valid_mask] = resolved_scores[valid_mask] / pair_counts[valid_mask]
+        for expert in experts:
+            weighted_expert_scores[expert][valid_mask] = (
+                weighted_expert_scores[expert][valid_mask] / pair_counts[valid_mask]
+            )
+    elif aggregate_mode != "sum":
+        raise ValueError(f"Unsupported aggregate_mode: {aggregate_mode}")
+
+    return {
+        "selected_experts": experts,
+        "resolved_scores": resolved_scores.astype(np.float32),
+        "expert_scores": {
+            expert: scores.astype(np.float32)
+            for expert, scores in weighted_expert_scores.items()
+        },
+        "pair_counts": pair_counts.astype(np.float32),
+    }
+
+
 def build_margin_aware_gate(
     candidate_logits: np.ndarray,
     mode: str = "exp",
