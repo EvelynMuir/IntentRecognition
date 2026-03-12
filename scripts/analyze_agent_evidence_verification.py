@@ -100,7 +100,14 @@ def _parse_args() -> argparse.Namespace:
         "--slr-source",
         type=str,
         default="scenario",
-        choices=["lexical", "canonical", "scenario", "discriminative", "lexical_plus_canonical"],
+        choices=[
+            "lexical",
+            "canonical",
+            "scenario",
+            "discriminative",
+            "lexical_plus_canonical",
+            "short_plus_detailed",
+        ],
     )
     parser.add_argument(
         "--beta-list",
@@ -449,25 +456,59 @@ def main() -> None:
 
     slr_source = _normalize_source_name(args.slr_source)
     text_pools = _build_text_pools(class_names, gemini_file)
-    if slr_source not in text_pools:
-        raise ValueError(f"Unsupported SLR source: {slr_source}")
-    wrap_prompt = slr_source in {"lexical", "canonical"}
-    slr_text_embeddings = _encode_text_pool(
-        clip_model,
-        text_pools[slr_source],
-        wrap_prompt=wrap_prompt,
-    )
+    if slr_source == "short_plus_detailed":
+        lexical_embeddings = _encode_text_pool(
+            clip_model,
+            text_pools["lexical"],
+            wrap_prompt=True,
+        )
+        canonical_embeddings = _encode_text_pool(
+            clip_model,
+            text_pools["canonical"],
+            wrap_prompt=True,
+        )
+        lexical_val_prior_logits = _text_logits_from_features(
+            val_clip["features"],
+            lexical_embeddings,
+            clip_logit_scale,
+        )
+        lexical_test_prior_logits = _text_logits_from_features(
+            test_clip["features"],
+            lexical_embeddings,
+            clip_logit_scale,
+        )
+        canonical_val_prior_logits = _text_logits_from_features(
+            val_clip["features"],
+            canonical_embeddings,
+            clip_logit_scale,
+        )
+        canonical_test_prior_logits = _text_logits_from_features(
+            test_clip["features"],
+            canonical_embeddings,
+            clip_logit_scale,
+        )
+        slr_val_prior_logits = 0.5 * (lexical_val_prior_logits + canonical_val_prior_logits)
+        slr_test_prior_logits = 0.5 * (lexical_test_prior_logits + canonical_test_prior_logits)
+    else:
+        if slr_source not in text_pools:
+            raise ValueError(f"Unsupported SLR source: {slr_source}")
+        wrap_prompt = slr_source in {"lexical", "canonical"}
+        slr_text_embeddings = _encode_text_pool(
+            clip_model,
+            text_pools[slr_source],
+            wrap_prompt=wrap_prompt,
+        )
 
-    slr_val_prior_logits = _text_logits_from_features(
-        val_clip["features"],
-        slr_text_embeddings,
-        clip_logit_scale,
-    )
-    slr_test_prior_logits = _text_logits_from_features(
-        test_clip["features"],
-        slr_text_embeddings,
-        clip_logit_scale,
-    )
+        slr_val_prior_logits = _text_logits_from_features(
+            val_clip["features"],
+            slr_text_embeddings,
+            clip_logit_scale,
+        )
+        slr_test_prior_logits = _text_logits_from_features(
+            test_clip["features"],
+            slr_text_embeddings,
+            clip_logit_scale,
+        )
 
     slr_val_logits = apply_topk_rerank_fusion(
         val_base["logits"],

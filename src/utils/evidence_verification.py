@@ -983,6 +983,551 @@ def build_expert_bank_statistics(
     }
 
 
+def _resolve_selected_experts(selected_experts: Sequence[str] | None = None) -> List[str]:
+    experts = list(selected_experts) if selected_experts is not None else list(EXPERT_NAMES)
+    experts = [expert for expert in experts if expert in EXPERT_NAMES]
+    if not experts:
+        raise ValueError("selected_experts must include at least one valid expert.")
+    return experts
+
+
+def _build_global_profile_mask(
+    relation_matrices: Mapping[str, np.ndarray],
+    selected_experts: Sequence[str] | None = None,
+    top_n: int | None = None,
+    by_abs: bool = False,
+) -> Dict[str, np.ndarray]:
+    experts = _resolve_selected_experts(selected_experts)
+    masks = {
+        expert: np.ones_like(np.asarray(relation_matrices[expert], dtype=np.float32), dtype=np.float32)
+        for expert in experts
+    }
+    if top_n is None:
+        return masks
+
+    keep_n = int(top_n)
+    if keep_n <= 0:
+        return {
+            expert: np.zeros_like(np.asarray(relation_matrices[expert], dtype=np.float32), dtype=np.float32)
+            for expert in experts
+        }
+
+    class_count = next(iter(masks.values())).shape[0]
+    total_elements = int(sum(mask.shape[1] for mask in masks.values()))
+    if keep_n >= total_elements:
+        return masks
+
+    for expert in experts:
+        masks[expert].fill(0.0)
+
+    offsets: Dict[str, tuple[int, int]] = {}
+    start = 0
+    for expert in experts:
+        width = int(masks[expert].shape[1])
+        offsets[expert] = (start, start + width)
+        start += width
+
+    for class_idx in range(class_count):
+        ranking_chunks: List[np.ndarray] = []
+        raw_chunks: List[np.ndarray] = []
+        for expert in experts:
+            values = np.asarray(relation_matrices[expert][class_idx], dtype=np.float32)
+            raw_chunks.append(values)
+            ranking_chunks.append(np.abs(values) if by_abs else values)
+
+        ranking_values = np.concatenate(ranking_chunks, axis=0)
+        raw_values = np.concatenate(raw_chunks, axis=0)
+        if by_abs:
+            candidate_ids = np.where(ranking_values > 0.0)[0]
+            candidate_scores = ranking_values[candidate_ids]
+        else:
+            candidate_ids = np.where(raw_values > 0.0)[0]
+            candidate_scores = raw_values[candidate_ids]
+
+        if candidate_ids.size == 0:
+            continue
+
+        if candidate_ids.size <= keep_n:
+            chosen_ids = candidate_ids
+        else:
+            order = np.argsort(-candidate_scores)[:keep_n]
+            chosen_ids = candidate_ids[order]
+
+        for expert in experts:
+            left, right = offsets[expert]
+            local_ids = chosen_ids[(chosen_ids >= left) & (chosen_ids < right)] - left
+            if local_ids.size == 0:
+                continue
+            masks[expert][class_idx, local_ids] = 1.0
+
+    return masks
+
+
+def _topk_row_sparsify(matrix: np.ndarray, top_k: int | None = None) -> np.ndarray:
+    values = np.asarray(matrix, dtype=np.float32)
+    if top_k is None:
+        return values.copy()
+    if values.ndim != 2:
+        raise ValueError(f"Expected 2D matrix, got shape {values.shape}")
+    if values.shape[1] == 0:
+        return values.copy()
+
+    keep_k = max(0, min(int(top_k), values.shape[1]))
+    output = np.zeros_like(values, dtype=np.float32)
+    if keep_k == 0:
+        return output
+    if keep_k >= values.shape[1]:
+        return values.copy()
+
+    row_idx = np.arange(values.shape[0])[:, None]
+    top_idx = np.argpartition(-values, kth=keep_k - 1, axis=1)[:, :keep_k]
+    output[row_idx, top_idx] = values[row_idx, top_idx]
+    return output
+
+
+def _build_hard_negative_ids_from_positive_means(
+    positive_mean: Mapping[str, np.ndarray],
+    selected_experts: Sequence[str] | None = None,
+    top_n: int = 3,
+) -> List[List[int]]:
+    experts = _resolve_selected_experts(selected_experts)
+    if top_n <= 0:
+        return [[] for _ in range(next(iter(positive_mean.values())).shape[0])]
+
+    stacked = np.concatenate(
+        [np.asarray(positive_mean[expert], dtype=np.float32) for expert in experts],
+        axis=1,
+    )
+    norms = np.linalg.norm(stacked, axis=1, keepdims=True)
+    normalized = stacked / np.maximum(norms, 1e-8)
+    similarity = normalized @ normalized.T
+    np.fill_diagonal(similarity, -np.inf)
+
+    keep_n = min(int(top_n), max(similarity.shape[1] - 1, 0))
+    output: List[List[int]] = []
+    for class_idx in range(similarity.shape[0]):
+        if keep_n <= 0:
+            output.append([])
+            continue
+        order = np.argsort(-similarity[class_idx])[:keep_n]
+        output.append([int(idx) for idx in order.tolist()])
+    return output
+
+
+def learn_data_driven_relations(
+    expert_phrase_scores: Mapping[str, np.ndarray],
+    labels: np.ndarray,
+    selected_experts: Sequence[str] | None = None,
+    relation_mode: str = "pos_neg_diff",
+    profile_topn: int | None = 10,
+    hard_negative_topn: int = 3,
+    hard_negative_ids: Sequence[Sequence[int]] | None = None,
+    positive_only_scores: bool = True,
+) -> Dict[str, Any]:
+    experts = _resolve_selected_experts(selected_experts)
+    label_matrix = (np.asarray(labels, dtype=np.float32) > 0.0).astype(np.float32)
+    if label_matrix.ndim != 2:
+        raise ValueError(f"Expected 2D labels, got shape {label_matrix.shape}")
+
+    class_count = label_matrix.shape[1]
+    pos_counts = np.maximum(label_matrix.sum(axis=0, keepdims=True).T, 1.0)
+    neg_indicator = 1.0 - label_matrix
+    neg_counts = np.maximum(neg_indicator.sum(axis=0, keepdims=True).T, 1.0)
+
+    positive_mean: Dict[str, np.ndarray] = {}
+    negative_mean: Dict[str, np.ndarray] = {}
+    for expert in experts:
+        scores = np.asarray(expert_phrase_scores[expert], dtype=np.float32)
+        if scores.ndim != 2:
+            raise ValueError(f"Expected 2D expert scores for {expert}, got shape {scores.shape}")
+        if scores.shape[0] != label_matrix.shape[0]:
+            raise ValueError(
+                f"expert_phrase_scores[{expert}] rows {scores.shape[0]} != labels rows {label_matrix.shape[0]}"
+            )
+        working_scores = np.maximum(scores, 0.0) if positive_only_scores else scores
+        positive_mean[expert] = (label_matrix.T @ working_scores) / pos_counts
+        negative_mean[expert] = (neg_indicator.T @ working_scores) / neg_counts
+
+    if hard_negative_ids is None:
+        hard_negative_rows = _build_hard_negative_ids_from_positive_means(
+            positive_mean,
+            selected_experts=experts,
+            top_n=int(hard_negative_topn),
+        )
+    else:
+        hard_negative_rows = [
+            [int(idx) for idx in row if 0 <= int(idx) < class_count]
+            for row in hard_negative_ids
+        ]
+        if len(hard_negative_rows) != class_count:
+            raise ValueError(
+                f"hard_negative_ids length {len(hard_negative_rows)} != num classes {class_count}"
+            )
+
+    hard_negative_mean: Dict[str, np.ndarray] = {}
+    for expert in experts:
+        rows: List[np.ndarray] = []
+        expert_positive = np.asarray(positive_mean[expert], dtype=np.float32)
+        for class_idx, negatives in enumerate(hard_negative_rows):
+            valid_negatives = [neg for neg in negatives if neg != class_idx]
+            if not valid_negatives:
+                rows.append(np.zeros(expert_positive.shape[1], dtype=np.float32))
+                continue
+            rows.append(expert_positive[valid_negatives].mean(axis=0).astype(np.float32))
+        hard_negative_mean[expert] = np.stack(rows, axis=0)
+
+    support: Dict[str, np.ndarray] = {}
+    contradiction: Dict[str, np.ndarray] = {}
+    for expert in experts:
+        mu_pos = np.asarray(positive_mean[expert], dtype=np.float32)
+        mu_neg = np.asarray(negative_mean[expert], dtype=np.float32)
+        mu_hard = np.asarray(hard_negative_mean[expert], dtype=np.float32)
+
+        if relation_mode == "positive_mean":
+            support[expert] = mu_pos.copy()
+            contradiction[expert] = np.zeros_like(mu_pos, dtype=np.float32)
+        elif relation_mode == "pos_neg_diff":
+            diff = mu_pos - mu_neg
+            support[expert] = diff
+            contradiction[expert] = np.zeros_like(diff, dtype=np.float32)
+        elif relation_mode == "hard_negative_diff":
+            diff = mu_pos - mu_hard
+            support[expert] = diff
+            contradiction[expert] = np.zeros_like(diff, dtype=np.float32)
+        elif relation_mode == "support_only":
+            diff = mu_pos - mu_neg
+            support[expert] = np.maximum(diff, 0.0)
+            contradiction[expert] = np.zeros_like(diff, dtype=np.float32)
+        elif relation_mode == "support_contradiction":
+            diff = mu_pos - mu_neg
+            support[expert] = np.maximum(diff, 0.0)
+            contradiction[expert] = np.maximum(-diff, 0.0)
+        else:
+            raise ValueError(f"Unsupported relation_mode: {relation_mode}")
+
+    if profile_topn is not None:
+        support_masks = _build_global_profile_mask(
+            support,
+            selected_experts=experts,
+            top_n=int(profile_topn),
+            by_abs=relation_mode in {"pos_neg_diff", "hard_negative_diff"},
+        )
+        for expert in experts:
+            support[expert] = support[expert] * support_masks[expert]
+
+        if any(np.any(np.asarray(contradiction[expert], dtype=np.float32) > 0.0) for expert in experts):
+            contradiction_masks = _build_global_profile_mask(
+                contradiction,
+                selected_experts=experts,
+                top_n=int(profile_topn),
+                by_abs=False,
+            )
+            for expert in experts:
+                contradiction[expert] = contradiction[expert] * contradiction_masks[expert]
+
+    return {
+        "selected_experts": experts,
+        "relation_mode": relation_mode,
+        "profile_topn": None if profile_topn is None else int(profile_topn),
+        "hard_negative_topn": int(hard_negative_topn),
+        "hard_negative_ids": hard_negative_rows,
+        "positive_mean": positive_mean,
+        "negative_mean": negative_mean,
+        "hard_negative_mean": hard_negative_mean,
+        "support": support,
+        "contradiction": contradiction,
+    }
+
+
+def compute_data_driven_verification_scores(
+    expert_phrase_scores: Mapping[str, np.ndarray],
+    relation_bundle: Mapping[str, Any],
+    selected_experts: Sequence[str] | None = None,
+    activation_topm: int | None = 5,
+    contradiction_lambda: float = 1.0,
+    activation_positive_only: bool = True,
+) -> np.ndarray:
+    experts = _resolve_selected_experts(
+        selected_experts if selected_experts is not None else relation_bundle.get("selected_experts")
+    )
+    support = relation_bundle.get("support", {})
+    contradiction = relation_bundle.get("contradiction", {})
+
+    first_expert = experts[0]
+    first_relation = np.asarray(support[first_expert], dtype=np.float32)
+    class_count = first_relation.shape[0]
+    sample_count = np.asarray(expert_phrase_scores[first_expert], dtype=np.float32).shape[0]
+    output = np.zeros((sample_count, class_count), dtype=np.float32)
+
+    for expert in experts:
+        sample_scores = np.asarray(expert_phrase_scores[expert], dtype=np.float32)
+        active_scores = np.maximum(sample_scores, 0.0) if activation_positive_only else sample_scores
+        active_scores = _topk_row_sparsify(active_scores, top_k=activation_topm)
+
+        support_matrix = np.asarray(support[expert], dtype=np.float32)
+        output += active_scores @ support_matrix.T
+
+        contradiction_matrix = np.asarray(
+            contradiction.get(expert, np.zeros_like(support_matrix, dtype=np.float32)),
+            dtype=np.float32,
+        )
+        if contradiction_matrix.size > 0 and np.any(contradiction_matrix > 0.0):
+            output -= float(contradiction_lambda) * (active_scores @ contradiction_matrix.T)
+
+    return output.astype(np.float32)
+
+
+def build_confusion_neighborhoods(
+    candidate_logits: np.ndarray,
+    labels: np.ndarray,
+    topk: int = 10,
+    top_n: int = 3,
+    use_rank_weight: bool = True,
+) -> List[List[int]]:
+    scores = np.asarray(candidate_logits, dtype=np.float32)
+    targets = (np.asarray(labels, dtype=np.float32) > 0.0).astype(np.int32)
+    if scores.shape != targets.shape:
+        raise ValueError(f"candidate_logits shape {scores.shape} != labels shape {targets.shape}")
+
+    num_samples, num_classes = scores.shape
+    topk = max(1, min(int(topk), num_classes))
+    top_n = max(0, min(int(top_n), max(num_classes - 1, 0)))
+
+    topk_idx = np.argpartition(-scores, kth=topk - 1, axis=1)[:, :topk]
+    weighted_counts = np.zeros((num_classes, num_classes), dtype=np.float32)
+
+    for sample_idx in range(num_samples):
+        ordered = topk_idx[sample_idx][np.argsort(-scores[sample_idx, topk_idx[sample_idx]])]
+        positive_ids = np.where(targets[sample_idx] > 0)[0].tolist()
+        if not positive_ids:
+            continue
+        negative_candidates = [int(idx) for idx in ordered.tolist() if targets[sample_idx, int(idx)] == 0]
+        if not negative_candidates:
+            continue
+        for pos_class in positive_ids:
+            for rank, neg_class in enumerate(negative_candidates):
+                weight = 1.0 / float(rank + 1) if use_rank_weight else 1.0
+                weighted_counts[int(pos_class), int(neg_class)] += float(weight)
+
+    neighborhoods: List[List[int]] = []
+    for class_idx in range(num_classes):
+        row = weighted_counts[class_idx].copy()
+        row[class_idx] = -np.inf
+        valid_ids = np.where(np.isfinite(row) & (row > 0.0))[0]
+        if valid_ids.size == 0 or top_n == 0:
+            neighborhoods.append([])
+            continue
+        order = valid_ids[np.argsort(-row[valid_ids])[:top_n]]
+        neighborhoods.append([int(idx) for idx in order.tolist()])
+    return neighborhoods
+
+
+def build_pairwise_relation_profiles(
+    relation_bundle: Mapping[str, Any],
+    selected_experts: Sequence[str] | None = None,
+    pair_profile_topn: int | None = 10,
+    contradiction_lambda: float = 1.0,
+) -> Dict[str, Any]:
+    experts = _resolve_selected_experts(
+        selected_experts if selected_experts is not None else relation_bundle.get("selected_experts")
+    )
+    support = relation_bundle.get("support", {})
+    contradiction = relation_bundle.get("contradiction", {})
+
+    pair_profiles: Dict[str, Any] = {
+        "selected_experts": experts,
+        "pair_profile_topn": None if pair_profile_topn is None else int(pair_profile_topn),
+        "contradiction_lambda": float(contradiction_lambda),
+        "profiles": {},
+    }
+
+    for expert in experts:
+        support_matrix = np.asarray(support[expert], dtype=np.float32)
+        contradiction_matrix = np.asarray(
+            contradiction.get(
+                expert,
+                np.zeros_like(support_matrix, dtype=np.float32),
+            ),
+            dtype=np.float32,
+        )
+        relation_matrix = support_matrix - float(contradiction_lambda) * contradiction_matrix
+        class_count = relation_matrix.shape[0]
+        expert_profiles = {
+            "indices": [[np.zeros(0, dtype=np.int64) for _ in range(class_count)] for _ in range(class_count)],
+            "weights": [[np.zeros(0, dtype=np.float32) for _ in range(class_count)] for _ in range(class_count)],
+            "relation_matrix": relation_matrix,
+        }
+        for class_i in range(class_count):
+            for class_j in range(class_count):
+                if class_i == class_j:
+                    continue
+                diff = np.asarray(relation_matrix[class_i] - relation_matrix[class_j], dtype=np.float32)
+                positive_ids = np.where(diff > 0.0)[0]
+                if positive_ids.size == 0:
+                    continue
+                if pair_profile_topn is not None and positive_ids.size > int(pair_profile_topn):
+                    order = np.argsort(-diff[positive_ids])[: int(pair_profile_topn)]
+                    positive_ids = positive_ids[order]
+                expert_profiles["indices"][class_i][class_j] = positive_ids.astype(np.int64)
+                expert_profiles["weights"][class_i][class_j] = diff[positive_ids].astype(np.float32)
+        pair_profiles["profiles"][expert] = expert_profiles
+
+    return pair_profiles
+
+
+def compute_pairwise_comparative_scores(
+    expert_phrase_scores: Mapping[str, np.ndarray],
+    pairwise_profiles: Mapping[str, Any],
+    candidate_logits: np.ndarray,
+    selected_experts: Sequence[str] | None = None,
+    candidate_topk: int = 10,
+    activation_topm: int | None = 5,
+    activation_positive_only: bool = True,
+    aggregate_mode: str = "mean",
+) -> np.ndarray:
+    experts = _resolve_selected_experts(
+        selected_experts if selected_experts is not None else pairwise_profiles.get("selected_experts")
+    )
+    base_logits = np.asarray(candidate_logits, dtype=np.float32)
+    num_samples, num_classes = base_logits.shape
+    candidate_topk = max(1, min(int(candidate_topk), num_classes))
+
+    active_scores: Dict[str, np.ndarray] = {}
+    for expert in experts:
+        scores = np.asarray(expert_phrase_scores[expert], dtype=np.float32)
+        if scores.shape[0] != num_samples:
+            raise ValueError(
+                f"expert_phrase_scores[{expert}] rows {scores.shape[0]} != candidate rows {num_samples}"
+            )
+        working = np.maximum(scores, 0.0) if activation_positive_only else scores
+        active_scores[expert] = _topk_row_sparsify(working, top_k=activation_topm)
+
+    output = np.zeros((num_samples, num_classes), dtype=np.float32)
+    topk_idx = np.argpartition(-base_logits, kth=candidate_topk - 1, axis=1)[:, :candidate_topk]
+
+    for sample_idx in range(num_samples):
+        ordered = topk_idx[sample_idx][np.argsort(-base_logits[sample_idx, topk_idx[sample_idx]])]
+        candidate_scores = np.zeros(ordered.shape[0], dtype=np.float32)
+
+        for left_idx in range(len(ordered)):
+            class_i = int(ordered[left_idx])
+            for right_idx in range(left_idx + 1, len(ordered)):
+                class_j = int(ordered[right_idx])
+                margin = 0.0
+                for expert in experts:
+                    expert_profile = pairwise_profiles["profiles"][expert]
+                    active = active_scores[expert][sample_idx]
+
+                    idx_i = expert_profile["indices"][class_i][class_j]
+                    weight_i = expert_profile["weights"][class_i][class_j]
+                    score_i = float(active[idx_i] @ weight_i) if idx_i.size > 0 else 0.0
+
+                    idx_j = expert_profile["indices"][class_j][class_i]
+                    weight_j = expert_profile["weights"][class_j][class_i]
+                    score_j = float(active[idx_j] @ weight_j) if idx_j.size > 0 else 0.0
+
+                    margin += score_i - score_j
+
+                candidate_scores[left_idx] += margin
+                candidate_scores[right_idx] -= margin
+
+        if aggregate_mode == "mean" and len(ordered) > 1:
+            candidate_scores = candidate_scores / float(len(ordered) - 1)
+        elif aggregate_mode != "sum":
+            raise ValueError(f"Unsupported aggregate_mode: {aggregate_mode}")
+
+        output[sample_idx, ordered] = candidate_scores.astype(np.float32)
+
+    return output
+
+
+def build_margin_aware_gate(
+    candidate_logits: np.ndarray,
+    mode: str = "exp",
+    gamma: float = 1.0,
+    tau: float = 0.5,
+) -> np.ndarray:
+    scores = np.asarray(candidate_logits, dtype=np.float32)
+    if scores.ndim != 2 or scores.shape[1] < 2:
+        raise ValueError(f"Expected [num_samples, num_classes>=2], got shape {scores.shape}")
+
+    top2_idx = np.argpartition(-scores, kth=1, axis=1)[:, :2]
+    top2_scores = np.take_along_axis(scores, top2_idx, axis=1)
+    top2_scores.sort(axis=1)
+    margin = top2_scores[:, 1] - top2_scores[:, 0]
+    margin = np.maximum(margin, 0.0)
+
+    if mode == "none":
+        gate = np.ones(scores.shape[0], dtype=np.float32)
+    elif mode == "exp":
+        gate = np.exp(-float(gamma) * margin).astype(np.float32)
+    elif mode == "binary":
+        gate = (margin < float(tau)).astype(np.float32)
+    else:
+        raise ValueError(f"Unsupported gate mode: {mode}")
+    return gate.astype(np.float32)
+
+
+def summarize_data_driven_profiles(
+    relation_bundle: Mapping[str, Any],
+    phrase_banks: Mapping[str, Sequence[str]],
+    class_names: Sequence[str],
+    top_n: int = 5,
+) -> List[Dict[str, Any]]:
+    experts = _resolve_selected_experts(relation_bundle.get("selected_experts"))
+    support = relation_bundle.get("support", {})
+    contradiction = relation_bundle.get("contradiction", {})
+
+    rows: List[Dict[str, Any]] = []
+    for class_idx, class_name in enumerate(class_names):
+        record: Dict[str, Any] = {
+            "class_id": int(class_idx),
+            "class_name": str(class_name),
+            "support": {},
+            "contradiction": {},
+        }
+        for expert in experts:
+            phrases = list(phrase_banks.get(expert, []))
+            support_values = np.asarray(support[expert][class_idx], dtype=np.float32)
+            positive_ids = np.where(support_values > 0.0)[0]
+            if positive_ids.size > 0:
+                order = positive_ids[np.argsort(-support_values[positive_ids])[: max(1, int(top_n))]]
+                record["support"][expert] = [
+                    {
+                        "phrase": phrases[int(idx)],
+                        "weight": float(support_values[int(idx)]),
+                    }
+                    for idx in order.tolist()
+                ]
+            else:
+                record["support"][expert] = []
+
+            contradiction_matrix = np.asarray(
+                contradiction.get(
+                    expert,
+                    np.zeros_like(np.asarray(support[expert], dtype=np.float32), dtype=np.float32),
+                ),
+                dtype=np.float32,
+            )
+            contradiction_values = np.asarray(contradiction_matrix[class_idx], dtype=np.float32)
+            contradiction_ids = np.where(contradiction_values > 0.0)[0]
+            if contradiction_ids.size > 0:
+                order = contradiction_ids[
+                    np.argsort(-contradiction_values[contradiction_ids])[: max(1, int(top_n))]
+                ]
+                record["contradiction"][expert] = [
+                    {
+                        "phrase": phrases[int(idx)],
+                        "weight": float(contradiction_values[int(idx)]),
+                    }
+                    for idx in order.tolist()
+                ]
+            else:
+                record["contradiction"][expert] = []
+        rows.append(record)
+    return rows
+
+
 def top_evidence_rows(
     expert_phrase_scores: Mapping[str, np.ndarray],
     phrase_banks: Mapping[str, Sequence[str]],

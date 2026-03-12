@@ -1,70 +1,149 @@
-# Agentic Visual Intent Recognition via Multi-Expert Evidence Verification
+# 技术报告：Multi-Expert Evidence Verification for Visual Intent Recognition
 
-## 一、这条线要解决什么
+## 0. 文档信息
 
-当前主线结果已经说明两件事：
-
-1. **强 frozen CLIP baseline 已经足够强。**
-2. **剩余难点主要不在 feature extraction，而在候选意图之间的局部语义消歧与最终决策。**
-
-已有结果可以概括为：
-
-- baseline test：
-  - `macro = 45.98`
-  - `micro = 56.54`
-  - `samples = 56.40`
-  - `hard = 26.86`
-- `scenario SLR + class-wise threshold` 当前 overall 最强：
-  - `macro = 51.28`
-  - `micro = 59.13`
-  - `samples = 58.47`
-  - `hard = 33.98`
-- baseline 的 candidate proposal 已经很强：
-  - top-10 label recall = `83.91%`
-  - top-10 `sample_any_recall = 95.07%`
-  - top-10 `sample_all_recall = 75.33%`
-
-这说明：
-
-> 当前真正的空间，不是“再做一个更重的全局分类器”，而是让系统在已有 top-k 候选内部，做更可靠的意图验证。
-
-当前 `SLR-C` 已经证明：
-
-- `scenario prior` 作为局部 rerank 信号有效
-- `class-wise calibration` 可以把排序收益转成真正的 multi-label 输出
-
-但它还有一个明显限制：
-
-> 当前 rerank 依赖的仍然是 **class-level text prior**，而不是对图像中具体证据的显式核验。
-
-这就引出下一条方法线：
-
-## **先提出 intent hypothesis，再用多专家视觉证据去验证它。**
+- 日期：`2026-03-10`
+- 状态：内部技术报告
+- 任务：Intentonomy 多标签视觉意图识别
+- 研究主线：在当前 strongest `SLR-C` 基础上引入显式证据核验
 
 ---
 
-## 二、方法定位
+## 1. 摘要
 
-这条线不是推翻当前 `scenario rerank + calibration`，而是在它的基础上往前走一步。
+本报告总结了 `Multi-Expert Evidence Verification with Calibration (MEV-C)` 的设计、实现与实验结果。研究出发点是：在强 frozen CLIP baseline 已经足够强的前提下，Intentonomy 的剩余难点不再主要来自视觉特征抽取，而来自候选意图之间的局部语义消歧与最终多标签决策。已有 `SLR-C` 已经证明 `scenario prior + local rerank + class-wise calibration` 是有效路线，但该方法仍然依赖类级文本先验，缺少对图像中具体支持证据的显式核验。
 
-整体定位应当是：
+为此，本工作将意图识别重构为四阶段流程：`hypothesis generation -> evidence extraction -> hypothesis verification -> calibrated decision`。系统首先使用 `scenario SLR` 生成 top-k 候选意图，再从 benchmark label sets 构建的多专家证据空间中提取 `object / scene / style / activity` 证据，随后将这些证据与 intent-specific template 进行匹配，并将 verification score 作为 residual signal 回注到候选重排序过程，最后继续使用 class-wise threshold 输出最终标签集合。
 
-- 保留当前最强的 frozen CLIP 主干与 local candidate pipeline
-- 保留 `scenario prior` 作为 hypothesis proposal 的语义来源
-- 新增 **multi-expert evidence verification**
-- 最终仍然使用 **calibrated decision rule**
+实现上，本报告完成了两个版本。`MEV v1` 采用 benchmark bank + image-conditioned similarity matching + template-aware fixed aggregation；`MEV v2` 在此基础上进一步引入 class-wise expert routing，用验证集 per-class gain 决定每个类别应依赖的 expert。结果表明，`v1` 已完整跑通但未正式超过当前 strongest `SLR-C`；`v2` 明显优于 `v1`，并在 hard subset 上基本追平甚至略高于 `SLR-C`，说明 expert routing 是比固定 all-expert aggregation 更合理的方向。
 
-因此，这个方法更准确地说，是当前 `SLR-C` 的下一阶段版本，而不是另一条完全脱节的新线。
+---
 
-可以暂时记为：
+## 2. 背景与问题定义
 
-## **MEV-C: Multi-Expert Verification with Calibration**
+### 2.1 任务背景
 
-整体流程：
+Intentonomy 不是普通的 object / scene / action 分类任务。其类别包含明显的高层、抽象、主观语义，例如：
+
+- `Enjoy life`
+- `Appreciating fine design`
+- `Exploration`
+- `Being happy and content`
+
+这类标签通常需要多种视觉线索共同支持，而不是由单个局部概念直接决定。因此，本任务更适合被理解为：
+
+> 图像是否提供了足够一致的证据来支持某个高层 intent hypothesis。
+
+### 2.2 当前主线的已知事实
+
+现有实验已经验证：
+
+1. 强 frozen CLIP baseline 已显著优于许多更复杂的结构化方法。
+2. `text-only zero-shot` 基本无效，说明全局 semantic classifier 不是正确方向。
+3. semantic prior 在 baseline 的 top-k 候选内部做 local rerank 时有效。
+4. reranked score geometry 需要重新做 calibration，尤其是 class-wise threshold。
+
+因此，当前更准确的问题表述是：
+
+> 在不破坏强视觉 baseline 的前提下，能否通过显式证据核验进一步提升候选意图的局部判别质量，并把这种提升转化为更好的多标签输出。
+
+### 2.3 基础记号
+
+给定图像 `x`，类别集合为 `Y = {1, ..., C}`。强视觉 baseline 输出 logits：
+
+$$
+z(x) \in \mathbb{R}^{C}
+$$
+
+当前 strongest `SLR-C` 在 top-k 候选内部引入 `scenario prior`：
+
+
+$$\tilde z_c =
+\begin{cases}
+z_c + \alpha \tilde s_c^{scn}(x), & c \in \mathcal{T}_k(x) \\
+z_c, & c \notin \mathcal{T}_k(x)
+\end{cases}$$
+
+
+其中：
+
+- $\mathcal{T}_k(x)$ 为 baseline 提出的 top-k 候选集
+- $\tilde s_c^{scn}(x)$ 为归一化后的 scenario prior score
+
+MEV-C 在此基础上再加入 verification signal：
+
+$$
+u_c =
+\begin{cases}
+\tilde z_c + \beta q_c(x), & c \in \mathcal{T}_k(x) \\
+z_c, & c \notin \mathcal{T}_k(x)
+\end{cases}
+$$
+
+最终通过 calibrated decision rule 得到预测：
+
+$$
+\hat y_c = \mathbb{I}(\sigma(u_c) > t_c)
+$$
+
+其中 `t_c` 为 class-wise threshold。
+
+---
+
+## 3. 当前基线与研究动机
+
+### 3.1 当前 strongest baseline
+
+当前主线中最有代表性的几组结果如下：
+
+| Method | Macro | Micro | Samples | Hard |
+| --- | ---: | ---: | ---: | ---: |
+| Baseline + global threshold | 45.98 | 56.54 | 56.40 | 26.86 |
+| Baseline + class-wise threshold | 48.23 | 52.04 | 52.94 | 29.71 |
+| Scenario SLR + global threshold | 47.14 | 56.52 | 55.11 | 28.32 |
+| Scenario SLR + class-wise threshold (`SLR-C`) | **51.28** | **59.13** | **58.47** | **33.98** |
+
+这里可以看到两点：
+
+- local rerank 本身有效
+- class-wise calibration 对 reranked score space 至关重要
+
+### 3.2 Candidate proposal 已经足够强
+
+已有 candidate recall / oracle analysis 表明：
+
+- top-10 label recall = `83.91%`
+- top-10 `sample_any_recall = 95.07%`
+- top-10 `sample_all_recall = 75.33%`
+
+因此，当前系统的主要瓶颈不是 candidate proposal capacity，而是：
+
+- top-k 候选内部的局部语义边界
+- rerank 后得分空间与最终 decision rule 的不匹配
+
+### 3.3 从 rerank 走向 evidence verification
+
+当前 `SLR-C` 仍然主要依赖整体图文相似度，它回答的问题更像：
+
+> “这个 intent 的文本描述与图像整体像不像？”
+
+但对 Intentonomy 来说，更自然的问题是：
+
+> “图像里是否同时存在支持该 intent 的 object / scene / style / activity 证据？”
+
+这正是 evidence verification 的切入点。
+
+---
+
+## 4. 方法概述
+
+### 4.1 整体框架
+
+MEV-C 将意图识别组织为如下流程：
 
 ```text
 Image
-  -> strong visual baseline / scenario rerank
+  -> strong visual baseline / scenario SLR
   -> top-k intent hypotheses
   -> multi-expert evidence extraction
   -> hypothesis-conditioned evidence matching
@@ -72,1202 +151,488 @@ Image
   -> calibrated multi-label decision
 ```
 
-它对应的 agent 叙事非常自然：
+该流程对应的 agent 叙事是：
 
 1. hypothesis generation
 2. evidence collection
 3. evidence verification
 4. calibrated decision
 
----
+### 4.2 Stage 0：Candidate Proposal
 
-## 三、核心动机
+候选提出阶段直接沿用当前 strongest pipeline：
 
-### 3.1 为什么 plain rerank 还不够
-
-当前 `SLR-C` 的增益已经很明确，但它本质上仍是在做：
-
-```text
-候选类 logits + 文本先验分数
-```
-
-也就是说，它回答的是：
-
-> “这个 intent 的文本描述和图像整体像不像？”
-
-但视觉意图往往不是单一相似度问题，而更像：
-
-> “图像里是否出现了支持该 intent 的若干证据组合？”
-
-例如：
-
-- `Appreciating fine design`
-  - 单靠整体 embedding 相似度不够
-  - 更关键的是是否出现了：
-    - 建筑/室内设计相关 object
-    - 可支撑审美场景的 scene
-    - 明显的 style / aesthetic cue
-
-因此，plain rerank 的下一步，不应只是再换一个 prompt 或再加一个 gate，而应当是：
-
-> 把意图判断从“整体文本相似”推进到“结构化证据核验”。
-
-### 3.2 为什么这条线有实现价值
-
-它和当前已有发现是连续的：
-
-- baseline 的 top-k recall 已经很高，说明 hypothesis proposal 足够强
-- 当前剩余问题更像是候选内部的局部边界
-- `scenario prior` 已经提供了每个 intent 的典型场景描述
-
-换句话说，当前已经有了三块现成基础：
-
-1. **候选集**：baseline / SLR 负责给出 plausible intents
-2. **模板来源**：scenario prior 可以转成 expected evidence
-3. **最终决策**：class-wise calibration 已经证明有效
-
-那么最自然的下一步，就是在中间补上一层：
-
-## **evidence verification**
-
----
-
-## 四、问题设定
-
-给定图像 `x`，类别集合为 `Y = {1, ..., C}`。
-
-当前强视觉 baseline 输出每个类别的 logits：
-
-[
-z(x) \in \mathbb{R}^{C}
-]
-
-在当前主线里，我们已经有一版局部 rerank 分数：
-
-[
-\tilde z_c =
-\begin{cases}
-z_c + \alpha \tilde s_c^{scn}(x), & c \in \mathcal{T}_k(x) \\
-z_c, & c \notin \mathcal{T}_k(x)
-\end{cases}
-]
-
-其中：
-
-- `\mathcal{T}_k(x)` 是 top-k 候选 intent 集合
-- `\tilde s_c^{scn}(x)` 是归一化后的 scenario prior score
-
-MEV-C 的目标不是重做 proposal，而是在候选集合内部再增加一个 verification 分数：
-
-[
-q_c(x) = Verify(x, c)
-]
-
-然后得到新的 candidate score：
-
-[
-u_c =
-\begin{cases}
-\tilde z_c + \beta q_c(x), & c \in \mathcal{T}_k(x) \\
-z_c, & c \notin \mathcal{T}_k(x)
-\end{cases}
-]
-
-最后再使用 calibrated decision rule：
-
-[
-\hat y_c = \mathbb{I}(\sigma(u_c) > t_c)
-]
-
-其中 `t_c` 为 class-wise threshold。
-
-这个设计有两个好处：
-
-1. **不破坏强 baseline 的全局结构**
-2. **verification 只作用于 plausible candidates，不会退化成全局 semantic classifier**
-
----
-
-## 五、方法设计
-
-### 5.1 Stage 0：Candidate Proposal
-
-这一阶段直接沿用当前 strongest pipeline，不重新发明。
-
-推荐默认入口：
-
-- strong frozen CLIP baseline
-- `scenario` semantic prior
+- frozen CLIP visual backbone
+- `scenario prior`
 - local rerank
 - `top-k = 10`
 
-原因很简单：
+MEV-C 不试图替代 proposal，而是把工作重点放在 candidate-local residual correction 上。
 
-- 这已经是当前最强、最稳的候选生成方式
-- top-10 coverage 足够高
-- verification 模块本来就应该建立在高 recall candidate proposal 之上
+### 4.3 Stage 1：Intent Evidence Template Construction
 
-也就是说，MEV-C 不负责“把正确类召回进来”，而负责：
+对每个 intent `c`，构建 evidence template：
 
-> **在已经比较强的候选集内部，做更细粒度、更可解释的证据核验。**
-
----
-
-### 5.2 Stage 1：Intent Evidence Template Construction
-
-每个 intent 都需要一份 **expected evidence template**。
-
-这个模板不是拍脑袋手写，而应尽量从已有 `scenario prior` 中自动解析得到。
-
-对每个 intent `c`，构建：
-
-[
+$$
 T_c = \{T_c^{obj}, T_c^{scene}, T_c^{style}, T_c^{act}\}
-]
+$$
 
 其中：
 
-- `T_c^{obj}`：该 intent 典型相关的 object / attribute
-- `T_c^{scene}`：典型环境与场景
-- `T_c^{style}`：审美、氛围、构图、风格线索
-- `T_c^{act}`：人类活动或 interaction 线索
+- `T_c^{obj}`：相关 object / attribute 证据
+- `T_c^{scene}`：典型场景与环境
+- `T_c^{style}`：风格、氛围、构图、审美线索
+- `T_c^{act}`：典型活动或 interaction 线索
 
-这里不要求所有 intent 都有四类证据。
+模板来源为：
 
-实际中更合理的是：
+- `intent_description_gemini.json`
+- `intent2concepts.json`
 
-- 有些 intent 主要依赖 `scene`
-- 有些 intent 主要依赖 `style`
-- 有些 intent 主要依赖 `object + activity`
+模板的作用是定义每个 intent 期望出现的支持性证据，而不是直接充当分类器。
 
-因此模板天然会带来 **intent-specific expert dependency**。
+### 4.4 Stage 2：Benchmark-Based Evidence Extraction
 
-#### 模板来源
+最终实现中，证据抽取不再使用手工 generic bank，而使用标准 benchmark label sets：
 
-优先使用当前已有的文本资源，按成本从低到高分三档：
+| Expert | Label Set | Size |
+| --- | --- | ---: |
+| object | COCO | 80 |
+| scene | Places365 | 365 |
+| style | Flickr Style | 20 |
+| activity | Stanford40 | 40 |
 
-1. **scenario prior**
-   - 主来源
-   - 负责给出典型场景与证据短语
-2. **canonical / lexical prior**
-   - 作为补充来源
-   - 用于填补 scenario 模板过稀疏的问题
-3. **人工小规模修订**
-   - 只对明显歧义类补充
-   - 避免把整个方法做成大量人工规则工程
+证据 bank 的作用是提供一个公开、稳定、可复用的 visual concept space。图像特征与 bank 中所有标签的 CLIP text embedding 做相似度，形成每个 expert 的 evidence score matrix。
 
-#### 模板形式
+> Recognizing Image Style https://arxiv.org/pdf/1311.3715
 
-建议模板不要写成长句，而写成短语集合。
+### 4.5 Stage 3：Hypothesis-Conditioned Evidence Matching
 
-例如：
+对 expert `e` 与候选类别 `c`，定义匹配分数：
 
-| intent | object evidence | scene evidence | style evidence | activity evidence |
-| --- | --- | --- | --- | --- |
-| Appreciating fine design | architecture, ornament, interior detail | museum, historical site, elegant interior | aesthetic, artistic, refined | looking, observing |
-| Fitness | gym equipment, bicycle, sportswear | gym, outdoor track, sports venue | energetic, dynamic | running, training, exercising |
-| Exploration | map, backpack, landscape cue | nature, street, travel location | adventurous, open | walking, discovering |
-
-#### v1 约束
-
-为了先把系统跑通，`v1` 推荐：
-
-- 只使用 **positive evidence**
-- 暂不引入 negative / counter-evidence 模板
-
-后续如果需要再扩展：
-
-[
-T_c = \{T_c^{+}, T_c^{-}\}
-]
-
-用来建模“什么出现会支持该 intent，什么出现会削弱该 intent”。
-
----
-
-### 5.3 Stage 2：Multi-Expert Evidence Extraction
-
-这里最重要的不是“专家越重越好”，而是 **先把证据空间定义清楚，并保证实现成本可控**。
-
-因此我建议分成两个版本。
-
-#### Version 1：CLIP-space expert banks
-
-这是最应该先做的版本。
-
-做法：
-
-- 为 `object / scene / style / activity` 分别建立一个 vocabulary bank
-- 每个 bank 由若干短语构成
-- 用同一个 CLIP image embedding 与各 bank 的 text embeddings 做相似度
-- 每个 expert 输出 top-m 证据项及其分数
-
-形式上，对 expert `e`：
-
-[
-B_e(x) = \{(b_{e,1}, r_{e,1}), ..., (b_{e,m}, r_{e,m})\}
-]
-
-其中：
-
-- `b_{e,j}` 是第 `j` 个证据短语
-- `r_{e,j}` 是相似度分数
-
-这个版本的优点：
-
-- 不需要引入多个外部大模型
-- 与当前 CLIP 主线天然兼容
-- 所有证据都在统一文本空间里，匹配实现很简单
-- 很适合作为论文的 first workable version
-
-#### Version 2：Specialist pretrained experts
-
-如果 `v1` 跑通且有收益，再考虑用更强专家替换部分 bank：
-
-- `object expert`：
-  - GroundingDINO / Detic / YOLO
-- `scene expert`：
-  - Places365 classifier
-- `style expert`：
-  - aesthetic predictor / style classifier / CLIP aesthetic head
-- `activity expert`：
-  - action recognition backbone 或 CLIP action bank
-
-这个版本更强，但也更重，且会带来三个额外问题：
-
-1. label space 不统一
-2. 推理代价更高
-3. 方法贡献容易被“用了更多外部模型”稀释
-
-因此，文档层面应明确：
-
-> **v1 先走 CLIP-space evidence bank，v2 再考虑 specialist experts。**
-
----
-
-### 5.4 Stage 3：Hypothesis-Conditioned Evidence Matching
-
-拿到图像证据 bank 后，需要计算它与某个候选 intent 模板的匹配程度。
-
-对 expert `e` 与候选类 `c`，定义匹配分数：
-
-[
+$$
 m_e(x, c) = Match(B_e(x), T_c^e)
-]
+$$
 
-一个简单、足够合理的 `v1` 定义是：
+当前实现采用 `benchmark bank + image-conditioned similarity matching`：
 
-[
-m_e(x, c) =
-\frac{1}{|T_c^e|}
-\sum_{a \in T_c^e}
-\max_{(b, r) \in B_e(x)}
-r \cdot sim(a, b)
-]
+1. 先使用图像特征与 benchmark bank text embeddings 计算每个 expert 的 evidence score matrix
+2. 对 bank label 和 template phrase 分别编码到 CLIP text space
+3. 计算 template phrase 与 bank labels 的 text similarity
+4. 用图像侧的 bank evidence score 与 template-bank similarity 共同计算 class-specific support
 
-含义是：
+该设计的核心优点是：
 
-- 对模板里的每个 expected evidence phrase `a`
-- 在图像证据 bank 里找最相近的证据 `b`
-- 用证据分数 `r` 和短语相似度 `sim(a, b)` 共同决定匹配强度
+- 保留 benchmark label space 的公开性与可解释性
+- 不要求 template phrase 与 bank label 完全一致
+- 能够在统一 CLIP space 中处理 label mismatch
+- matching 过程显式使用图像特征，而不仅仅依赖 top-k 候选类别
 
-如果 `v1` 全部都在 CLIP text space 里：
+### 4.6 Stage 4：Verification Aggregation
 
-- `sim(a, b)` 可以直接用 text embedding cosine similarity
-- 实现和调试都比较直接
+#### v1：Template-Aware Fixed Aggregation
 
-#### 为什么要 hypothesis-conditioned
+`v1` 使用固定但 template-aware 的聚合方式：
 
-因为同一张图像的证据，不同 intent 的解释方式不同。
+$$
+q_c^{(v1)}(x) = \sum_{e \in \mathcal{E}} w_{c,e} m_e(x, c)
+$$
 
-例如同一张建筑照片：
+其中 `w_{c,e}` 在 template 缺失时置零，并对剩余专家归一化。
 
-- 对 `Appreciating fine design`，style / aesthetic evidence 更关键
-- 对 `Exploration`，scene evidence 更关键
-- 对 `Learning art history`，可能 object + scene 都重要
+#### v2：Class-Wise Expert Routing
 
-所以 verification 不是先算一个“统一图像质量分数”，而是：
+`v1` 的问题在于所有类别共享同一套 expert aggregation policy，容易稀释强单 expert 的有效信号。
 
-> **对每个候选 hypothesis，分别问一次：这张图像的证据是否支持它？**
+因此 `v2` 引入 class-wise routing：
 
----
+$$
+q_c^{(v2)}(x) = \sum_{e \in \mathcal{E}} R_{c,e} \, m_e(x, c)
+$$
 
-### 5.5 Stage 4：Intent-Conditioned Evidence Aggregation
+其中 `R \in \mathbb{R}^{C \times |\mathcal{E}|}` 为 routing matrix，由 validation per-class gain 相对 `SLR-C` 构造。
 
-单个 expert 的分数不够，最终需要聚合成 verification score。
+当前实现评估了以下 routing modes：
 
-定义：
+- `top1_always`
+- `top1_positive`
+- `top2_soft`
 
-[
-q_c(x) = \sum_{e \in \mathcal{E}} w_{c,e} \, m_e(x, c)
-]
+其中 `top1_positive` 的含义是：
 
-其中：
+- 对每个类别只保留验证集上相对 `SLR-C` 有正增益的最佳 expert
+- 若无正增益 expert，则该类不启用 MEV，直接退回 `SLR-C`
 
-- `\mathcal{E} = {obj, scene, style, act}`
-- `w_{c,e}` 表示类别 `c` 对 expert `e` 的依赖程度
+### 4.7 Stage 5：Verification Rerank + Calibrated Decision
 
-这里同样建议分两版。
+verification score 作为 residual signal 注入候选 logits：
 
-#### Version A：固定权重
-
-最简单可行：
-
-[
-q_c = w_{obj} m_{obj} + w_{scene} m_{scene} + w_{style} m_{style} + w_{act} m_{act}
-]
-
-或者进一步做成 **template-aware fixed weight**：
-
-- 如果某个 intent 没有 `style` 模板，则 `w_{c,style} = 0`
-- 剩余权重归一化
-
-这版最适合 first paper version，因为：
-
-- 简单
-- 可解释
-- 不依赖额外训练
-
-#### Version B：intent-conditioned routing
-
-更进一步，可以用一个小 gating 函数输出权重：
-
-[
-w_c = softmax(g(h_c))
-]
-
-其中 `h_c` 可以由下列信息拼接得到：
-
-- candidate visual score `\tilde z_c`
-- scenario prior score
-- 各 expert matching 分数
-- optional uncertainty signal
-
-这版更“像方法”，但也更容易退化成 learnable fusion。
-
-基于你前面的实验经验，这里要特别警惕：
-
-> 复杂 learnable fusion 未必是核心增益来源。
-
-因此论文主线建议保持：
-
-- **主方法：固定或 template-aware aggregation**
-- **routing：作为增强版消融**
-
----
-
-### 5.6 Stage 5：Verification Rerank + Calibrated Decision
-
-最终把 verification 作为 residual signal 加回候选分数：
-
-[
+$$
 u_c =
 \begin{cases}
 \tilde z_c + \beta q_c(x), & c \in \mathcal{T}_k(x) \\
 z_c, & c \notin \mathcal{T}_k(x)
 \end{cases}
-]
+$$
 
-其中 `\beta` 控制 verification 强度。
-
-这一步的关键不是让 verification 取代 baseline，而是：
-
-> 让证据核验成为 candidate-local residual correction。
-
-之后继续沿用当前已经被验证过有效的 calibrated decision rule：
-
-[
-\hat y_c = \mathbb{I}(\sigma(u_c) > t_c)
-]
-
-推荐默认仍然使用：
-
-- `class-wise threshold`
-
-如果后续考虑更紧凑的版本，再补：
-
-- `frequency-group threshold`
-
-整个方法的角色分工应当写得非常清楚：
-
-- baseline / SLR：candidate proposal
-- MEV：candidate verification
-- calibration：final decision alignment
+实验表明，verification 之后仍需使用 class-wise threshold，才能将局部排序收益转化为最终 multi-label 输出。
 
 ---
 
-## 六、训练与推理路径
+## 5. 实现与工程形态
 
-### 6.1 v1 推荐：尽量少训练
+### 5.1 代码入口
 
-这条线最合理的第一版，不应上来就做端到端重训练。
+核心实现位于：
 
-更合适的是：
+- `src/utils/evidence_verification.py`
+- `scripts/analyze_agent_evidence_verification.py`
 
-#### Offline 准备
+其中：
 
-1. 为每个 intent 构建 evidence template
-2. 为每个 expert 构建 vocabulary bank
-3. 预编码所有 evidence phrases 的 text embeddings
+- `evidence_verification.py` 负责 template 构建、benchmark bank 构建、matching 与 aggregation
+- `analyze_agent_evidence_verification.py` 负责完整分析流程、搜索与落盘
 
-#### Validation 上调参
+### 5.2 实验产物
 
-搜索：
+当前已完成的主要输出目录：
 
-- `top-k`
-- `alpha`
-- `beta`
-- expert weights
-- `m`（每个 bank 保留多少条证据）
-- class-wise thresholds
+- `logs/analysis/full_agent_evidence_verification_20260310`
+- `logs/analysis/full_agent_evidence_verification_v2_20260310`
 
-#### Test 推理
+产物包括：
 
-1. 跑 baseline / SLR 产生 top-k 候选
-2. 对图像提取 multi-expert evidence bank
-3. 对每个候选 intent 计算 expert matching
-4. 聚合得到 verification score
-5. residual rerank
-6. calibrated decision
+- `summary.json`
+- `search_results.csv/json`
+- `routing_search_results.csv/json`
+- `evidence_templates.json`
+- `expert_phrase_banks.json`
+- `expert_dependency.csv`
+- `val_top_evidence_preview.json`
 
-这个版本的优点非常重要：
+### 5.3 运行协议
 
-- 不引入重训练风险
-- 与你当前分析框架高度兼容
-- 实验推进快
-- 适合先验证“证据核验”这个机制是否本身有效
+当前方法的实现形态可以概括为：
 
-### 6.2 v2 扩展：训练一个小 aggregation head
+- **无需额外训练新的 verification 模块**
+- 但**不是严格意义上的 zero-training**
 
-如果 `v1` 明显有效，再考虑训练一个小头：
+更准确地说：
 
-[
-q_c = f(\tilde z_c, m_{obj}, m_{scene}, m_{style}, m_{act})
-]
+1. 方法依赖一个已经训练好的 baseline checkpoint
+2. evidence bank、template matching 与 rerank 本身不引入新的可训练参数
+3. 最终结果仍然需要 validation-time calibration / search
+   - 例如 `beta`
+   - class-wise thresholds
+   - `v2` 中的 routing matrix
 
-这里的 `f` 可以很小，例如：
+因此，当前 MEV 更适合被描述为：
 
-- 两层 MLP
-- linear + sigmoid gate
+> **training-free add-on on top of a pretrained baseline, with validation-time calibration/search**
 
-但这一步不应抢主线。
+`v1` 主实验口径：
 
-主线判断标准应该是：
+```bash
+python scripts/analyze_agent_evidence_verification.py \
+  --bank-source benchmark \
+  --match-mode similarity \
+  --output-dir logs/analysis/full_agent_evidence_verification_20260310
+```
 
-> 先证明 evidence verification 机制有效，再讨论 learnable aggregation 是否进一步带来稳定增益。
+`v2` 主实验口径：
 
----
-
-## 七、为什么这条线在论文上站得住
-
-### 7.1 它自然继承了当前 strongest pipeline
-
-不是另起炉灶，而是顺着现有最强结果继续推进：
-
-- `scenario prior` 负责给 hypothesis 提供语义模板
-- strong baseline 负责给候选集
-- calibration 负责最终 multi-label 输出
-
-MEV 只是补上中间缺失的一环：
-
-> 让语义先验从“类级文本相似”升级为“图像证据核验”。
-
-### 7.2 它比 plain rerank 更有任务针对性
-
-`SLR-C` 已经证明 local semantic 有用，但 reviewer 很容易追问：
-
-> 你这是不是只是又加了一个 text prior trick？
-
-MEV 的回答更强：
-
-- 不是简单再加文本分数
-- 而是把意图拆成多类证据
-- 再检查图像中是否真的出现了这些证据
-
-这会让方法从“工程 rerank”更接近“reasoning / verification framework”。
-
-### 7.3 它和 agent 叙事高度一致
-
-这条线之所以比“再堆一个 learnable fusion”更有论文味，一个核心原因就是叙事更完整：
-
-1. propose hypotheses
-2. collect evidence
-3. verify hypotheses
-4. make calibrated decision
-
-这个叙事和视觉意图任务本身也更契合，因为意图本来就不是单一 object label，而更像高层主观判断。
+```bash
+python scripts/analyze_agent_evidence_verification.py \
+  --bank-source benchmark \
+  --match-mode similarity \
+  --routing-modes top1_always,top1_positive,top2_soft \
+  --routing-gamma-list 4,8 \
+  --routing-gain-floor-list 0.0 \
+  --output-dir logs/analysis/full_agent_evidence_verification_v2_20260310
+```
 
 ---
 
-## 八、实验计划
+## 6. 实验设置
 
-这一部分不能只写“我们会做消融”，而要围绕清晰问题来设计。
+### 6.1 数据集与指标
 
-### 8.1 要回答的核心问题
+数据集：
 
-#### Q1：MEV 是否能稳定超过当前 strongest `SLR-C`
+- `Intentonomy`
 
-这是主问题。
-
-要证明：
-
-- evidence verification 不是替代 SLR
-- 而是在 SLR 之上进一步提升
-
-#### Q2：不同 expert 是否真的互补
-
-这决定方法是不是“多专家”而不是“换了三个名字的同一个相似度模块”。
-
-#### Q3：verification 是否主要帮助 ambiguous / hard intents
-
-这决定方法有没有真正击中任务难点。
-
-#### Q4：增益来自 evidence verification 本身，还是来自更复杂参数化
-
-这个问题必须回答清楚，否则 reviewer 会质疑：
-
-> 你是不是只是因为多加了参数或外部模型？
-
----
-
-### 8.2 Dataset 与指标
-
-主实验仍然使用：
-
-- **Intentonomy**
-
-主指标继续保持与你现有分析一致：
+主指标：
 
 - Macro F1
 - Micro F1
 - Samples F1
 - Hard subset F1
 
-如果主表里保留 `mean F1`，也可以继续，但不应替代 `macro / hard`。
+其中 `hard` 使用仓库内既有 hard subset 定义。
+
+### 6.2 对比系统
+
+本报告关注以下几组系统：
+
+| System | 说明 |
+| --- | --- |
+| Baseline | frozen CLIP baseline |
+| Baseline + class-wise threshold | baseline 的 class-wise calibration |
+| SLR-C | `scenario SLR + class-wise threshold` |
+| MEV v1 | benchmark bank + similarity matching + fixed aggregation |
+| MEV v2 | benchmark bank + similarity matching + class-wise expert routing |
+
+### 6.3 模型选择原则
+
+正式结果均采用 validation-selected 配置，不使用 test 最优值作为主结论。
+
+单 expert 的 best test 结果只作为诊断，不作为正式主表。
 
 ---
 
-### 8.3 Baselines
+## 7. 实验结果
 
-必须覆盖三层对比。
+### 7.1 主结果
 
-#### Layer 1：当前强基线
-
-- strong frozen CLIP baseline
-- baseline + class-wise threshold
-
-#### Layer 2：当前 strongest semantic pipeline
-
-- scenario SLR
-- scenario SLR + class-wise threshold
-- lexical + canonical SLR
-- lexical + canonical SLR + class-wise threshold
-
-#### Layer 3：新的 verification 变体
-
-- SLR + MEV(object only)
-- SLR + MEV(scene only)
-- SLR + MEV(style only)
-- SLR + MEV(all experts)
-- SLR + MEV(all experts) + class-wise threshold
-
-如果 `v2` 跑了，还可补：
-
-- SLR + MEV(clip-bank experts)
-- SLR + MEV(specialist experts)
-
----
-
-### 8.4 核心消融
-
-#### Ablation A：expert importance
-
-```text
-scenario SLR-C
-+ object verification
-+ scene verification
-+ style verification
-+ activity verification
-+ all experts
-```
-
-目标：
-
-- 证明专家互补性
-- 看哪些 expert 对整体更关键
-- 看 hard intents 是否更依赖某类 expert
-
-#### Ablation B：template source
-
-```text
-scenario template
-canonical template
-lexical template
-scenario + canonical template
-```
-
-目标：
-
-- 验证 evidence template 是否也存在 source complementarity
-- 检查 `scenario` 是否仍然是最强单源模板
-
-#### Ablation C：aggregation method
-
-```text
-fixed equal weight
-template-aware fixed weight
-intent-conditioned routing
-small learnable head
-```
-
-目标：
-
-- 证明 gain 的核心是否来自 verification，而不是复杂聚合器
-
-#### Ablation D：proposal source
-
-```text
-baseline top-k
-scenario SLR top-k
-```
-
-目标：
-
-- 检查 verification 对 proposal quality 的依赖
-- 验证“强 candidate proposal + evidence verification”是否是正确组合
-
-#### Ablation E：calibration vs verification
-
-```text
-SLR-C
-SLR + MEV
-SLR + calibration
-SLR + MEV + calibration
-```
-
-目标：
-
-- 把 verification 与 calibration 的作用拆开
-- 避免两者在论文里被写成一团
-
----
-
-### 8.5 分析实验
-
-#### Analysis 1：expert dependency
-
-做 intent-expert heatmap：
-
-| intent | object | scene | style | activity |
+| Method | Macro | Micro | Samples | Hard |
 | --- | ---: | ---: | ---: | ---: |
-| Fine design | low | medium | high | low |
-| Exploration | low | high | medium | medium |
-| Fitness | high | medium | low | high |
+| Baseline + global threshold | 45.98 | 56.54 | 56.40 | 26.86 |
+| Baseline + class-wise threshold | 48.23 | 52.04 | 52.94 | 29.71 |
+| Scenario SLR + global threshold | 47.14 | 56.52 | 55.11 | 28.32 |
+| `SLR-C` | **51.28** | **59.13** | **58.47** | 33.98 |
+| `MEV v1` | 50.84 | 58.17 | 57.21 | 33.53 |
+| `MEV v2` | 51.10 | 59.00 | 58.24 | **33.99** |
 
-这张图非常重要，因为它能直接回答：
+表中结论：
 
-> 不同 intent 是否真的依赖不同证据结构？
+- `MEV v1` 相比 `SLR-C` 仍略弱
+- `MEV v2` 明显优于 `MEV v1`
+- `MEV v2` 在 hard 上基本追平甚至略高于 `SLR-C`
+- `MEV v2` 的 macro / micro / samples 仍略低于 `SLR-C`
 
-#### Analysis 2：template coverage
+### 7.2 MEV v1 结果
 
-分析：
+`v1` 的 validation-selected 最优配置为：
 
-- 某类模板是否过 sparse
-- 哪些类几乎只有 scene evidence
-- 哪些类 object/style evidence 很丰富
+- subset: `all`
+- fusion: `add_norm`
+- `beta = 0.1`
 
-然后看模板丰富度与 gain 是否相关。
+其 test 指标为：
 
-#### Analysis 3：hard intent case study
+- `macro = 50.84`
+- `micro = 58.17`
+- `samples = 57.21`
+- `hard = 33.53`
 
-重点看高混淆类别，例如：
+相对 `SLR-C`：
 
-- `Enjoy life`
-- `Happy`
-- `Playful`
-- `Appreciating fine design`
-- `Exploration`
+- `macro -0.44`
+- `hard -0.45`
 
-展示：
+因此，`v1` 的主要结论是：
 
-```text
-image
-top-k hypotheses
-evidence bank
-template match scores
-verification rerank result
-final decision
-```
+> benchmark-bank evidence verification 已经完整跑通，但固定 all-expert aggregation 尚不足以正式超过 strongest `SLR-C`。
 
-这类 case study 会非常有说服力。
+### 7.3 单 expert 诊断
 
-#### Analysis 4：失败案例
+将每个 single expert 在 test 上的最好结果作为诊断信号，可得到：
 
-必须保留失败案例，尤其是：
+| Expert | Best Test Macro | Best Test Hard | 说明 |
+| --- | ---: | ---: | --- |
+| object | 51.11 | 34.35 | 有用，但不是最强 |
+| scene | 51.05 | 33.68 | 有用，但收益有限 |
+| style | **51.86** | **35.21** | 当前最强单 expert |
+| activity | 51.58 | 34.79 | 次强单 expert |
 
-- 模板错误导致误导
-- expert bank 命中表面相似词但语义不对
-- style evidence 过泛导致 false positive
+这些结果不用于正式模型选择，但用于回答“哪类 expert 更有潜力”。结论很清楚：
 
-如果不写失败案例，这条线会显得像“什么都能解释”的故事。
+- `style` 与 `activity` 是最有潜力的证据源
+- 简单 all-expert aggregation 并不能自动把这些强信号转化为更好的正式结果
 
-#### Analysis 5：效率 / 代价
+### 7.4 MEV v2 结果
 
-至少报告：
+`v2` 的 validation-selected 最优配置为：
 
-- `v1` CLIP-bank MEV 的额外推理开销
-- specialist expert 版本的额外开销
-
-这能帮助说明：
-
-> 为什么论文主线优先走轻量 verification，而不是直接堆一堆专家模型。
-
----
-
-### 8.6 当前 v1 已完成实验结果（2026-03-10）
-
-这一节记录已经真正跑完的版本，而不是计划中的理想版本。
-
-当前完整实验入口：
-
-- `scripts/analyze_agent_evidence_verification.py`
-
-完整输出目录：
-
-- `logs/analysis/full_agent_evidence_verification_20260310`
-
-当前 `v1` 的实际 instantiation 为：
-
-- candidate proposal：
-  - `scenario SLR`
-  - `top-k = 10`
-  - `alpha = 0.3`
-- evidence bank：
-  - `object`: COCO 80 labels
-  - `scene`: Places365 365 labels
-  - `style`: Flickr Style 20 labels
-  - `activity`: Stanford40 40 labels
-- template source：
-  - `intent_description_gemini.json`
-  - `intent2concepts.json`
-- verification matching：
-  - `benchmark bank + similarity matching`
-- aggregation：
-  - `template-aware fixed weight`
-- decision rule：
-  - global threshold
-  - class-wise threshold
-
-也就是说，这一版已经不是早期的手工 generic bank，而是：
-
-> **benchmark label sets + CLIP-space matching + calibrated decision**
-
-#### 当前 strongest baseline 对比
-
-参考当前已有 strongest `SLR-C`：
-
-- `scenario SLR + class-wise threshold`
-  - `macro = 0.5128`
-  - `micro = 0.5913`
-  - `samples = 0.5847`
-  - `hard = 0.3398`
-
-当前 `MEV v1` 按 validation 选配置后的正式最好结果为：
-
-- `all experts + beta = 0.1 + add_norm + class-wise threshold`
-  - `macro = 0.5084`
-  - `micro = 0.5817`
-  - `samples = 0.5721`
-  - `hard = 0.3353`
-
-相对 strongest `SLR-C`：
-
-- `macro -0.0044`
-- `hard -0.0045`
-
-因此，到目前为止最重要的结论不是“MEV 已经超过 SLR-C”，而是：
-
-> **benchmark-bank evidence verification 已经完整跑通，但在当前默认聚合方式下，尚未稳定超过 strongest SLR-C。**
-
-#### class-wise calibration 仍然是必要的
-
-当前 `MEV v1` 的一个很明确现象是：
-
-- global threshold 下，best validation-selected MEV test 大致在：
-  - `macro = 0.4768`
-  - `hard = 0.3056`
-- class-wise threshold 下，best validation-selected MEV test 达到：
-  - `macro = 0.5084`
-  - `hard = 0.3353`
-
-这说明：
-
-> verification 改变 score geometry 之后，仍然非常依赖 calibrated decision rule，尤其是 class-wise threshold。
-
-换句话说，当前观察和前面的 `SLR-C` 结论是一致的：
-
-- rerank / verification 负责 candidate disambiguation
-- calibration 负责把它转成最终 multi-label outputs
-
-#### 单 expert 的诊断结果
-
-如果只看 validation-selected 配置，`all experts` 是当前最强的正式配置。
-
-但如果把每个 single expert 在 test 上的最好结果当作诊断信号，会看到更有意思的趋势：
-
-- `object` best test:
-  - `macro = 0.5111`
-  - `hard = 0.3435`
-- `scene` best test:
-  - `macro = 0.5105`
-  - `hard = 0.3368`
-- `style` best test:
-  - `macro = 0.5186`
-  - `hard = 0.3521`
-- `activity` best test:
-  - `macro = 0.5158`
-  - `hard = 0.3479`
-
-这里需要强调：
-
-- 上述 single-expert best test 结果只是诊断，不应作为正式主表写法
-- 它们用于判断“哪类 expert 更有潜力”，而不是替代 validation-selected 结果
-
-这组结果带来的判断很明确：
-
-> **style 与 activity 是当前最有潜力的证据源，而简单把所有 experts 一起并入，反而可能稀释增益。**
-
-#### 当前阶段的判断
-
-这一轮实验至少回答了三个问题。
-
-第一，MEV 不是空想，链路已经能完整运行：
-
-- evidence template 构建可行
-- benchmark label set bank 可行
-- similarity matching 可行
-- calibration 接入可行
-
-第二，当前 gain pattern 说明 expert 之间并不天然互补：
-
-- `all experts` 没有自动超过强单 expert
-- 这说明 aggregation 或 expert selection 仍有改进空间
-
-第三，这条线的下一个重点不应该是继续扩 bank，而应该是：
-
-- 更好地选择 expert
-- 更好地控制 expert 权重
-- 或限制 verification 只在某些 intent / sample 上激活
-
-换句话说，当前最合理的下一步，不是“再加更多专家”，而是：
-
-> **把 style / activity 的有效信号保留下来，同时避免 all-expert aggregation 的相互稀释。**
-
----
-
-### 8.7 当前 v2 已完成实验结果（2026-03-10）
-
-`v1` 的主要问题已经很明确：
-
-- `all experts` 的固定聚合会稀释强单 expert 的有效信号
-- `style` 与 `activity` 在单 expert 诊断里明显更强
-
-因此，`v2` 没有再改 evidence bank，也没有引入 learnable head，而是只改 aggregation / rerank 逻辑。
-
-当前 `v2` 的核心是：
-
-> **class-wise expert routing**
-
-具体做法是：
-
-1. 先跑 `object / scene / style / activity` 四个 single-expert MEV
-2. 用 validation per-class F1 相对 `SLR-C` 的 gain 构建 class-wise routing matrix
-3. 对每个类别只保留最有用的 expert，或保留 top-2 positive experts
-4. 再做 verification rerank + class-wise calibration
-
-当前完整实验输出目录：
-
-- `logs/analysis/full_agent_evidence_verification_v2_20260310`
-
-#### 当前 `v2` 的最优结果
-
-当前 validation-selected 最优 `v2` 配置为：
-
-- `routing = top1_positive`
+- routing mode: `top1_positive`
 - `beta = 0.3`
-- `fusion = add_norm`
+- fusion: `add_norm`
 - `num_routed_classes = 20`
 
-对应 test：
+其 test 指标为：
 
-- `macro = 0.5110`
-- `micro = 0.5900`
-- `samples = 0.5824`
-- `hard = 0.3399`
+- `macro = 51.10`
+- `micro = 59.00`
+- `samples = 58.24`
+- `hard = 33.99`
 
-#### 与 `v1` 和 strongest `SLR-C` 的关系
+相对 `v1`：
 
-相对 `v1` 正式最好结果：
+- `macro +0.26`
+- `hard +0.46`
 
-- `v1`: `macro = 0.5084`, `hard = 0.3353`
-- `v2`: `macro = 0.5110`, `hard = 0.3399`
+相对 `SLR-C`：
 
-也就是说：
+- `macro -0.18`
+- `hard +0.01`
 
-- `macro +0.0026`
-- `hard +0.0046`
-
-相对 strongest `SLR-C`：
-
-- `SLR-C`: `macro = 0.5128`, `hard = 0.3398`
-- `v2`: `macro = 0.5110`, `hard = 0.3399`
-
-也就是说：
-
-- `macro -0.0018`
-- `hard +0.0001`
-
-这说明：
-
-> **v2 已经明显优于 v1，并且在 hard 上基本追平甚至略高于 strongest SLR-C，但 overall macro 仍略低于 strongest SLR-C。**
-
-#### 为什么 v2 比 v1 更合理
-
-`v2` 的最关键变化，不是多了更多参数，而是：
-
-- 不再对所有类别共享同一组 expert policy
-- 改为让不同类别依赖不同 expert
-
-当前 best routed config 的 class distribution 为：
+`v2` 的 best routing distribution 为：
 
 - `object`: 2 classes
 - `scene`: 7 classes
 - `style`: 1 class
 - `activity`: 10 classes
 
-剩余类没有被 route 到正增益 expert，直接退回 `SLR-C`。
+剩余 8 个类别没有被 route 到正增益 expert，直接退回 `SLR-C`。
 
-这一点非常关键，因为它说明：
+### 7.5 Global Threshold 的补充观察
 
-> **不是所有类别都需要 verification，也不是所有类别都应该使用全部 experts。**
+`v2` 在 global threshold 下的最佳配置为：
 
-这和 `v1` 的观察完全一致，也进一步支持了 agent / routing 的叙事。
-
-#### global 指标的补充观察
-
-`v2` 在 global threshold 下的 best result 也值得记一下。
-
-当前 best validation-selected global `v2` 为：
-
-- `routing = top2_soft`
+- routing mode: `top2_soft`
 - `gamma = 8`
 - `beta = 0.1`
 
-对应 test：
+其 test 指标为：
 
-- `macro = 0.4925`
-- `hard = 0.3501`
+- `macro = 49.25`
+- `hard = 35.01`
 
 这说明：
 
 - softer routing 对 hard subset 仍然有吸引力
-- 但如果按正式主表口径，当前仍应以 class-wise threshold 结果为主
-
-#### 当前对 v2 的判断
-
-这一轮 `v2` 实验至少说明三件事。
-
-第一，`class-wise routing` 的方向是正确的：
-
-- 它显著优于 `v1`
-- 证明 `all-expert fixed aggregation` 确实不是最优结构
-
-第二，当前最好结果已经非常接近 strongest `SLR-C`：
-
-- 已经不再是明显落后
-- 差距收敛到很小的量级
-
-第三，这条线接下来最值得继续挖的，不是 bank，而是 routing 本身：
-
-- route 哪些类
-- route 几个 expert
-- 是否要加入 uncertainty-aware selective activation
-
-换句话说，当前最合理的下一步不是“再造一个更大 expert bank”，而是：
-
-> **在当前 benchmark-bank extraction 固定的前提下，继续优化 routing 与 selective verification。**
+- 但正式主表仍应以 class-wise threshold 结果为主
 
 ---
 
-## 九、风险与边界
+## 8. 结果分析
 
-这部分建议在设计文档里先写清楚，避免后面实现时踩坑。
+### 8.1 证据核验是可行的，但 aggregation 方式决定上限
 
-### 9.1 模板噪声风险
+`v1` 已经证明：
 
-从 `scenario prior` 自动解析 evidence template 时，最容易出现：
+- benchmark label sets 可用于构建统一 evidence space
+- template-conditioned matching 可以真正运行
+- verification signal 可以与 `SLR-C` 共存
 
-- 词太泛
-- 词太长
-- 词不视觉
-- 同义短语过多
+但 `v1` 的固定聚合方式也清楚暴露出问题：
 
-解决策略：
+- 有效 expert 的强信号会被无效 expert 稀释
+- 不同类别共享同一 expert policy 并不合理
 
-- 优先解析成短语而不是长句
-- 做词表裁剪
-- 对明显非视觉词做过滤
+### 8.2 Routing 比 all-expert fixed aggregation 更重要
 
-### 9.2 Expert label mismatch
+`v2` 相比 `v1` 的提升不是来自更多参数，而来自结构上的改变：
 
-如果用了 specialist experts，不同模型输出 label space 会不一致。
+- `v1`：所有类共享固定 expert aggregation
+- `v2`：每个类独立选择更合适的 expert
 
-解决策略：
+这说明当前更重要的问题不是“有没有更多 expert”，而是：
 
-- 所有 expert 输出都投影回统一 text space
-- 匹配时不直接比 label id，而比 text embedding similarity
+> 如何让不同 intent 依赖不同证据结构。
 
-### 9.3 “外部模型堆叠”风险
+### 8.3 并非所有类别都需要 verification
 
-如果一开始就上 GroundingDINO + Places + aesthetic predictor，reviewer 很容易说：
+`top1_positive` 的最佳 routed config 只对 20 个类别启用了 expert verification，剩余类别直接退回 `SLR-C`。这意味着：
 
-> 你只是用了更多 pretrained experts。
+- verification 不是必须全局启用
+- 某些类别上引入 expert evidence 没有正增益
+- selective activation 是合理方向
 
-解决策略：
+### 8.4 Hard subset 受益更明显
 
-- 主线先做 `CLIP-space expert banks`
-- specialist experts 只作为增强版或后续版本
+虽然 `v2` 的 overall macro 仍略低于 `SLR-C`，但其 hard 指标已经基本追平甚至略高于 `SLR-C`。这说明：
 
-### 9.4 复杂聚合器掩盖机制风险
-
-你前面已经看到 learnable fusion 不一定带来真正增益。
-
-所以这里一定要避免：
-
-- 一上来就多层 MLP
-- 把 verification 变成黑盒分数混合器
-
-主线应坚持：
-
-> 先用简单聚合证明 evidence verification 有效，再谈 learnable routing。
-
-### 9.5 calibration overfitting
-
-verification 改变了 score geometry，class-wise threshold 很可能仍然有效，但也要警惕过拟合 val。
-
-解决策略：
-
-- 固定统一 val protocol
-- 先报告 global / group / class-wise 三种校准结果
-- 让 calibration 的收益可解释，而不是只报一组最优值
+- evidence verification 更接近“困难类别局部消歧器”
+- 后续若能把这种 hard-case 增益稳定转化为 overall 增益，方法线就更有说服力
 
 ---
 
-## 十、建议的实现顺序
+## 9. 当前结论
 
-为了降低风险，建议严格按阶段推进，而不是同时开多条线。
+截至目前，可以给出以下技术判断。
 
-### Phase 1：先做最小可验证版本
+### 9.1 已经被验证的结论
 
-1. 从 `scenario prior` 自动解析 evidence template
-2. 搭建 `object / scene / style` 三个 CLIP-bank experts
-3. 在 `scenario SLR top-k` 上做 verification rerank
-4. 接上 class-wise calibration
+1. `MEV` 不是概念性构想，而是已经实现并完整跑通的系统。
+2. `benchmark bank + similarity matching + calibration` 是可行技术路线。
+3. `MEV v1` 不能正式超过 strongest `SLR-C`，原因主要不在 extraction，而在 aggregation。
+4. `MEV v2` 的 class-wise expert routing 明显优于 `v1`，并基本追平 strongest `SLR-C`。
 
-这一阶段只回答一个问题：
+### 9.2 当前最稳妥的主结论
 
-> **最小版本的 evidence verification 是否已经能超过当前 strongest SLR-C？**
+> 当前最合理的 MEV 方向不是继续扩 bank，也不是直接引入 learnable head，而是继续沿着 class-wise routing 与 selective verification 深挖。
 
-当前状态：
+### 9.3 当前最值得继续优化的点
 
-- 已完成
-- 结论：**链路跑通，但 benchmark-bank `MEV v1` 尚未超过 strongest `SLR-C`**
-
-### Phase 2：做机制性消融
-
-1. 单 expert 与全 expert 对比
-2. 模板来源对比
-3. fixed weight 与 template-aware weight 对比
-
-这一阶段回答：
-
-> gain 到底来自哪里？
-
-当前状态：
-
-- 已部分完成
-- 已有结果表明：
-  - `style` 与 `activity` 更有潜力
-  - `all experts` 并未自然优于强单 expert
-  - `class-wise routing` 能明显优于 `v1`
-  - 下一步应优先做 routing / selective activation，而不是继续扩 bank
-
-### Phase 3：再考虑增强版
-
-1. 加 activity expert
-2. 加 specialist experts
-3. 加 routing / learnable head
-4. 加 negative evidence
-
-这一阶段不是主线前提，而是后续增强。
+- class-wise routing 的构造方式
+- uncertainty-aware selective activation
+- style / activity 为主的 routing 约束
+- 将 hard-case 增益更稳定地转化为 overall gain
 
 ---
 
-## 十一、论文写法上的主张
+## 10. 局限性与风险
 
-如果这条线成立，整篇论文的表述应该是：
+### 10.1 模板噪声
 
-> 视觉意图识别不是简单的全局分类问题，而是一个“候选提出 + 证据核验 + 决策校准”的过程。
+当前模板由 `scenario prior` 与 `intent2concepts` 自动构造，仍然存在：
 
-对应的方法贡献可以写成：
+- 非视觉短语混入
+- 语义过泛
+- 同义表达冗余
 
-1. We extend strong local semantic reranking into a hypothesis verification framework for visual intent recognition.
-2. We introduce intent-specific evidence templates and multi-expert visual evidence matching for candidate-level verification.
-3. We show that lightweight evidence verification, when combined with calibrated decision rules, improves intent recognition without replacing the strong frozen CLIP baseline.
-4. We provide analysis showing that different intents depend on different evidence experts, supporting an agentic reasoning perspective on intent perception.
+### 10.2 Label space mismatch
+
+虽然 benchmark label sets 可解释性强，但它们与 intent ontology 并不天然对齐，因此仍需要 CLIP text space 作为桥接层。
+
+### 10.3 当前结果仍是单 checkpoint / 单分析口径
+
+本报告的结论基于当前 strongest baseline checkpoint 与统一分析协议，尚未完成多 seed 稳定性验证。
+
+### 10.4 Routing 仍是手工规则化版本
+
+`v2` 已经表明 routing 有价值，但当前 routing 仍然由 validation gain 构造，尚未引入更细的 sample-level selectivity。
 
 ---
 
-## 十二、当前版本的明确建议
+## 11. 后续工作
 
-如果现在就要决定落地方向，我的建议是：
+建议按以下顺序推进。
 
-### 主方法版本
+### 11.1 短期优先级
 
-- `scenario SLR` 产生 top-k hypotheses
-- `benchmark-bank object / scene / style / activity experts`
-  - `object`: COCO 80
-  - `scene`: Places365 365
-  - `style`: Flickr Style 20
-  - `activity`: Stanford40 40
-- `template-aware fixed-weight verification`
-- `class-wise calibrated decision`
+1. 在 `v2` 上加入 uncertainty-aware selective activation
+2. 继续搜索 routing gain floor 与更保守的 activation 规则
+3. 对 `style` / `activity` 做更强约束的 routed variant
+4. 将 `v2` 结果补入正式主表与论文草稿
 
-### 当前结论
+### 11.2 中期优先级
 
-基于 `logs/analysis/full_agent_evidence_verification_20260310` 与 `logs/analysis/full_agent_evidence_verification_v2_20260310`，当前最稳妥的判断是：
+1. 做多 seed 稳定性验证
+2. 做更完整的 per-class / hard-case 分析
+3. 评估 template source 对 routing 的影响
 
-- 这条线已经具备实现与分析闭环
-- `MEV v2` 明显优于 `MEV v1`
-- `MEV v2` 已基本追平 strongest `SLR-C`
-- 当前最值得继续打磨的不是 `all experts`
-- 而是 `class-wise routing + selective verification`
+### 11.3 暂不优先的方向
 
-因此，下一阶段最推荐的主攻方向应是：
+以下方向目前不应抢主线：
 
-- `class-wise expert routing`
-- uncertainty-aware selective verification
-- style/activity-dominant routing，而不是无条件 all-expert aggregation
-
-### 不建议一开始就做的内容
-
-- 端到端重训练
-- 很重的 specialist multi-model pipeline
+- 大规模 specialist multi-model pipeline
 - 复杂 learnable fusion
-- negative evidence 与多阶段 agent loop
+- 端到端重训练主干
+- negative evidence / multi-step agent loop
 
-原因不是这些没价值，而是：
+原因很简单：当前主问题已经被收束为 routing 与 selective verification，而不是 extraction capacity 不足。
 
-> 你当前最需要的是证明“evidence verification”本身是有效机制，而不是把系统做得更复杂。
+---
 
-如果这一步成立，这条线就会比单纯的 prior rerank 更完整，也更像一篇真正的方法论文。
+## 12. 总结
+
+本报告完成了从设计到实现、从 `v1` 到 `v2` 的一轮闭环验证。结论可以简洁概括为：
+
+- `SLR-C` 仍是当前 strongest overall system
+- `MEV v1` 已跑通但未正式超过 `SLR-C`
+- `MEV v2` 通过 class-wise expert routing 明显优于 `v1`
+- `MEV v2` 在 hard subset 上已经与 `SLR-C` 基本持平，整体表现也已非常接近
+
+因此，MEV 这条线当前已经从“设计假设”进入“可持续优化的技术路线”，后续重点应聚焦于 routing 与 selective verification，而不是继续无条件扩展 expert bank。
