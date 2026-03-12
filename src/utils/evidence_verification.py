@@ -1085,6 +1085,46 @@ def _topk_row_sparsify(matrix: np.ndarray, top_k: int | None = None) -> np.ndarr
     return output
 
 
+def build_evidence_vectors(
+    expert_phrase_scores: Mapping[str, np.ndarray],
+    selected_experts: Sequence[str] | None = None,
+    mode: str = "focused",
+    topm: int | None = 5,
+    positive_only: bool = True,
+    normalize: bool = True,
+) -> np.ndarray:
+    experts = _resolve_selected_experts(selected_experts)
+    vector_mode = str(mode).strip().lower()
+    if vector_mode not in {"focused", "full"}:
+        raise ValueError(f"Unsupported evidence vector mode: {mode}")
+
+    chunks: List[np.ndarray] = []
+    sample_count: int | None = None
+    for expert in experts:
+        scores = np.asarray(expert_phrase_scores[expert], dtype=np.float32)
+        if scores.ndim != 2:
+            raise ValueError(f"Expected 2D expert scores for {expert}, got shape {scores.shape}")
+        if sample_count is None:
+            sample_count = int(scores.shape[0])
+        elif sample_count != int(scores.shape[0]):
+            raise ValueError("All expert score matrices must share the same sample dimension.")
+
+        working = np.maximum(scores, 0.0) if positive_only else scores
+        if vector_mode == "focused":
+            working = _topk_row_sparsify(working, top_k=topm)
+        chunks.append(np.asarray(working, dtype=np.float32))
+
+    if not chunks:
+        return np.zeros((0, 0), dtype=np.float32)
+
+    vectors = np.concatenate(chunks, axis=1).astype(np.float32, copy=False)
+    if not normalize:
+        return vectors
+
+    norms = np.linalg.norm(vectors, axis=1, keepdims=True)
+    return (vectors / np.maximum(norms, 1e-8)).astype(np.float32)
+
+
 def _build_hard_negative_ids_from_positive_means(
     positive_mean: Mapping[str, np.ndarray],
     selected_experts: Sequence[str] | None = None,
@@ -1239,6 +1279,318 @@ def learn_data_driven_relations(
     }
 
 
+def learn_prototype_memory_relations(
+    expert_phrase_scores: Mapping[str, np.ndarray],
+    labels: np.ndarray,
+    selected_experts: Sequence[str] | None = None,
+    relation_mode: str = "hard_negative_diff",
+    profile_topn: int | None = 10,
+    hard_negative_topn: int = 3,
+    hard_negative_ids: Sequence[Sequence[int]] | None = None,
+    positive_only_scores: bool = True,
+    prototype_k: int = 2,
+    prototype_source: str = "focused",
+    prototype_source_topm: int | None = 5,
+    min_positive_samples: int = 64,
+    min_cluster_size: int = 16,
+    random_state: int = 0,
+) -> Dict[str, Any]:
+    from sklearn.cluster import KMeans
+
+    experts = _resolve_selected_experts(selected_experts)
+    requested_k = max(1, int(prototype_k))
+    label_matrix = (np.asarray(labels, dtype=np.float32) > 0.0).astype(np.float32)
+    if label_matrix.ndim != 2:
+        raise ValueError(f"Expected 2D labels, got shape {label_matrix.shape}")
+
+    class_count = label_matrix.shape[1]
+    reference_bundle = learn_data_driven_relations(
+        expert_phrase_scores=expert_phrase_scores,
+        labels=label_matrix,
+        selected_experts=experts,
+        relation_mode=relation_mode,
+        profile_topn=None,
+        hard_negative_topn=int(hard_negative_topn),
+        hard_negative_ids=hard_negative_ids,
+        positive_only_scores=positive_only_scores,
+    )
+
+    evidence_vectors = build_evidence_vectors(
+        expert_phrase_scores,
+        selected_experts=experts,
+        mode=prototype_source,
+        topm=prototype_source_topm,
+        positive_only=positive_only_scores,
+        normalize=True,
+    )
+    vector_dim = int(evidence_vectors.shape[1]) if evidence_vectors.ndim == 2 else 0
+
+    max_rows_per_class = max(1, requested_k)
+    prototype_row_ids = np.full((class_count, max_rows_per_class), -1, dtype=np.int64)
+    prototype_counts = np.zeros(class_count, dtype=np.int64)
+    fallback_mask = np.zeros(class_count, dtype=np.bool_)
+    fallback_reasons: List[str] = []
+    class_cluster_sizes: List[List[int]] = []
+    class_positive_counts: List[int] = []
+
+    positive_mean_rows = {expert: [] for expert in experts}
+    negative_mean_rows = {expert: [] for expert in experts}
+    hard_negative_mean_rows = {expert: [] for expert in experts}
+    support_rows = {expert: [] for expert in experts}
+    contradiction_rows = {expert: [] for expert in experts}
+    prototype_centers: List[np.ndarray] = []
+    prototype_class_ids: List[int] = []
+    prototype_local_ids: List[int] = []
+    prototype_cluster_sizes: List[int] = []
+
+    required_positive_count = max(int(min_positive_samples), requested_k * max(1, int(min_cluster_size)))
+
+    for class_idx in range(class_count):
+        positive_ids = np.where(label_matrix[:, class_idx] > 0.0)[0]
+        positive_count = int(positive_ids.size)
+        class_positive_counts.append(positive_count)
+
+        fallback_reason = "ok"
+        actual_k = 1
+        cluster_labels = np.zeros(positive_count, dtype=np.int32)
+        centers = np.zeros((1, vector_dim), dtype=np.float32)
+
+        if positive_count == 0:
+            fallback_reason = "no_positive_samples"
+            fallback_mask[class_idx] = True
+        else:
+            centers[0] = evidence_vectors[positive_ids].mean(axis=0).astype(np.float32)
+            if requested_k > 1:
+                if positive_count < required_positive_count:
+                    fallback_reason = "insufficient_positive_samples"
+                    fallback_mask[class_idx] = True
+                else:
+                    kmeans = KMeans(
+                        n_clusters=requested_k,
+                        random_state=int(random_state),
+                        n_init=20,
+                    )
+                    raw_labels = kmeans.fit_predict(evidence_vectors[positive_ids]).astype(np.int32)
+                    counts = np.bincount(raw_labels, minlength=requested_k)
+                    if int(counts.min()) < int(min_cluster_size):
+                        fallback_reason = "cluster_below_min_size"
+                        fallback_mask[class_idx] = True
+                    else:
+                        order = np.argsort(-counts)
+                        label_map = np.zeros(requested_k, dtype=np.int32)
+                        for new_id, old_id in enumerate(order.tolist()):
+                            label_map[int(old_id)] = int(new_id)
+                        cluster_labels = label_map[raw_labels]
+                        centers = np.asarray(kmeans.cluster_centers_[order], dtype=np.float32)
+                        actual_k = requested_k
+
+        center_norms = np.linalg.norm(centers, axis=1, keepdims=True)
+        centers = (centers / np.maximum(center_norms, 1e-8)).astype(np.float32)
+
+        if actual_k == 1:
+            class_cluster_sizes.append([positive_count])
+        else:
+            counts = np.bincount(cluster_labels, minlength=actual_k)
+            class_cluster_sizes.append([int(x) for x in counts.tolist()])
+
+        fallback_reasons.append(fallback_reason)
+        prototype_counts[class_idx] = int(actual_k)
+
+        for local_idx in range(actual_k):
+            row_id = len(prototype_class_ids)
+            prototype_row_ids[class_idx, local_idx] = int(row_id)
+            prototype_class_ids.append(int(class_idx))
+            prototype_local_ids.append(int(local_idx))
+            cluster_member_ids = (
+                positive_ids
+                if actual_k == 1
+                else positive_ids[np.where(cluster_labels == local_idx)[0]]
+            )
+            prototype_cluster_sizes.append(int(cluster_member_ids.size))
+            prototype_centers.append(np.asarray(centers[local_idx], dtype=np.float32))
+
+            for expert in experts:
+                scores = np.asarray(expert_phrase_scores[expert], dtype=np.float32)
+                working_scores = np.maximum(scores, 0.0) if positive_only_scores else scores
+                if cluster_member_ids.size == 0:
+                    prototype_positive = np.zeros(scores.shape[1], dtype=np.float32)
+                else:
+                    prototype_positive = working_scores[cluster_member_ids].mean(axis=0).astype(np.float32)
+                negative_reference = np.asarray(reference_bundle["negative_mean"][expert][class_idx], dtype=np.float32)
+                hard_negative_reference = np.asarray(
+                    reference_bundle["hard_negative_mean"][expert][class_idx],
+                    dtype=np.float32,
+                )
+
+                if relation_mode == "positive_mean":
+                    support_vec = prototype_positive.copy()
+                    contradiction_vec = np.zeros_like(prototype_positive, dtype=np.float32)
+                elif relation_mode == "pos_neg_diff":
+                    diff = prototype_positive - negative_reference
+                    support_vec = diff
+                    contradiction_vec = np.zeros_like(diff, dtype=np.float32)
+                elif relation_mode == "hard_negative_diff":
+                    diff = prototype_positive - hard_negative_reference
+                    support_vec = diff
+                    contradiction_vec = np.zeros_like(diff, dtype=np.float32)
+                elif relation_mode == "support_only":
+                    diff = prototype_positive - negative_reference
+                    support_vec = np.maximum(diff, 0.0)
+                    contradiction_vec = np.zeros_like(diff, dtype=np.float32)
+                elif relation_mode == "support_contradiction":
+                    diff = prototype_positive - negative_reference
+                    support_vec = np.maximum(diff, 0.0)
+                    contradiction_vec = np.maximum(-diff, 0.0)
+                else:
+                    raise ValueError(f"Unsupported relation_mode: {relation_mode}")
+
+                positive_mean_rows[expert].append(prototype_positive.astype(np.float32))
+                negative_mean_rows[expert].append(negative_reference.astype(np.float32))
+                hard_negative_mean_rows[expert].append(hard_negative_reference.astype(np.float32))
+                support_rows[expert].append(np.asarray(support_vec, dtype=np.float32))
+                contradiction_rows[expert].append(np.asarray(contradiction_vec, dtype=np.float32))
+
+    positive_mean = {
+        expert: np.stack(rows, axis=0) if rows else np.zeros((0, 0), dtype=np.float32)
+        for expert, rows in positive_mean_rows.items()
+    }
+    negative_mean = {
+        expert: np.stack(rows, axis=0) if rows else np.zeros((0, 0), dtype=np.float32)
+        for expert, rows in negative_mean_rows.items()
+    }
+    hard_negative_mean = {
+        expert: np.stack(rows, axis=0) if rows else np.zeros((0, 0), dtype=np.float32)
+        for expert, rows in hard_negative_mean_rows.items()
+    }
+    support = {
+        expert: np.stack(rows, axis=0) if rows else np.zeros((0, 0), dtype=np.float32)
+        for expert, rows in support_rows.items()
+    }
+    contradiction = {
+        expert: np.stack(rows, axis=0) if rows else np.zeros((0, 0), dtype=np.float32)
+        for expert, rows in contradiction_rows.items()
+    }
+
+    if profile_topn is not None:
+        support_masks = _build_global_profile_mask(
+            support,
+            selected_experts=experts,
+            top_n=int(profile_topn),
+            by_abs=relation_mode in {"pos_neg_diff", "hard_negative_diff"},
+        )
+        for expert in experts:
+            support[expert] = np.asarray(support[expert], dtype=np.float32) * np.asarray(
+                support_masks[expert],
+                dtype=np.float32,
+            )
+
+        if any(np.any(np.asarray(contradiction[expert], dtype=np.float32) > 0.0) for expert in experts):
+            contradiction_masks = _build_global_profile_mask(
+                contradiction,
+                selected_experts=experts,
+                top_n=int(profile_topn),
+                by_abs=False,
+            )
+            for expert in experts:
+                contradiction[expert] = np.asarray(contradiction[expert], dtype=np.float32) * np.asarray(
+                    contradiction_masks[expert],
+                    dtype=np.float32,
+                )
+
+    cluster_sizes_flat = [size for sizes in class_cluster_sizes for size in sizes]
+    return {
+        "selected_experts": experts,
+        "relation_mode": relation_mode,
+        "profile_topn": None if profile_topn is None else int(profile_topn),
+        "hard_negative_topn": int(hard_negative_topn),
+        "hard_negative_ids": reference_bundle["hard_negative_ids"],
+        "prototype_k_requested": int(requested_k),
+        "prototype_source": str(prototype_source),
+        "prototype_source_topm": None if prototype_source_topm is None else int(prototype_source_topm),
+        "min_positive_samples": int(min_positive_samples),
+        "min_cluster_size": int(min_cluster_size),
+        "random_state": int(random_state),
+        "prototype_row_ids": prototype_row_ids,
+        "prototype_counts": prototype_counts,
+        "prototype_class_ids": np.asarray(prototype_class_ids, dtype=np.int64),
+        "prototype_local_ids": np.asarray(prototype_local_ids, dtype=np.int64),
+        "prototype_centers": (
+            np.stack(prototype_centers, axis=0).astype(np.float32)
+            if prototype_centers
+            else np.zeros((0, vector_dim), dtype=np.float32)
+        ),
+        "prototype_cluster_sizes": np.asarray(prototype_cluster_sizes, dtype=np.int64),
+        "fallback_mask": fallback_mask,
+        "fallback_reasons": fallback_reasons,
+        "class_positive_counts": np.asarray(class_positive_counts, dtype=np.int64),
+        "class_cluster_sizes": class_cluster_sizes,
+        "stats": {
+            "num_classes": int(class_count),
+            "num_profiles": int(len(prototype_class_ids)),
+            "num_multi_prototype_classes": int(np.sum(prototype_counts > 1)),
+            "num_fallback_classes": int(np.sum(fallback_mask)),
+            "avg_profiles_per_class": float(np.mean(prototype_counts)) if prototype_counts.size > 0 else 0.0,
+            "avg_cluster_size": float(np.mean(cluster_sizes_flat)) if cluster_sizes_flat else 0.0,
+            "min_cluster_size": int(min(cluster_sizes_flat)) if cluster_sizes_flat else 0,
+            "max_cluster_size": int(max(cluster_sizes_flat)) if cluster_sizes_flat else 0,
+        },
+        "positive_mean": positive_mean,
+        "negative_mean": negative_mean,
+        "hard_negative_mean": hard_negative_mean,
+        "support": support,
+        "contradiction": contradiction,
+    }
+
+
+def select_prototype_profile_ids(
+    expert_phrase_scores: Mapping[str, np.ndarray],
+    prototype_bundle: Mapping[str, Any],
+    selected_experts: Sequence[str] | None = None,
+    positive_only_scores: bool = True,
+) -> np.ndarray:
+    experts = _resolve_selected_experts(
+        selected_experts if selected_experts is not None else prototype_bundle.get("selected_experts")
+    )
+    evidence_vectors = build_evidence_vectors(
+        expert_phrase_scores,
+        selected_experts=experts,
+        mode=str(prototype_bundle.get("prototype_source", "focused")),
+        topm=prototype_bundle.get("prototype_source_topm"),
+        positive_only=positive_only_scores,
+        normalize=True,
+    )
+    prototype_row_ids = np.asarray(prototype_bundle["prototype_row_ids"], dtype=np.int64)
+    prototype_counts = np.asarray(prototype_bundle["prototype_counts"], dtype=np.int64)
+    prototype_centers = np.asarray(prototype_bundle["prototype_centers"], dtype=np.float32)
+    if prototype_row_ids.ndim != 2:
+        raise ValueError(f"Expected prototype_row_ids to be 2D, got shape {prototype_row_ids.shape}")
+    if prototype_counts.shape[0] != prototype_row_ids.shape[0]:
+        raise ValueError(
+            f"prototype_counts length {prototype_counts.shape[0]} != num classes {prototype_row_ids.shape[0]}"
+        )
+
+    num_samples = evidence_vectors.shape[0]
+    num_classes = prototype_row_ids.shape[0]
+    output = np.full((num_samples, num_classes), -1, dtype=np.int64)
+
+    for class_idx in range(num_classes):
+        count = int(prototype_counts[class_idx])
+        if count <= 0:
+            continue
+        rows = prototype_row_ids[class_idx, :count]
+        rows = rows[rows >= 0]
+        if rows.size == 0:
+            continue
+        if rows.size == 1:
+            output[:, class_idx] = int(rows[0])
+            continue
+        similarity = evidence_vectors @ prototype_centers[rows].T
+        best_ids = np.argmax(similarity, axis=1)
+        output[:, class_idx] = rows[best_ids]
+
+    return output
+
+
 def compute_data_driven_verification_scores(
     expert_phrase_scores: Mapping[str, np.ndarray],
     relation_bundle: Mapping[str, Any],
@@ -1380,6 +1732,7 @@ def compute_pairwise_comparative_scores(
     pairwise_profiles: Mapping[str, Any],
     candidate_logits: np.ndarray,
     selected_experts: Sequence[str] | None = None,
+    candidate_profile_ids: np.ndarray | None = None,
     candidate_topk: int = 10,
     activation_topm: int | None = 5,
     activation_positive_only: bool = True,
@@ -1391,6 +1744,13 @@ def compute_pairwise_comparative_scores(
     base_logits = np.asarray(candidate_logits, dtype=np.float32)
     num_samples, num_classes = base_logits.shape
     candidate_topk = max(1, min(int(candidate_topk), num_classes))
+    profile_ids = None
+    if candidate_profile_ids is not None:
+        profile_ids = np.asarray(candidate_profile_ids, dtype=np.int64)
+        if profile_ids.shape != base_logits.shape:
+            raise ValueError(
+                f"candidate_profile_ids shape {profile_ids.shape} != candidate_logits shape {base_logits.shape}"
+            )
 
     active_scores: Dict[str, np.ndarray] = {}
     for expert in experts:
@@ -1413,17 +1773,21 @@ def compute_pairwise_comparative_scores(
             class_i = int(ordered[left_idx])
             for right_idx in range(left_idx + 1, len(ordered)):
                 class_j = int(ordered[right_idx])
+                relation_i = class_i if profile_ids is None else int(profile_ids[sample_idx, class_i])
+                relation_j = class_j if profile_ids is None else int(profile_ids[sample_idx, class_j])
+                if relation_i < 0 or relation_j < 0:
+                    continue
                 margin = 0.0
                 for expert in experts:
                     expert_profile = pairwise_profiles["profiles"][expert]
                     active = active_scores[expert][sample_idx]
 
-                    idx_i = expert_profile["indices"][class_i][class_j]
-                    weight_i = expert_profile["weights"][class_i][class_j]
+                    idx_i = expert_profile["indices"][relation_i][relation_j]
+                    weight_i = expert_profile["weights"][relation_i][relation_j]
                     score_i = float(active[idx_i] @ weight_i) if idx_i.size > 0 else 0.0
 
-                    idx_j = expert_profile["indices"][class_j][class_i]
-                    weight_j = expert_profile["weights"][class_j][class_i]
+                    idx_j = expert_profile["indices"][relation_j][relation_i]
+                    weight_j = expert_profile["weights"][relation_j][relation_i]
                     score_j = float(active[idx_j] @ weight_j) if idx_j.size > 0 else 0.0
 
                     margin += score_i - score_j
