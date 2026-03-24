@@ -20,11 +20,17 @@ SUBSET2IDS = {
 
 
 def compute_difficulty_scores(per_class_f1: np.ndarray) -> Dict[str, float]:
-    """Compute easy/medium/hard mean F1 from per-class F1."""
+    """Compute easy/medium/hard mean F1 from per-class F1 when subsets are available."""
+    def _safe_mean(indices: List[int]) -> float:
+        valid = [idx for idx in indices if idx < len(per_class_f1)]
+        if not valid:
+            return float("nan")
+        return float(np.mean(per_class_f1[valid]))
+
     return {
-        "easy": float(np.mean(per_class_f1[SUBSET2IDS["easy"]])),
-        "medium": float(np.mean(per_class_f1[SUBSET2IDS["medium"]])),
-        "hard": float(np.mean(per_class_f1[SUBSET2IDS["hard"]])),
+        "easy": _safe_mean(SUBSET2IDS["easy"]),
+        "medium": _safe_mean(SUBSET2IDS["medium"]),
+        "hard": _safe_mean(SUBSET2IDS["hard"]),
     }
 
 
@@ -283,7 +289,7 @@ def eval_validation_set(
     )
 
     # compute mAP
-    mAP = compute_mAP(val_scores, multihot_targets)
+    mAP, per_class_ap = compute_mAP(val_scores, multihot_targets, return_each=True)
 
     difficulty = compute_difficulty_scores(f1_dict["none"])
 
@@ -294,6 +300,7 @@ def eval_validation_set(
         "val_macro": f1_dict["macro"], 
         "val_none": f1_dict["none"],
         "val_mAP": mAP,
+        "val_per_class_ap": per_class_ap,
         "threshold": f1_dict["threshold"],
         "val_easy": difficulty["easy"],
         "val_medium": difficulty["medium"],

@@ -15,8 +15,10 @@ from typing import Any, Dict, List, Mapping, Sequence
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from sklearn.metrics import f1_score
 from torch.utils.data import DataLoader, Dataset
+from scipy.io import loadmat
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
@@ -84,9 +86,39 @@ def _parse_args() -> argparse.Namespace:
         default="text_only",
         choices=["text_only", "image_text"],
     )
+    parser.add_argument(
+        "--teacher-text-feature-source",
+        type=str,
+        default="full",
+        choices=["full", "step1_only", "step1_step2"],
+    )
     parser.add_argument("--temperature", type=float, default=2.0)
     parser.add_argument("--standard-kd-weight", type=float, default=1.0)
     parser.add_argument("--dynamic-kd-weight", type=float, default=1.0)
+    parser.add_argument(
+        "--dynamic-kd-variant",
+        type=str,
+        default="sample_inverse",
+        choices=[
+            "sample_inverse",
+            "sample_affine",
+            "classwise_inverse",
+            "classwise_entropy",
+            "classwise_dynamic_temperature",
+        ],
+    )
+    parser.add_argument("--dynamic-gate-alpha", type=float, default=0.3)
+    parser.add_argument("--dynamic-gate-beta", type=float, default=0.7)
+    parser.add_argument("--entropy-gate-lambda", type=float, default=1.0)
+    parser.add_argument(
+        "--feature-distill-mode",
+        type=str,
+        default="none",
+        choices=["none", "soft_supcon"],
+    )
+    parser.add_argument("--feature-distill-weight", type=float, default=0.0)
+    parser.add_argument("--feature-distill-temperature", type=float, default=0.1)
+    parser.add_argument("--feature-proj-dim", type=int, default=256)
     parser.add_argument(
         "--student-agreement-pool",
         type=str,
@@ -197,6 +229,17 @@ def _maybe_limit_bundle(bundle: Dict[str, Any], max_samples: int | None) -> Dict
     return limited
 
 
+def _resolve_text_feature_keys(source: str) -> tuple[str, str]:
+    normalized = str(source).strip().lower()
+    if normalized == "full":
+        return "features", "texts"
+    if normalized == "step1_only":
+        return "step1_features", "step1_texts"
+    if normalized == "step1_step2":
+        return "pos_features", "pos_texts"
+    raise ValueError(f"Unsupported teacher text feature source: {source}")
+
+
 def _evaluate_score_bundle(
     val_scores: np.ndarray,
     val_targets: np.ndarray,
@@ -263,10 +306,16 @@ def _json_ready(obj: Any) -> Any:
 
 
 def compute_difficulty_scores(per_class_f1: np.ndarray) -> Dict[str, float]:
+    def _safe_mean(indices: Sequence[int]) -> float:
+        valid = [idx for idx in indices if idx < len(per_class_f1)]
+        if not valid:
+            return float("nan")
+        return float(np.mean(per_class_f1[valid]))
+
     return {
-        "easy": float(np.mean(per_class_f1[SUBSET2IDS["easy"]])),
-        "medium": float(np.mean(per_class_f1[SUBSET2IDS["medium"]])),
-        "hard": float(np.mean(per_class_f1[SUBSET2IDS["hard"]])),
+        "easy": _safe_mean(SUBSET2IDS["easy"]),
+        "medium": _safe_mean(SUBSET2IDS["medium"]),
+        "hard": _safe_mean(SUBSET2IDS["hard"]),
     }
 
 
@@ -281,7 +330,7 @@ def voc_ap(rec: np.ndarray, prec: np.ndarray, true_num: float) -> float:
     return float(np.sum((mrec[changed + 1] - mrec[changed]) * mpre[changed + 1]))
 
 
-def compute_mAP(scores: np.ndarray, targets: np.ndarray) -> float:
+def compute_mAP(scores: np.ndarray, targets: np.ndarray, return_each: bool = False) -> float | tuple[float, np.ndarray]:
     scores = np.asarray(scores, dtype=np.float32)
     targets = np.asarray(targets, dtype=np.float32)
     sample_num = len(targets)
@@ -308,7 +357,11 @@ def compute_mAP(scores: np.ndarray, targets: np.ndarray) -> float:
         prec = tp / np.maximum(tp + fp, np.finfo(np.float64).eps)
         aps.append(voc_ap(rec, prec, true_num) * 100.0)
 
-    return float(np.mean(np.asarray(aps, dtype=np.float32)))
+    per_class_ap = np.asarray(aps, dtype=np.float32)
+    mean_ap = float(np.mean(per_class_ap))
+    if return_each:
+        return mean_ap, per_class_ap
+    return mean_ap
 
 
 def compute_f1(
@@ -399,7 +452,7 @@ def eval_validation_set(
         use_inference_strategy=use_inference_strategy,
         class_thresholds=class_thresholds,
     )
-    mAP = compute_mAP(val_scores, val_targets)
+    mAP, per_class_ap = compute_mAP(val_scores, val_targets, return_each=True)
     difficulty = compute_difficulty_scores(f1_dict["none"])
     return {
         "val_micro": float(f1_dict["micro"]),
@@ -407,6 +460,7 @@ def eval_validation_set(
         "val_macro": float(f1_dict["macro"]),
         "val_none": np.asarray(f1_dict["none"], dtype=np.float32),
         "val_mAP": float(mAP),
+        "val_per_class_ap": per_class_ap.astype(np.float32),
         "threshold": float(f1_dict["threshold"]),
         "val_easy": float(difficulty["easy"]),
         "val_medium": float(difficulty["medium"]),
@@ -515,10 +569,14 @@ def _logit_np(values: np.ndarray, eps: float = 1e-6) -> np.ndarray:
 def _bernoulli_kl_per_class(
     student_logits: torch.Tensor,
     teacher_probs: torch.Tensor,
-    temperature: float,
+    temperature: float | torch.Tensor,
     eps: float = 1e-6,
 ) -> torch.Tensor:
-    scaled_logits = student_logits / float(temperature)
+    if torch.is_tensor(temperature):
+        temperature_tensor = temperature.to(device=student_logits.device, dtype=student_logits.dtype)
+    else:
+        temperature_tensor = student_logits.new_full((), float(temperature))
+    scaled_logits = student_logits / temperature_tensor
     student_probs = torch.sigmoid(scaled_logits).clamp(min=eps, max=1.0 - eps)
     teacher_probs = teacher_probs.clamp(min=eps, max=1.0 - eps)
     kl = (
@@ -526,7 +584,91 @@ def _bernoulli_kl_per_class(
         + (1.0 - teacher_probs)
         * (torch.log(1.0 - teacher_probs) - torch.log(1.0 - student_probs))
     )
-    return kl * (float(temperature) ** 2)
+    return kl * (temperature_tensor ** 2)
+
+
+def _normalized_bernoulli_entropy(probs: torch.Tensor, eps: float = 1e-6) -> torch.Tensor:
+    probs = probs.clamp(min=eps, max=1.0 - eps)
+    entropy = -probs * torch.log(probs) - (1.0 - probs) * torch.log(1.0 - probs)
+    return entropy / float(math.log(2.0))
+
+
+def _compute_teacher_weight_matrix(
+    variant: str,
+    agreement: torch.Tensor,
+    soft_labels: torch.Tensor,
+    logits: torch.Tensor,
+    entropy_lambda: float,
+    alpha: float,
+    beta: float,
+) -> torch.Tensor:
+    agreement = agreement.clamp(min=0.0, max=1.0)
+    soft_labels = soft_labels.clamp(min=0.0, max=1.0)
+
+    if variant == "sample_inverse":
+        teacher_weight = (1.0 - agreement).unsqueeze(1).expand_as(soft_labels)
+    elif variant == "sample_affine":
+        teacher_weight = alpha + beta * (1.0 - agreement)
+        teacher_weight = teacher_weight.unsqueeze(1).expand_as(soft_labels)
+    elif variant == "classwise_inverse":
+        teacher_weight = 1.0 - soft_labels
+    elif variant == "classwise_entropy":
+        base_weight = 1.0 - soft_labels
+        entropy_weight = float(entropy_lambda) * _normalized_bernoulli_entropy(
+            torch.sigmoid(logits.detach())
+        )
+        teacher_weight = torch.maximum(base_weight, entropy_weight)
+    elif variant == "classwise_dynamic_temperature":
+        teacher_weight = 1.0 - soft_labels
+    else:
+        raise ValueError(f"Unsupported dynamic KD variant: {variant}")
+
+    return teacher_weight.clamp(min=0.0, max=1.0)
+
+
+def _compute_kd_temperature_matrix(
+    variant: str,
+    agreement: torch.Tensor,
+    soft_labels: torch.Tensor,
+    base_temperature: float,
+) -> float | torch.Tensor:
+    if variant == "classwise_dynamic_temperature":
+        return float(base_temperature) * (2.0 - soft_labels.clamp(min=0.0, max=1.0))
+    return float(base_temperature)
+
+
+def _soft_supcon_loss(
+    student_features: torch.Tensor,
+    teacher_probs: torch.Tensor,
+    temperature: float,
+    eps: float = 1e-8,
+) -> torch.Tensor:
+    batch_size = student_features.shape[0]
+    if batch_size <= 1:
+        return student_features.new_tensor(0.0)
+
+    student_features = F.normalize(student_features, dim=-1)
+    teacher_probs = F.normalize(teacher_probs, dim=-1)
+
+    teacher_similarity = torch.matmul(teacher_probs, teacher_probs.transpose(0, 1))
+    teacher_similarity = teacher_similarity.clamp(min=0.0)
+
+    logits = torch.matmul(student_features, student_features.transpose(0, 1)) / float(temperature)
+    diag_mask = torch.eye(batch_size, device=logits.device, dtype=torch.bool)
+
+    teacher_similarity = teacher_similarity.masked_fill(diag_mask, 0.0)
+    logits = logits.masked_fill(diag_mask, float("-inf"))
+
+    row_sum = teacher_similarity.sum(dim=1, keepdim=True)
+    valid_rows = row_sum.squeeze(1) > eps
+    if not torch.any(valid_rows):
+        return student_features.new_tensor(0.0)
+
+    target_distribution = teacher_similarity / row_sum.clamp(min=eps)
+    log_prob = F.log_softmax(logits, dim=1)
+    log_prob = log_prob.masked_fill(diag_mask, 0.0)
+    loss = -(target_distribution[valid_rows] * log_prob[valid_rows]).sum(dim=1).mean()
+    return loss
 
 
 def _compute_sample_agreement(
@@ -642,12 +784,14 @@ def _evaluate_with_class_thresholds(
         class_thresholds=class_thresholds,
     )
     difficulty = compute_difficulty_scores(per_class)
+    mAP, per_class_ap = compute_mAP(test_scores, test_targets, return_each=True)
     test_metrics = {
         "micro": float(micro),
         "samples": float(samples),
         "macro": float(macro),
         "per_class_f1": per_class.astype(np.float32),
-        "mAP": float(compute_mAP(test_scores, test_targets)),
+        "per_class_ap": per_class_ap.astype(np.float32),
+        "mAP": float(mAP),
         "threshold": float(np.mean(class_thresholds)),
         "easy": difficulty["easy"],
         "medium": difficulty["medium"],
@@ -659,6 +803,7 @@ def _evaluate_with_class_thresholds(
             "samples": float(val_metrics["val_samples"]),
             "macro": float(val_metrics["val_macro"]),
             "per_class_f1": val_metrics["val_none"].astype(np.float32),
+            "per_class_ap": val_metrics["val_per_class_ap"].astype(np.float32),
             "mAP": float(val_metrics["val_mAP"]),
             "threshold": float(val_metrics["threshold"]),
             "easy": float(val_metrics["val_easy"]),
@@ -671,6 +816,18 @@ def _evaluate_with_class_thresholds(
 
 
 def _load_train_metadata(annotation_file: Path, image_dir: Path) -> tuple[List[str], Dict[str, str], Dict[int, str]]:
+    if annotation_file.suffix == ".mat":
+        image_lookup: Dict[str, str] = {}
+        mat = loadmat(annotation_file, squeeze_me=True, struct_as_record=False)
+        class_names = []
+        gemini_file = image_dir.parent / "emotion_description_gemini.json"
+        if gemini_file.exists():
+            payload = json.loads(gemini_file.read_text(encoding="utf-8"))
+            class_names = [str(item["emotion_name"]) for item in payload.get("emotions", [])]
+        if not class_names:
+            class_names = []
+        return class_names, image_lookup, {idx: name for idx, name in enumerate(class_names)}
+
     data = json.loads(annotation_file.read_text(encoding="utf-8"))
     categories = sorted(
         data["categories"],
@@ -691,6 +848,16 @@ def _load_train_metadata(annotation_file: Path, image_dir: Path) -> tuple[List[s
 def _labels_to_names(labels: np.ndarray, class_names: Sequence[str]) -> List[str]:
     label_ids = np.where(np.asarray(labels, dtype=np.float32) > 0.5)[0].tolist()
     return [str(class_names[idx]) for idx in label_ids]
+
+
+def _per_class_ap_rows(method: str, class_names: Sequence[str], bundle: Mapping[str, Any]) -> List[Dict[str, Any]]:
+    metrics = bundle["classwise"]["test"]
+    per_class_ap = np.asarray(metrics.get("per_class_ap", []), dtype=np.float32)
+    rows: List[Dict[str, Any]] = []
+    for idx, ap in enumerate(per_class_ap.tolist()):
+        class_name = str(class_names[idx]) if idx < len(class_names) else f"class_{idx}"
+        rows.append({"method": method, "class_id": idx, "class_name": class_name, "AP": float(ap)})
+    return rows
 
 
 class TeacherDataset(Dataset):
@@ -725,11 +892,13 @@ class StudentDataset(Dataset):
         image_features: np.ndarray,
         labels: np.ndarray,
         agreement: np.ndarray,
+        soft_labels: np.ndarray,
         teacher_probs: np.ndarray,
     ) -> None:
         self.image_features = np.asarray(image_features, dtype=np.float32)
         self.labels = np.asarray(labels, dtype=np.float32)
         self.agreement = np.asarray(agreement, dtype=np.float32)
+        self.soft_labels = np.asarray(soft_labels, dtype=np.float32)
         self.teacher_probs = np.asarray(teacher_probs, dtype=np.float32)
 
     def __len__(self) -> int:
@@ -740,6 +909,7 @@ class StudentDataset(Dataset):
             "image_features": torch.from_numpy(self.image_features[idx]),
             "labels": torch.from_numpy(self.labels[idx]),
             "agreement": torch.tensor(float(self.agreement[idx]), dtype=torch.float32),
+            "soft_labels": torch.from_numpy(self.soft_labels[idx]),
             "teacher_probs": torch.from_numpy(self.teacher_probs[idx]),
         }
 
@@ -794,9 +964,10 @@ class StudentMLP(nn.Module):
         hidden_dim: int,
         num_classes: int,
         dropout: float,
+        feature_proj_dim: int = 256,
     ) -> None:
         super().__init__()
-        self.net = nn.Sequential(
+        self.encoder = nn.Sequential(
             nn.Linear(image_dim, hidden_dim),
             nn.LayerNorm(hidden_dim),
             nn.GELU(),
@@ -804,11 +975,31 @@ class StudentMLP(nn.Module):
             nn.Linear(hidden_dim, hidden_dim),
             nn.GELU(),
             nn.Dropout(dropout),
-            nn.Linear(hidden_dim, num_classes),
+        )
+        self.classifier = nn.Linear(hidden_dim, num_classes)
+        self.feature_proj = nn.Sequential(
+            nn.Linear(hidden_dim, feature_proj_dim),
+            nn.LayerNorm(feature_proj_dim),
+            nn.GELU(),
+            nn.Linear(feature_proj_dim, feature_proj_dim),
         )
 
-    def forward(self, image_features: torch.Tensor) -> torch.Tensor:
-        return self.net(image_features)
+    def encode(self, image_features: torch.Tensor) -> torch.Tensor:
+        return self.encoder(image_features)
+
+    def project_features(self, hidden_features: torch.Tensor) -> torch.Tensor:
+        return F.normalize(self.feature_proj(hidden_features), dim=-1)
+
+    def forward(
+        self,
+        image_features: torch.Tensor,
+        return_features: bool = False,
+    ) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
+        hidden = self.encode(image_features)
+        logits = self.classifier(hidden)
+        if return_features:
+            return logits, hidden
+        return logits
 
 
 @torch.inference_mode()
@@ -1021,23 +1212,31 @@ def _train_student(
         total_loss = 0.0
         total_supervised = 0.0
         total_kd = 0.0
+        total_feature = 0.0
         total_gate = 0.0
         batch_count = 0
         for batch in loader:
             image_features = batch["image_features"].to(device, non_blocking=True)
             labels = batch["labels"].to(device, non_blocking=True)
             agreement = batch["agreement"].to(device, non_blocking=True)
+            soft_labels = batch["soft_labels"].to(device, non_blocking=True)
             teacher_probs = batch["teacher_probs"].to(device, non_blocking=True)
 
             optimizer.zero_grad(set_to_none=True)
-            logits = model(image_features)
+            logits, hidden_features = model(image_features, return_features=True)
             supervised_per_class = criterion(logits, labels, reduction="none")
             supervised_per_sample = supervised_per_class.sum(dim=1)
 
+            kd_temperature = _compute_kd_temperature_matrix(
+                variant=str(args.dynamic_kd_variant),
+                agreement=agreement,
+                soft_labels=soft_labels,
+                base_temperature=float(args.temperature),
+            )
             kd_per_class = _bernoulli_kl_per_class(
                 student_logits=logits,
                 teacher_probs=teacher_probs,
-                temperature=float(args.temperature),
+                temperature=kd_temperature,
             )
             kd_per_sample = kd_per_class.sum(dim=1)
 
@@ -1048,19 +1247,39 @@ def _train_student(
                 loss_per_sample = supervised_per_sample + float(args.standard_kd_weight) * kd_per_sample
                 gate_value = torch.full_like(agreement, fill_value=1.0)
             else:
-                loss_per_sample = (
-                    agreement * supervised_per_sample
-                    + (1.0 - agreement) * float(args.dynamic_kd_weight) * kd_per_sample
+                teacher_weight = _compute_teacher_weight_matrix(
+                    variant=str(args.dynamic_kd_variant),
+                    agreement=agreement,
+                    soft_labels=soft_labels,
+                    logits=logits,
+                    entropy_lambda=float(args.entropy_gate_lambda),
+                    alpha=float(args.dynamic_gate_alpha),
+                    beta=float(args.dynamic_gate_beta),
                 )
-                gate_value = agreement
+                supervised_weight = 1.0 - teacher_weight
+                loss_per_class = (
+                    supervised_weight * supervised_per_class
+                    + teacher_weight * float(args.dynamic_kd_weight) * kd_per_class
+                )
+                loss_per_sample = loss_per_class.sum(dim=1)
+                gate_value = teacher_weight.mean(dim=1)
 
-            loss = loss_per_sample.mean()
+            feature_loss = logits.new_tensor(0.0)
+            if str(args.feature_distill_mode) == "soft_supcon" and float(args.feature_distill_weight) > 0.0:
+                feature_loss = _soft_supcon_loss(
+                    student_features=model.project_features(hidden_features),
+                    teacher_probs=teacher_probs.detach(),
+                    temperature=float(args.feature_distill_temperature),
+                )
+
+            loss = loss_per_sample.mean() + float(args.feature_distill_weight) * feature_loss
             loss.backward()
             optimizer.step()
 
             total_loss += float(loss.detach().cpu())
             total_supervised += float(supervised_per_sample.mean().detach().cpu())
             total_kd += float(kd_per_sample.mean().detach().cpu())
+            total_feature += float(feature_loss.detach().cpu())
             total_gate += float(gate_value.mean().detach().cpu())
             batch_count += 1
 
@@ -1089,6 +1308,7 @@ def _train_student(
                 "loss": total_loss / max(1, batch_count),
                 "supervised_loss": total_supervised / max(1, batch_count),
                 "kd_loss": total_kd / max(1, batch_count),
+                "feature_loss": total_feature / max(1, batch_count),
                 "mean_gate": total_gate / max(1, batch_count),
                 "val_macro_classwise": val_macro,
                 "test_macro_classwise": float(bundle["classwise"]["test"]["macro"]),
@@ -1129,7 +1349,7 @@ def _build_teacher_candidates(
     train_labels: np.ndarray,
     train_soft_labels: np.ndarray,
     train_scores: np.ndarray,
-    train_text_bundle: Mapping[str, Any],
+    rationale_texts: Sequence[str],
     image_lookup: Mapping[str, str],
     class_names: Sequence[str],
     limit: int,
@@ -1174,7 +1394,7 @@ def _build_teacher_candidates(
                     f"{class_names[idx]}={scores[row_idx, idx]:.3f}"
                     for idx in np.argsort(-scores[row_idx])[:5].tolist()
                 ),
-                "rationale_text": str(train_text_bundle["texts"][row_idx]),
+                "rationale_text": str(rationale_texts[row_idx]),
             }
         )
 
@@ -1197,7 +1417,7 @@ def _build_teacher_candidates(
                     f"{class_names[idx]}={scores[row_idx, idx]:.3f}"
                     for idx in np.argsort(-scores[row_idx])[:5].tolist()
                 ),
-                "rationale_text": str(train_text_bundle["texts"][row_idx]),
+                "rationale_text": str(rationale_texts[row_idx]),
             }
         )
 
@@ -1238,17 +1458,23 @@ def main() -> None:
         f"test={len(test_clip['image_ids'])}"
     )
 
+    teacher_text_feature_key, teacher_text_string_key = _resolve_text_feature_keys(
+        args.teacher_text_feature_source
+    )
     print("[Distill] loading rationale features")
     train_text = _align_text_bundle_to_clip(
-        _load_text_bundle(Path(args.train_text_npz), required_keys=["image_ids", "features", "texts"]),
+        _load_text_bundle(
+            Path(args.train_text_npz),
+            required_keys=["image_ids", teacher_text_feature_key, teacher_text_string_key],
+        ),
         train_clip,
     )
     val_text = _align_text_bundle_to_clip(
-        _load_text_bundle(Path(args.val_text_npz), required_keys=["image_ids", "features"]),
+        _load_text_bundle(Path(args.val_text_npz), required_keys=["image_ids", teacher_text_feature_key]),
         val_clip,
     )
     test_text = _align_text_bundle_to_clip(
-        _load_text_bundle(Path(args.test_text_npz), required_keys=["image_ids", "features"]),
+        _load_text_bundle(Path(args.test_text_npz), required_keys=["image_ids", teacher_text_feature_key]),
         test_clip,
     )
 
@@ -1258,7 +1484,11 @@ def main() -> None:
         raise RuntimeError("Validation image order mismatch after text alignment.")
     if test_clip["image_ids"] != test_text["image_ids"]:
         raise RuntimeError("Test image order mismatch after text alignment.")
-    print("[Distill] feature alignment verified")
+    print(
+        "[Distill] feature alignment verified "
+        f"text_source={args.teacher_text_feature_source} "
+        f"feature_key={teacher_text_feature_key}"
+    )
 
     class_names, image_lookup, _ = _load_train_metadata(
         annotation_file=Path(args.train_annotation_file),
@@ -1272,7 +1502,7 @@ def main() -> None:
 
     teacher_seed = _set_component_seed(int(args.seed), offset=0)
     teacher_train_dataset = TeacherDataset(
-        text_features=np.asarray(train_text["features"], dtype=np.float32),
+        text_features=np.asarray(train_text[teacher_text_feature_key], dtype=np.float32),
         labels=train_labels,
         image_features=(
             np.asarray(train_clip["features"], dtype=np.float32)
@@ -1296,9 +1526,9 @@ def main() -> None:
     teacher_result = _train_teacher(
         model=teacher,
         train_dataset=teacher_train_dataset,
-        val_text_features=np.asarray(val_text["features"], dtype=np.float32),
+        val_text_features=np.asarray(val_text[teacher_text_feature_key], dtype=np.float32),
         val_targets=val_labels,
-        test_text_features=np.asarray(test_text["features"], dtype=np.float32),
+        test_text_features=np.asarray(test_text[teacher_text_feature_key], dtype=np.float32),
         test_targets=test_labels,
         device=device,
         args=args,
@@ -1316,7 +1546,7 @@ def main() -> None:
 
     teacher_train_scores = _predict_teacher(
         model=teacher,
-        text_features=np.asarray(train_text["features"], dtype=np.float32),
+        text_features=np.asarray(train_text[teacher_text_feature_key], dtype=np.float32),
         device=device,
         batch_size=int(args.batch_size),
         image_features=(
@@ -1327,7 +1557,7 @@ def main() -> None:
     )
     teacher_val_scores = _predict_teacher(
         model=teacher,
-        text_features=np.asarray(val_text["features"], dtype=np.float32),
+        text_features=np.asarray(val_text[teacher_text_feature_key], dtype=np.float32),
         device=device,
         batch_size=int(args.batch_size),
         image_features=(
@@ -1338,7 +1568,7 @@ def main() -> None:
     )
     teacher_test_scores = _predict_teacher(
         model=teacher,
-        text_features=np.asarray(test_text["features"], dtype=np.float32),
+        text_features=np.asarray(test_text[teacher_text_feature_key], dtype=np.float32),
         device=device,
         batch_size=int(args.batch_size),
         image_features=(
@@ -1360,18 +1590,21 @@ def main() -> None:
         image_features=np.asarray(train_clip["features"], dtype=np.float32),
         labels=train_labels,
         agreement=np.ones_like(student_agreement, dtype=np.float32),
+        soft_labels=train_soft_labels,
         teacher_probs=np.zeros_like(train_labels, dtype=np.float32),
     )
     standard_kd_dataset = StudentDataset(
         image_features=np.asarray(train_clip["features"], dtype=np.float32),
         labels=train_labels,
         agreement=np.ones_like(student_agreement, dtype=np.float32),
+        soft_labels=train_soft_labels,
         teacher_probs=teacher_probs_train,
     )
     dynamic_kd_dataset = StudentDataset(
         image_features=np.asarray(train_clip["features"], dtype=np.float32),
         labels=train_labels,
         agreement=student_agreement,
+        soft_labels=train_soft_labels,
         teacher_probs=teacher_probs_train,
     )
 
@@ -1381,6 +1614,7 @@ def main() -> None:
         hidden_dim=int(args.student_hidden_dim),
         num_classes=int(baseline_dataset.labels.shape[1]),
         dropout=float(args.dropout),
+        feature_proj_dim=int(args.feature_proj_dim),
     ).to(device)
     print(f"[Distill] training baseline student seed={baseline_seed}")
     baseline_result = _train_student(
@@ -1401,6 +1635,7 @@ def main() -> None:
         hidden_dim=int(args.student_hidden_dim),
         num_classes=int(standard_kd_dataset.labels.shape[1]),
         dropout=float(args.dropout),
+        feature_proj_dim=int(args.feature_proj_dim),
     ).to(device)
     print(f"[Distill] training standard KD student seed={standard_kd_seed}")
     standard_kd_result = _train_student(
@@ -1421,6 +1656,7 @@ def main() -> None:
         hidden_dim=int(args.student_hidden_dim),
         num_classes=int(dynamic_kd_dataset.labels.shape[1]),
         dropout=float(args.dropout),
+        feature_proj_dim=int(args.feature_proj_dim),
     ).to(device)
     print(f"[Distill] training dynamic gated KD student seed={dynamic_kd_seed}")
     dynamic_kd_result = _train_student(
@@ -1462,18 +1698,20 @@ def main() -> None:
     ]
     _write_csv(output_dir / "main_comparison.csv", comparison_rows)
 
-    teacher_candidates = _build_teacher_candidates(
-        train_image_ids=train_clip["image_ids"],
-        train_labels=train_labels,
-        train_soft_labels=train_soft_labels,
-        train_scores=teacher_train_scores,
-        train_text_bundle=train_text,
-        image_lookup=image_lookup,
-        class_names=class_names,
-        limit=int(args.teacher_candidate_limit),
-    )
-    for name, rows in teacher_candidates.items():
-        _write_csv(output_dir / f"{name}.csv", rows)
+    teacher_candidates: Dict[str, List[Dict[str, Any]]] = {}
+    if class_names and image_lookup:
+        teacher_candidates = _build_teacher_candidates(
+            train_image_ids=train_clip["image_ids"],
+            train_labels=train_labels,
+            train_soft_labels=train_soft_labels,
+            train_scores=teacher_train_scores,
+            rationale_texts=[str(item) for item in np.asarray(train_text[teacher_text_string_key]).tolist()],
+            image_lookup=image_lookup,
+            class_names=class_names,
+            limit=int(args.teacher_candidate_limit),
+        )
+        for name, rows in teacher_candidates.items():
+            _write_csv(output_dir / f"{name}.csv", rows)
 
     slice_rows: List[Dict[str, Any]] = []
     slice_note = ""
@@ -1568,6 +1806,13 @@ def main() -> None:
         )
     )
     _write_csv(output_dir / "agreement_slice_analysis.csv", slice_rows)
+    if class_names:
+        per_class_ap_rows: List[Dict[str, Any]] = []
+        per_class_ap_rows.extend(_per_class_ap_rows("oracle_teacher", class_names, teacher_result["bundle"]))
+        per_class_ap_rows.extend(_per_class_ap_rows("baseline", class_names, baseline_result["bundle"]))
+        per_class_ap_rows.extend(_per_class_ap_rows("standard_kd", class_names, standard_kd_result["bundle"]))
+        per_class_ap_rows.extend(_per_class_ap_rows("dynamic_gated_kd", class_names, dynamic_kd_result["bundle"]))
+        _write_csv(output_dir / "per_class_ap.csv", per_class_ap_rows)
 
     torch.save(teacher_result["state_dict"], output_dir / "teacher_best.pt")
     torch.save(baseline_result["state_dict"], output_dir / "baseline_best.pt")
@@ -1604,8 +1849,17 @@ def main() -> None:
                     "standard_kd_seed": int(args.seed) + 200,
                     "dynamic_kd_seed": int(args.seed) + 300,
                     "teacher_input_mode": str(args.teacher_input_mode),
+                    "teacher_text_feature_source": str(args.teacher_text_feature_source),
                     "standard_kd_weight": float(args.standard_kd_weight),
                     "dynamic_kd_weight": float(args.dynamic_kd_weight),
+                    "dynamic_kd_variant": str(args.dynamic_kd_variant),
+                    "dynamic_gate_alpha": float(args.dynamic_gate_alpha),
+                    "dynamic_gate_beta": float(args.dynamic_gate_beta),
+                    "entropy_gate_lambda": float(args.entropy_gate_lambda),
+                    "feature_distill_mode": str(args.feature_distill_mode),
+                    "feature_distill_weight": float(args.feature_distill_weight),
+                    "feature_distill_temperature": float(args.feature_distill_temperature),
+                    "feature_proj_dim": int(args.feature_proj_dim),
                     "temperature": float(args.temperature),
                     "student_agreement_pool": str(args.student_agreement_pool),
                     "slice_agreement_pool": str(args.slice_agreement_pool),

@@ -192,3 +192,152 @@ student 与蒸馏损失保持不变：
 当前更合理的主线表述应改为：
 
 > `Text-only rationale teacher` is a stronger and cleaner distillation target than the previous multimodal teacher in this cached-feature setting.
+
+---
+
+## 8. Rationale Ablation
+
+本轮补做了 teacher-side rationale source 消融，保持：
+
+- `teacher_input_mode = text_only`
+- `student / seed / optimizer / batch_size / patience` 全部固定
+
+三个版本：
+
+1. `full`
+   - 使用 `features`
+   - 对应完整 rationale 文本
+2. `step1_only`
+   - 使用 `step1_features`
+3. `step1_step2`
+   - 使用 `pos_features`
+   - 即 `Step 1 + Step 2`
+
+输出目录：
+
+- `full`：
+  - `logs/analysis/privileged_distillation_text_teacher_seedfix_20260316`
+- `step1_only`：
+  - `logs/analysis/privileged_distillation_step1_only_seedfix_20260316`
+- `step1_step2`：
+  - `logs/analysis/privileged_distillation_step12_seedfix_20260316`
+
+### 8.1 Teacher 自身
+
+| Teacher Text Source | Macro | Micro | Samples | mAP | Hard |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `full` | **45.80** | 51.42 | 52.61 | **47.04** | **30.21** |
+| `step1_only` | 44.37 | **51.64** | **53.44** | 45.53 | 22.91 |
+| `step1_step2` | 44.52 | 50.17 | 52.31 | 45.87 | 25.81 |
+
+结论：
+
+1. teacher 自身看，`full rationale` 最稳
+2. `step1_only` 会明显伤 `Hard`
+3. `step1_step2` 比 `step1_only` 好，但仍不如 `full`
+
+### 8.2 Standard KD
+
+| Teacher Text Source | Macro | Micro | Samples | mAP | Hard |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `full` | 49.59 | **58.26** | **58.88** | **53.18** | **30.44** |
+| `step1_only` | **49.76** | 57.59 | 58.73 | 52.89 | 29.91 |
+| `step1_step2` | 49.37 | 57.03 | 57.93 | 52.52 | 29.14 |
+
+结论：
+
+1. `step1_only` 在 Macro 上略高于 `full`
+2. 但 `full` 在 `Micro / Samples / mAP / Hard` 上都更好
+3. `step1_step2` 整体落后于 `full`
+
+### 8.3 Dynamic Gated KD
+
+| Teacher Text Source | Macro | Micro | Samples | mAP | Hard |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `full` | **50.31** | **57.97** | **59.07** | 53.02 | **30.24** |
+| `step1_only` | 49.81 | 56.39 | 57.65 | 52.82 | 29.28 |
+| `step1_step2` | 49.69 | 54.45 | 55.97 | **53.08** | 28.82 |
+
+结论：
+
+1. `dynamic gated KD` 下，`full rationale` 是明确最优
+2. `step1_only` 和 `step1_step2` 都有退化
+3. `step1_step2` 虽然 mAP 略高 `+0.06`，但分类指标整体明显更差，不能视为更优
+
+### 8.4 最终结论
+
+这组三路消融的结论很清楚：
+
+1. `full rationale` 仍然是最好的 teacher 文本来源
+2. 只保留 `Step 1`
+   - 会损伤 teacher 自身的 hardest-class 判别
+   - 也不能带来更好的最终 student
+3. `Step 1 + Step 2`
+   - 比 `Step 1 only` 略稳
+   - 但仍没有超过 `full`
+
+所以后续主实验建议继续使用：
+
+- `teacher_input_mode = text_only`
+- `teacher_text_feature_source = full`
+
+---
+
+## 9. Gate Formula Ablation
+
+本轮额外测试了新的 dynamic gate：
+
+- 旧版：
+  - `teacher_weight = 1 - omega`
+  - `supervised_weight = omega`
+- 新版：
+  - `teacher_weight = alpha + beta * (1 - omega)`
+  - `supervised_weight = 1 - teacher_weight`
+  - 取值：
+    - `alpha = 0.3`
+    - `beta = 0.7`
+
+运行目录：
+
+- 新 gate：
+  - `logs/analysis/privileged_distillation_text_teacher_alpha03_beta07_20260316`
+- 对照旧 gate：
+  - `logs/analysis/privileged_distillation_text_teacher_seedfix_20260316`
+
+在当前最佳设定下对比：
+
+- `teacher_input_mode = text_only`
+- `teacher_text_feature_source = full`
+
+### 9.1 结果对比
+
+| Gate | Macro | Micro | Samples | mAP | Hard |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| `old: 1 - omega` | **50.31** | **57.97** | **59.07** | **53.02** | **30.24** |
+| `new: 0.3 + 0.7 * (1 - omega)` | 49.24 | 56.27 | 57.07 | 52.38 | 28.27 |
+
+相对旧 gate，新 gate 变化为：
+
+- Macro `-1.06`
+- Micro `-1.70`
+- Samples `-2.00`
+- mAP `-0.65`
+- Hard `-1.97`
+
+### 9.2 解释
+
+这版 gate 的问题很直观：
+
+1. 对高一致性样本，teacher 仍有至少 `30%` 权重
+2. 在当前 teacher 还不是 oracle upper bound 的前提下，这会把 teacher 偏差硬性注入到 easy / clean 样本
+3. 结果就是：
+   - 全局指标下降
+   - hardest classes 也下降
+
+所以当前不建议采用：
+
+- `teacher_weight = 0.3 + 0.7 * (1 - omega)`
+
+更稳的选择仍然是：
+
+- `teacher_weight = 1 - omega`
