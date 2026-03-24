@@ -6,7 +6,7 @@ import rootutils
 import torch
 from lightning import Callback, LightningDataModule, LightningModule, Trainer
 from lightning.pytorch.loggers import Logger
-from omegaconf import DictConfig
+from omegaconf import DictConfig, open_dict
 
 rootutils.setup_root(__file__, indicator=".project-root", pythonpath=True)
 # ------------------------------------------------------------------------------------ #
@@ -39,6 +39,18 @@ from src.utils import (
 log = RankedLogger(__name__, rank_zero_only=True)
 
 
+def _propagate_num_classes(cfg_node: Any, num_classes: int) -> None:
+    if not isinstance(cfg_node, DictConfig):
+        return
+    with open_dict(cfg_node):
+        for key in list(cfg_node.keys()):
+            value = cfg_node[key]
+            if key == "num_classes":
+                cfg_node[key] = int(num_classes)
+            else:
+                _propagate_num_classes(value, num_classes)
+
+
 @task_wrapper
 def train(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
     """Trains the model. Can additionally evaluate on a testset, using best weights obtained during
@@ -56,6 +68,9 @@ def train(cfg: DictConfig) -> Tuple[Dict[str, Any], Dict[str, Any]]:
 
     log.info(f"Instantiating datamodule <{cfg.data._target_}>")
     datamodule: LightningDataModule = hydra.utils.instantiate(cfg.data)
+
+    if hasattr(datamodule, "num_classes"):
+        _propagate_num_classes(cfg.model, int(datamodule.num_classes))
 
     log.info(f"Instantiating model <{cfg.model._target_}>")
     model: LightningModule = hydra.utils.instantiate(cfg.model)

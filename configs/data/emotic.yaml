@@ -1,0 +1,11 @@
+_target_: src.data.emotic_datamodule.EmoticDataModule
+data_dir: ${paths.root_dir}/../Emotic
+annotation_file: ${paths.root_dir}/../Emotic/Annotations/Annotations.mat
+image_root: ${paths.root_dir}/../Emotic/emotic
+description_file: ${paths.root_dir}/../Emotic/emotion_description_gemini.json
+batch_size: 32
+num_workers: 4
+pin_memory: True
+image_size: 224
+min_crop_size: 4
+cache_index: True

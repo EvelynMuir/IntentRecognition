@@ -1,0 +1,59 @@
+_target_: src.models.intentonomy_clip_vit_uabl_module.IntentonomyClipViTUABLModule
+
+optimizer:
+  _target_: torch.optim.AdamW
+  _partial_: true
+  lr: 5e-3
+  weight_decay: 0.01
+
+scheduler:
+  _target_: torch.optim.lr_scheduler.CosineAnnealingLR
+  _partial_: true
+  T_max: 50
+  eta_min: 1e-6
+
+net:
+  _target_: src.models.components.clip_vit_layer_cls_patch_mean.ClipVisionTransformerLayerClsPatchMean
+  num_classes: 28
+  pretrained: true
+  image_size: 224
+  clip_model_name: "ViT-L/14"
+  layer_idx: 24
+
+num_classes: 28
+
+layer_idx: 24
+
+criterion:
+  _target_: src.models.components.aslloss.AsymmetricLossOptimized
+  gamma_neg: 2
+  gamma_pos: 0
+  clip: 0.05
+  eps: 1e-5
+  disable_torch_grad_focal_loss: false
+
+freeze_backbone: true
+compile: false
+
+use_ema: false
+ema_decay: 0.9997
+
+intent_loss_weight_warmup_epochs: 2
+intent_loss_weight_warmup: 0.2
+intent_loss_weight_normal: 1.0
+
+uncertainty_feature_dim: null
+uncertainty_hidden_dim: 512
+uncertainty_dropout: 0.1
+uncertainty_loss_weight: 0.1
+uncertainty_target_mode: "positive_inverse"
+detach_logits_for_uncertainty: true
+
+adaptation_hidden_dim: 16
+adaptation_dropout: 0.0
+adaptation_scale_limit: 1.0
+adaptation_bias_limit: 1.0
+identity_regularization_weight: 1e-3
+
+uncertainty_lr: 1e-3
+adaptation_lr: 1e-3
