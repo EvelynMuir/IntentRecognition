@@ -1,0 +1,53 @@
+\section{Introduction}
+\label{sec:intro}
+
+With the rapid proliferation of social media, images are increasingly used as a medium for users to share daily experiences, emotions, and personal viewpoints. 
+Visual intention understanding aims to infer the latent purpose conveyed by an image, and has become an important problem in human-centered multimedia analysis \cite{jia_intentonomy_2021, wen_dip_2023}. 
+Unlike explicit textual statements, such visual expressions often imply intentions in an indirect and abstract manner. 
+Accurately recognizing these intentions is valuable for a variety of downstream applications, including user interest understanding, psychological and behavioral profiling, and broader social media content analysis.
+
+Compared with conventional image classification, visual intention recognition is fundamentally more challenging.
+In traditional recognition tasks, the goal is to assign images to relatively objective semantic categories, such as objects, scenes, or actions. 
+In contrast, intention recognition requires mapping visual evidence to abstract and subjective intent labels.
+These labels are rarely determined by local visual cues alone; instead, they often emerge from a holistic interpretation of scene context, human activities, object configurations, social interactions, and commonsense knowledge.
+Therefore, the main difficulty of this task lies not merely in visual representation learning, but in establishing a reliable bridge between concrete image content and abstract intention semantics.
+
+A central challenge of this task is its inherent ambiguity, which manifests in two distinct forms. 
+The first is semantic ambiguity. 
+Intent labels are often semantically adjacent, partially overlapping, or hierarchically correlated. 
+Different labels may correspond to visually similar patterns, while the same intent may be expressed through diverse appearances. 
+This leads to high inter-class similarity and substantial intra-class variation, making fine-grained discrimination particularly difficult.
+The second is supervisory ambiguity. 
+Since intention recognition is intrinsically subjective, different audiences may infer different yet plausible intentions from the same image. 
+As a result, the supervisory signal itself may become unstable, especially for difficult samples with severe disagreement. 
+Under such circumstances, directly optimizing against hard labels can force the model to fit oversimplified or unreliable targets, thereby harming the robustness of the learned decision boundaries.
+
+Existing studies have attempted to alleviate these difficulties from different perspectives. 
+Prototype-based methods, such as PIP-Net \cite{wang_prototype-based_2023}, introduce representative anchors to reduce feature-space confusion. 
+Structure-aware methods, including CPAD \cite{ye_cross-modality_2023} and HLEG \cite{shi_learnable_2023}, exploit hierarchical label relationships to enhance multi-level semantic modeling and strengthen supervision. 
+From the perspective of label quality, LabCR \cite{shi_label-aware_2024} explicitly models label shifting and label blemish to better cope with imperfect annotation distributions. 
+More recently, knowledge-enhanced approaches have recognized that visual evidence alone is often insufficient for subjective intention understanding. 
+IntCLIP \cite{leonardis_synergy_2025} incorporates the vision-language alignment knowledge of CLIP into the task, while IntentMLM \cite{wang_unlocking_2026} further leverages multimodal large models, caption generation, and retrieval to perform more holistic intention perception.
+
+Although these methods have yielded encouraging progress, they typically treat one perspective of ambiguity as dominant. 
+In our view, the core difficulty of subjective visual intention recognition is not any single ambiguity alone, but the coexistence of supervisory ambiguity and semantic ambiguity, which arise at different stages and affect prediction in different ways. 
+The former primarily corrupts training by compressing diverse subjective interpretations into rigid supervisory targets, whereas the latter primarily affects inference by making semantically adjacent candidate labels difficult to distinguish. 
+Treating these two failure modes within one mechanism may therefore be suboptimal, as it is difficult to simultaneously achieve robust learning on disagreement-prone samples and precise discrimination among closely related intents.
+
+Motivated by this observation, we propose \textbf{SADIR} (\textbf{S}tage-\textbf{A}ware \textbf{D}isambiguation for \textbf{I}ntent \textbf{R}ecognition) to address ambiguity in visual intention recognition. 
+Instead of treating ambiguity as a unified problem, we consider its different roles during training and inference, and design complementary mechanisms accordingly.
+During training, the primary challenge lies in handling unreliable supervision caused by annotator disagreement. 
+To address this, we propose Uncertainty-guided Text Distillation (UTD), which leverages disagreement as an uncertainty signal to adaptively introduce semantic guidance. 
+This enables the model to learn more robust decision boundaries without overfitting to noisy or oversimplified labels.
+During inference, the challenge shifts to distinguishing among semantically similar candidate intents. 
+To improve fine-grained discrimination, we introduce Semantic Local Reranking and Calibration (SLR-C), which performs lightweight semantic refinement within a compact candidate set using multiple forms of textual priors.
+Together, SADIR improves both robustness and discriminability without introducing significant additional complexity.
+
+The main contributions of this work are summarized as follows:
+\begin{itemize}
+    \item We analyze visual intention recognition from a stage-dependent perspective and highlight that ambiguity plays different roles during training and inference. This perspective provides a clearer understanding of why existing methods struggle with both robustness and fine-grained discrimination.
+    \item We propose Uncertainty-guided Text Distillation (UTD), a training strategy that leverages annotator disagreement as an uncertainty signal to adaptively introduce semantic guidance, improving robustness under ambiguous supervision.
+    \item We propose Semantic Local Reranking and Calibration (SLR-C), an inference-time refinement module that enhances discrimination among semantically similar intents through lightweight local reranking with textual priors.
+\end{itemize}
+
+Extensive experiments on the Intentonomy dataset show that SADIR consistently outperforms strong existing baselines and recent state-of-the-art methods, yielding improvements in both hard-sample robustness and overall multi-label prediction quality.

@@ -1,0 +1,37 @@
+\section{Related Work}
+\label{sec:related_work}
+
+\subsection{Image Intent Recognition}
+Intent recognition seeks to decode the underlying purposes of humans. 
+Early studies mainly focus on specific domains such as political persuasion \cite{joo_visual_2014, joo_automated_2015, huang_inferring_2016}, where intent is inferred from facial expressions, body language, and scene context. 
+More recently, the release of the Intentonomy dataset \cite{jia_intentonomy_2021} has facilitated the study of general-purpose visual intention understanding in unconstrained social media scenarios.
+
+Existing methods for visual intention recognition seek to solve the problem from different perspectives. 
+Methods such as PIP-Net \cite{wang_prototype-based_2023} concentrate on feature and representation learning, which introduce prototype-based representations to capture to capture diverse visual patterns and improve interpretability. 
+Considering the hierarchical nature of intent labels, approaches like CPAD \cite{ye_cross-modality_2023} and HLEG \cite{shi_learnable_2023} exploit label hierarchies to improve multi-level semantic alignment and mitigate ambiguity.  
+LabCR \cite{shi_label-aware_2024} addresses label noise and shifting through calibration strategies, while recent works such as IntCLIP \cite{leonardis_synergy_2025} and MLMIntent \cite{wang_unlocking_2026} leverage vision-language models and textual priors to align visual features with semantic intent descriptions.
+
+Despite these advances, most existing methods address ambiguity from a single perspective, such as feature representation, label structure, or external knowledge. 
+They implicitly assume that ambiguity should be handled uniformly within a model. 
+However, in visual intention recognition, ambiguity arises from different sources and may affect different stages of the recognition process in distinct ways.
+
+\subsection{Learning under Ambiguous or Uncertain Supervision}
+
+Learning under ambiguous or noisy supervision has been extensively studied in multi-label recognition and subjective understanding tasks, where label reliability is often compromised by annotation noise, semantic overlap, or annotator disagreement. 
+Existing approaches typically address this issue through three main directions.
+
+First, noise-robust learning methods mitigate unreliable supervision through robust objectives, hard-example handling, or noise-aware optimization \cite{lin_focal_2020, shrivastava_training_2016, ye_collaborative_2022, ridnik_asymmetric_2021}. 
+These methods reduce the adverse impact of corrupted or hard labels, but they usually treat uncertainty as a generic optimization issue rather than modeling its semantic origin.
+
+Second, hierarchical or structure-aware methods improve learning under ambiguous labels by exploiting label relations or taxonomy constraints \cite{zhang_use_2022, shi_learnable_2023}. 
+Such methods are especially relevant to intention recognition, where semantically nearby labels often exhibit overlapping decision boundaries. 
+However, they mainly focus on label dependency modeling, instead of explicitly using annotator disagreement to regulate supervision strength.
+
+Third, knowledge distillation and vision-language supervision have been adopted to inject additional semantic guidance from teacher models or pretrained language priors \cite{touvron_training_2021, radford_learning_2021}. 
+Knowledge distillation transfers structured knowledge from stronger teacher models, while vision-language models leverage textual descriptions as semantic anchors to enhance visual representations. 
+However, these approaches typically assume that the provided semantic guidance is uniformly reliable across samples, which may not hold in subjective tasks with inherent ambiguity.
+
+In visual intention understanding, ambiguity is intrinsic: the same image may support multiple plausible interpretations, and category boundaries are often fuzzy \cite{jia_intentonomy_2021, shi_learnable_2023}. 
+Prior work has recognized the importance of hierarchical relations and label ambiguity in this task, but existing methods still largely rely on fixed supervision or globally applied semantic guidance. 
+By contrast, our approach explicitly leverages annotator disagreement as an uncertainty signal, and adaptively regulates semantic guidance according to supervision ambiguity. 
+This results in a more robust learning process under subjective and ambiguous supervision.

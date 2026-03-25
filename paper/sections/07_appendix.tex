@@ -1,0 +1,47 @@
+\appendix
+\section{Validation Results for Main Comparison}
+\label{app:validation_results}
+
+\begin{table}[H]
+\centering
+\small
+\caption{Validation-split results corresponding to Table~\ref{tab:main_results}. We report Macro F1, Micro F1, Samples F1, and their average (Avg.). All numbers are percentages.}
+\label{tab:main_results_val}
+\begingroup
+\renewcommand{\arraystretch}{1.0}
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{llcccc}
+\hline
+Method & Publication & Macro F1 & Micro F1 & Samples F1 & Avg. \\
+\hline
+Random & - & 6.94 & 7.18 & 7.10 & 7.07 \\
+Visual \cite{he_deep_2016} & CVPR 2016 & 23.03 & 31.36 & 29.91 & 28.10 \\
+\hline
+\multicolumn{6}{l}{\textbf{Multi-label classification methods}} \\
+HiMulConE \cite{zhang_use_2022} & CVPR 2022 & 28.14 & 41.30 & 42.50 & 37.31 \\
+MultiGuard \cite{jia_multiguard_2022} & NeurIPS 2022 & 27.74 & 41.03 & 41.58 & 36.78 \\
+SST \cite{chen_structured_2022} & AAAI 2022 & 28.78 & 41.03 & 41.75 & 37.19 \\
+Query2Label \cite{liu_query2label_2021} & - & 32.77 & 44.60 & 45.40 & 40.92 \\
+DualCoOp \cite{sun_dualcoop_2022} & NeurIPS 2022 & 32.67 & 46.29 & 42.97 & 40.64 \\
+\hline
+\multicolumn{6}{l}{\textbf{Label noise methods}} \\
+Cleannet \cite{lee_cleannet_2018} & CVPR 2018 & 26.78 & 42.31 & 41.57 & 36.89 \\
+LS \cite{lukasik_does_2020} & ICML 2020 & 24.68 & 42.97 & 44.23 & 37.29 \\
+Dividemix \cite{li_dividemix_2019} & ICLR 2020 & 31.01 & 41.67 & 41.89 & 38.19 \\
+\hline
+\multicolumn{6}{l}{\textbf{Intent perception methods}} \\
+Jia \cite{jia_intentonomy_2021} & CVPR 2021 & 25.07 & 32.94 & 33.61 & 30.54 \\
+CPAD \cite{ye_cross-modality_2023} & TIP 2023 & 27.37 & 41.77 & 42.68 & 37.27 \\
+HLEG \cite{shi_learnable_2023} & TAC 2023 & 35.35 & 46.34 & 47.40 & 43.03 \\
+PIP-Net \cite{wang_prototype-based_2023} & TMM 2023 & 30.71 & 44.84 & 45.48 & 40.34 \\
+LabCR \cite{shi_label-aware_2024} & TIP 2024 & 37.10 & 49.04 & 49.71 & 45.28 \\
+IntCLIP \cite{leonardis_synergy_2025} & ECCV 2024 & 41.55 & 52.61 & 49.75 & 47.97 \\
+\hline
+IntentMLM \cite{wang_unlocking_2026} & PR & 43.06 & 54.77 & 56.93 & 51.59 \\
+\hline
+CLIP ViT-L/14 & - & 55.80 & 59.62 & 60.10 & 58.51 \\
+SADIR (ours) & - & \textbf{58.20} & \textbf{62.69} & \textbf{63.40} & \textbf{61.43} \\
+\hline
+\end{tabular}
+\endgroup
+\end{table}

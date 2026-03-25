@@ -1,0 +1,129 @@
+\section{Method}
+\label{sec:method}
+
+\subsection{Overview}
+
+To address the dual challenges of supervisory ambiguity and semantic ambiguity in visual intention recognition, we propose \textbf{SADIR} (\textbf{S}tage-\textbf{A}ware \textbf{D}isambiguation for \textbf{I}ntent \textbf{R}ecognition), which explicitly decouples training and inference. Instead of handling these two forms of ambiguity within a unified mechanism, we address them in a stage-specific manner.
+
+SADIR consists of two key components:
+\begin{itemize}
+    \item \textbf{Uncertainty-guided Text Distillation (UTD)}, which introduces adaptive semantic guidance during training to improve robustness under ambiguous supervision;
+    \item \textbf{Semantic Local Reranking and Calibration (SLR-C)}, which performs lightweight semantic refinement during inference to enhance discrimination among competing intents.
+\end{itemize}
+
+Given an input image, the model first produces visual intent scores using a strong visual backbone. UTD is applied during training to shape the representation under uncertain supervision, while SLR-C refines predictions at inference time.
+
+\subsection{Problem Formulation}
+
+Given an input image $x_i$, the goal is to predict a set of intent labels from a predefined label space $\mathcal{Y}=\{1,\dots,C\}$. Due to the subjective nature of visual intention recognition, annotations are provided as soft label vectors $\mathbf{y}^{\text{soft}} \in \{0, 0.33, 0.66, 1\}^C$, reflecting annotator agreement.
+
+Existing approaches typically follow either hard binarization or soft regression paradigms, both of which have limitations under ambiguous supervision. To address this, we adopt a \textbf{decoupled utilization} of annotation signals.
+
+Specifically, we derive binarized labels $\mathbf{y}^{\text{hard}}$ for classification supervision, while extracting an image-level agreement score $\omega_i \in (0,1]$ from $\mathbf{y}^{\text{soft}}$. Here, $\omega_i$ reflects annotator consensus, where higher values indicate more reliable supervision.
+
+This agreement score is used to adaptively control the contribution of semantic guidance during training. The model outputs a logit vector $\mathbf{s}^{v} \in \mathbb{R}^C$, which is later refined and thresholded for final prediction.
+
+\subsection{Uncertainty-guided Text Distillation (UTD)}
+
+\subsubsection{Motivation}
+
+Supervisory ambiguity arises when multiple plausible intents coexist for a given image. Direct optimization against hard labels may lead to overconfident predictions and unstable decision boundaries.
+
+To alleviate this issue, we introduce semantic guidance from text space and adapt its influence based on the uncertainty of supervision.
+
+\subsubsection{Text-derived Teacher}
+
+For each training image, we construct structured textual descriptions that capture semantic cues relevant to intention understanding. 
+These descriptions are generated using a vision-language model, guided by both the image content and intent semantics.
+
+To enhance discriminative capability under semantic ambiguity, we further incorporate contrastive cues by identifying visually plausible but incorrect intents predicted by the current model. 
+Specifically, we select high-confidence negative intents as confusion candidates and use them to guide the generation of discriminative textual descriptions. 
+This encourages the resulting text to emphasize subtle distinctions among semantically adjacent intents.
+
+The generated text aims to summarize three aspects:
+(1) observable visual elements,
+(2) contextual interpretation beyond direct perception, and
+(3) discriminative cues for distinguishing confusing intents.
+
+The resulting text $T(x)$ is encoded into a dense embedding space using a frozen text encoder:
+\begin{equation}
+\mathbf{e}_{\text{text}} = f_{\text{text}}(T(x)).
+\end{equation}
+
+A lightweight classifier then maps the embedding into a soft probability distribution:
+\begin{equation}
+\mathbf{P}^{\text{tea}} = \text{Softmax}(g_{\text{tea}}(\mathbf{e}_{\text{text}}) / \tau),
+\end{equation}
+where $\tau$ is the temperature parameter.
+
+This design introduces contrastive semantic signals that improve the teacher's ability to distinguish semantically similar intents, while remaining independent of the inference procedure.
+
+\subsubsection{Uncertainty-guided Distillation}
+
+The visual backbone produces logits $\mathbf{s}^{v}$ for image $x$. We adopt Asymmetric Loss \cite{ridnik_asymmetric_2021} for classification:
+\begin{equation}
+\mathcal{L}_{\text{vis}} = \frac{1}{C} \sum_{c=1}^{C} \ell_{\text{ASL}}(s^{v}_c, y_c).
+\end{equation}
+
+To incorporate semantic guidance, we introduce an uncertainty-aware distillation loss:
+\begin{equation}
+\mathcal{L}_{\text{distill}} = \text{KL}(\sigma(\mathbf{s}^{v}) \,\|\, \mathbf{P}^{\text{tea}}),
+\end{equation}
+where $\sigma(\cdot)$ is the sigmoid function.
+
+The agreement score $\omega_i$ is used to balance the two objectives:
+\begin{equation}
+\mathcal{L}_{\text{total}} = \omega_i \cdot \mathcal{L}_{\text{vis}} + (1 - \omega_i) \cdot \lambda \cdot \mathcal{L}_{\text{distill}}.
+\end{equation}
+
+This formulation allows the model to rely more on visual supervision when annotations are reliable, and to leverage semantic guidance when supervision is uncertain.
+
+\subsection{Semantic Local Reranking and Calibration (SLR-C)}
+
+While UTD improves representation robustness, semantic ambiguity still affects final predictions, especially among visually similar intents. To address this, we propose SLR-C for inference-time refinement.
+
+\subsubsection{Semantic Prior Construction}
+
+Intent semantics are inherently multi-granular and abstract, making a single textual representation insufficient. We therefore construct semantic priors for each intent using descriptive textual queries that capture typical visual scenarios.
+In practice, these scenario queries are generated offline by Gemini 3.1 Pro and stored as a small pool of intent-specific textual descriptions, which provide visually grounded yet semantically rich prototypes for each intent category.
+
+Given an image $x$, we compute image-text similarities:
+\begin{equation}
+s^{\text{prior}}_c = \text{sim}(f_{\text{img}}(x), \mathbf{e}_c).
+\end{equation}
+
+These scores are normalized to obtain $\tilde{s}^{\text{prior}}_c$.
+
+\subsubsection{Semantic Local Reranking}
+
+We first select a compact candidate set:
+\begin{equation}
+\mathcal{C}_K(x) = \text{TopK}(\mathbf{s}^{v}, K).
+\end{equation}
+
+The logits are refined via local adjustment:
+\begin{equation}
+\tilde{s}_c =
+\begin{cases}
+s^{v}_c + \alpha \cdot \tilde{s}^{\text{prior}}_c, & c \in \mathcal{C}_K(x), \\
+s^{v}_c, & \text{otherwise}.
+\end{cases}
+\end{equation}
+
+This localized refinement focuses on resolving ambiguity among competing intents without disturbing the global prediction structure.
+
+\subsubsection{Class-wise Calibration}
+
+To account for class imbalance and varying score distributions, we adopt class-wise thresholds:
+\begin{equation}
+\hat{y}_c = \mathbb{I}[\sigma(\tilde{s}_c) > t_c],
+\end{equation}
+where $t_c$ is determined on the validation set.
+
+\subsection{Stage-aware Ambiguity Modeling}
+
+We interpret visual intention recognition as a stage-dependent ambiguity problem. Supervisory ambiguity primarily affects representation learning, while semantic ambiguity affects decision boundaries.
+
+SADIR addresses these two aspects in a stage-aware manner: UTD improves robustness during training through uncertainty-guided semantic distillation, while SLR-C enhances discrimination during inference via localized semantic refinement.
+
+This stage-aware design enables effective handling of ambiguity without introducing heavy architectural complexity.

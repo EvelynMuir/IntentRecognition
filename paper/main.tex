@@ -1,0 +1,200 @@
+\documentclass[preprint,review,10pt]{elsarticle}
+
+%% Use the option review to obtain double line spacing
+%% \documentclass[authoryear,preprint,review,12pt]{elsarticle}
+
+%% Use the options 1p,twocolumn; 3p; 3p,twocolumn; 5p; or 5p,twocolumn
+%% for a journal layout:
+%% \documentclass[final,1p,times]{elsarticle}
+%% \documentclass[final,1p,times,twocolumn]{elsarticle}
+%% \documentclass[final,3p,times]{elsarticle}
+%% \documentclass[final,3p,times,twocolumn]{elsarticle}
+%% \documentclass[final,5p,times]{elsarticle}
+%% \documentclass[final,5p,times,twocolumn]{elsarticle}
+
+%% For including figures, graphicx.sty has been loaded in
+%% elsarticle.cls. If you prefer to use the old commands
+%% please give \usepackage{epsfig}
+
+%% The amssymb package provides various useful mathematical symbols
+\usepackage{amssymb}
+%% The amsmath package provides various useful equation environments.
+\usepackage{amsmath}
+\usepackage{float}
+%% The amsthm package provides extended theorem environments
+%% \usepackage{amsthm}
+
+%% The lineno packages adds line numbers. Start line numbering with
+%% \begin{linenumbers}, end it with \end{linenumbers}. Or switch it on
+%% for the whole article with \linenumbers.
+%% \usepackage{lineno}
+
+\journal{Pattern Recognition}
+
+\begin{document}
+
+\begin{frontmatter}
+
+%% Title, authors and addresses
+
+%% use the tnoteref command within \title for footnotes;
+%% use the tnotetext command for theassociated footnote;
+%% use the fnref command within \author or \affiliation for footnotes;
+%% use the fntext command for theassociated footnote;
+%% use the corref command within \author for corresponding author footnotes;
+%% use the cortext command for theassociated footnote;
+%% use the ead command for the email address,
+%% and the form \ead[url] for the home page:
+%% \title{Title\tnoteref{label1}}
+%% \tnotetext[label1]{}
+%% \author{Name\corref{cor1}\fnref{label2}}
+%% \ead{email address}
+%% \ead[url]{home page}
+%% \fntext[label2]{}
+%% \cortext[cor1]{}
+%% \affiliation{organization={},
+%%             addressline={},
+%%             city={},
+%%             postcode={},
+%%             state={},
+%%             country={}}
+%% \fntext[label3]{}
+
+\title{Stage-Aware Disambiguation for Subjective Visual Intention Recognition}
+
+%% use optional labels to link authors explicitly to addresses:
+%% \author[label1,label2]{}
+%% \affiliation[label1]{organization={},
+%%             addressline={},
+%%             city={},
+%%             postcode={},
+%%             state={},
+%%             country={}}
+%%
+%% \affiliation[label2]{organization={},
+%%             addressline={},
+%%             city={},
+%%             postcode={},
+%%             state={},
+%%             country={}}
+
+\author[BUAA,BIGAI]{Yin Tang} %% Author name
+\author[BUAA]{Jiankai Li}
+\author[BUAA]{Hongyu Yang}
+\author[BUPT]{Xuan Dong}
+\author[BIGAI]{Lifeng Fan}
+\author[BUAA]{Weixin Li\corref{cor}}
+
+\cortext[cor]{Corresponding author. E-mail address: weixinli@buaa.edu.cn}
+
+%% Author affiliation
+\affiliation[BUAA]{organization={Beihang University},%Department and Organization
+            addressline={No. 37 Xueyuan Road}, 
+            city={Haidian Distirct},
+            postcode={100191}, 
+            state={Beijing},
+            country={China}}
+
+\affiliation[BIGAI]{organization={Beijing Institute for General Artificial Intelligence},%Department and Organization
+            addressline={No. 2 Yiheyuan Road}, 
+            city={Haidian District},
+            postcode={100871}, 
+            state={Beijing},
+            country={China}}
+
+\affiliation[BUPT]{organization={Beijing University of Post and Telecommunication},%Department and Organization
+            addressline={No.10 Xitucheng Road}, 
+            city={Haidian District},
+            postcode={100876}, 
+            state={Beijing},
+            country={China}}
+
+%% Abstract
+\begin{abstract}
+%% Text of abstract
+Visual intention understanding aims to infer the latent purpose conveyed by an image, and is fundamentally more challenging than conventional image classification due to its abstract and subjective nature. A central difficulty of this task lies in two distinct forms of ambiguity: supervisory ambiguity, caused by subjective annotation over plausible intentions, and semantic ambiguity, caused by semantically adjacent and overlapping intents.
+In this work, we propose SADIR (\textbf{Stage-Aware Disambiguation for Intent Recognition}), a framework that treats ambiguity differently across stages: training focuses on stabilizing supervision under disagreement, while inference focuses on discriminating semantically adjacent candidates. To address supervisory ambiguity, we introduce Uncertainty-guided Text Distillation (UTD), which converts annotator disagreement into an adaptive semantic regularization signal. To address semantic ambiguity, we further propose Semantic Local Reranking and Calibration (SLR-C), which performs lightweight reranking within a compact Top-K candidate set using heterogeneous textual priors. Extensive experiments on the Intentonomy dataset demonstrate that SADIR consistently improves both hard-sample robustness and overall multi-label prediction performance over strong baselines and recent state-of-the-art methods.
+\end{abstract}
+
+%%Graphical abstract
+% \begin{graphicalabstract}
+% %\includegraphics{grabs}
+% \end{graphicalabstract}
+
+%%Research highlights
+% \begin{highlights}
+% \item Research highlight 1
+% \item Research highlight 2
+% \end{highlights}
+
+%% Keywords
+\begin{keyword}
+%% keywords here, in the form: keyword \sep keyword
+Intent recognition \sep Distillation \sep VLM \sep LLM
+%% PACS codes here, in the form: \PACS code \sep code
+
+%% MSC codes here, in the form: \MSC code \sep code
+%% or \MSC[2008] code \sep code (2000 is the default)
+
+\end{keyword}
+
+\end{frontmatter}
+
+%% Add \usepackage{lineno} before \begin{document} and uncomment 
+%% following line to enable line numbers
+% \linenumbers
+
+%% main text
+%%
+
+\input{sections/01_introduction}
+\input{sections/02_related_work}
+\input{sections/03_method}
+\input{sections/04_experiments}
+\input{sections/05_discussion}
+\input{sections/06_conclusion}
+
+
+
+%% The Appendices part is started with the command \appendix;
+%% appendix sections are then done as normal sections
+\input{sections/07_appendix}
+
+%% If you have bib database file and want bibtex to generate the
+%% bibitems, please use
+%%
+
+\bibliographystyle{unsrt}
+\bibliography{intentrecognition}
+
+%% else use the following coding to input the bibitems directly in the
+%% TeX file.
+
+%% Refer following link for more details about bibliography and citations.
+%% https://en.wikibooks.org/wiki/LaTeX/Bibliography_Management
+
+% \begin{thebibliography}{00}
+
+% %% For numbered reference style
+% %% \bibitem{label}
+% %% Text of bibliographic item
+
+% \bibitem{lamport94}
+%   Leslie Lamport,
+%   \textit{\LaTeX: a document preparation system},
+%   Addison Wesley, Massachusetts,
+%   2nd edition,
+%   1994.
+
+% \end{thebibliography}
+\end{document}
+
+\endinput
+%%
+%% End of file `elsarticle-template-num.tex'.
+
+
+
+
+
+\end{document}
