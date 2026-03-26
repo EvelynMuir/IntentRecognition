@@ -39,10 +39,139 @@ IntCLIP \cite{leonardis_synergy_2025} & ECCV 2024 & 41.55 & 52.61 & 49.75 & 47.9
 IntentMLM \cite{wang_unlocking_2026} & PR & 43.06 & 54.77 & 56.93 & 51.59 \\
 \hline
 CLIP ViT-L/14 \cite{radford_learning_2021} & - & 55.80 & 59.62 & 60.10 & 58.51 \\
-SADIR & - & \textbf{58.20} & \textbf{62.69} & \textbf{63.40} & \textbf{61.43} \\
+SADIR (UTD only) & - & 57.86 & 62.16 & 63.88 & 61.30 \\
+SADIR & - & \textbf{58.33} & \textbf{62.78} & \textbf{63.47} & \textbf{61.53} \\
 \hline
 \end{tabular}
 \endgroup
+\end{table}
+
+\section{Validation Results for Additional Experiments}
+
+\begin{table}[H]
+\centering
+\caption{Validation-split difficulty subset results corresponding to Table~\ref{tab:difficulty_results}. All numbers are percentages.}
+\label{tab:difficulty_results_val}
+\begin{tabular}{lcccc}
+\hline
+Method & Easy & Medium & Hard & Avg. \\
+\hline
+CLIP ViT-L/14 \cite{radford_learning_2021} & 78.82 & 59.89 & 42.77 & 60.49 \\
+SADIR & \textbf{80.55} & \textbf{62.17} & \textbf{45.90} & \textbf{62.87} \\
+\hline
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Validation-split content subset results corresponding to Table~\ref{tab:content_results}. All numbers are percentages.}
+\label{tab:content_results_val}
+\begin{tabular}{lcccc}
+\hline
+Method & Object & Context & Others & Avg. \\
+\hline
+CLIP ViT-L/14 \cite{radford_learning_2021} & 62.67 & 61.53 & 52.67 & 58.96 \\
+SADIR & \textbf{63.56} & \textbf{63.57} & \textbf{55.85} & \textbf{60.99} \\
+\hline
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Validation-split results corresponding to Table~\ref{tab:rationale_ablation}. All numbers are percentages.}
+\label{tab:rationale_ablation_val}
+\begin{tabular}{lccccc}
+\hline
+Text Source & Macro & Micro & Samples & Avg. & Hard \\
+\hline
+Caption & 57.79 & \textbf{62.94} & 63.44 & 61.39 & 42.47 \\
+Step 1 only & 57.61 & 60.10 & 61.98 & 59.90 & 42.73 \\
+Step 1 + 2 & \textbf{58.37} & 58.42 & 60.17 & 58.99 & 43.19 \\
+Full rationale & 57.86 & 62.16 & \textbf{63.88} & \textbf{61.30} & \textbf{43.51} \\
+\hline
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Validation-split results corresponding to Table~\ref{tab:distill_ablation}. All numbers are percentages.}
+\label{tab:distill_ablation_val}
+\begin{tabular}{cccccc}
+\hline
+KD & Gated & Macro & Samples & Avg. & Hard \\
+\hline
+ &  & 55.80 & 60.10 & 58.51 & 40.48 \\
+$\checkmark$ &  & 57.78 & 63.41 & 61.20 & \textbf{43.85} \\
+$\checkmark$ & $\checkmark$ & \textbf{57.86} & \textbf{63.88} & \textbf{61.32} & 43.51 \\
+\hline
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Validation-split results corresponding to Table~\ref{tab:teacher_modality_ablation}. All numbers are percentages.}
+\label{tab:teacher_modality_ablation_val}
+\begin{tabular}{lccccc}
+\hline
+Method & Image & Text & Macro & Avg. & Hard \\
+\hline
+Oracle teacher &  & $\checkmark$ & 52.08 & 54.05 & \textbf{36.69} \\
+Oracle teacher & $\checkmark$ & $\checkmark$ & 52.60 & \textbf{55.80} & 35.60 \\
+\hline
+Gated student &  & $\checkmark$ & \textbf{57.86} & \textbf{61.30} & \textbf{43.51} \\
+Gated student & $\checkmark$ & $\checkmark$ & 56.43 & 59.12 & 39.80 \\
+\hline
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Validation-split results corresponding to Table~\ref{tab:slrc_ablation}. All numbers are percentages.}
+\label{tab:slrc_ablation_val}
+\begin{tabular}{cccccccc}
+\hline
+SLR-C & Student & Distillation & Gated & Macro & Micro & Samples & Avg. \\
+\hline
+$\checkmark$ &  &  &  & 57.31 & 62.37 & 61.18 & 60.29 \\
+$\checkmark$ & $\checkmark$ &  &  & 56.49 & 61.26 & 60.89 & 59.55 \\
+$\checkmark$ & $\checkmark$ & $\checkmark$ &  & 58.61 & 62.31 & \textbf{63.65} & 61.52 \\
+$\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ & \textbf{58.33} & \textbf{62.78} & 63.47 & \textbf{61.53} \\
+\hline
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Validation-split results corresponding to Table~\ref{tab:backbone_ablation}. All numbers are percentages.}
+\label{tab:backbone_ablation_val}
+\begin{tabular}{lcccccc}
+\hline
+Backbone & Method & Macro & Micro & Samples & Avg. & Hard \\
+\hline
+ResNet101 & Baseline & 42.13 & 45.37 & 46.44 & 44.65 & 29.01 \\
+ResNet101 & Full model & 47.26 & 53.45 & 54.47 & 51.73 & 35.12 \\
+\hline
+CLIP ViT-L/14 & Baseline & 55.80 & 59.62 & 60.10 & 58.51 & 40.48 \\
+CLIP ViT-L/14 & Full model & \textbf{58.33} & \textbf{62.78} & \textbf{63.47} & \textbf{61.53} & \textbf{45.90} \\
+\hline
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Validation-split results corresponding to Table~\ref{tab:prior_ablation}. All numbers are percentages.}
+\label{tab:prior_ablation_val}
+\begin{tabular}{cccccccc}
+\hline
+Lexical & Canonical & Scenario & Macro & Micro & Samples & Avg. & Hard \\
+\hline
+$\checkmark$ &  &  & 50.43 & 57.51 & 57.19 & 55.05 & 39.06 \\
+ & $\checkmark$ &  & 51.46 & 57.78 & 58.65 & 55.96 & 39.34 \\
+ &  & $\checkmark$ & 58.38 & 62.71 & 62.04 & 61.04 & 45.77 \\
+$\checkmark$ & $\checkmark$ &  & 57.98 & 61.72 & 61.78 & 60.49 & 45.89 \\
+$\checkmark$ & $\checkmark$ & $\checkmark$ & \textbf{58.64} & \textbf{62.70} & \textbf{62.23} & \textbf{61.19} & \textbf{47.19} \\
+\hline
+\end{tabular}
 \end{table}
 
 \section{Prompt Templates}

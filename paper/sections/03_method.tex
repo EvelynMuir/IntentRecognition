@@ -84,14 +84,18 @@ While UTD improves representation robustness, semantic ambiguity still affects f
 
 \subsubsection{Semantic Prior Construction}
 
-Intent semantics are inherently multi-granular and abstract, making a single textual representation insufficient. We therefore construct semantic priors for each intent using descriptive textual queries that capture typical visual scenarios.
+Intent semantics are inherently multi-granular and abstract, making a single textual representation insufficient. We therefore construct a heterogeneous semantic prior for each intent by combining three complementary textual sources: lexical intent phrases, canonical intent descriptions, and descriptive visual scenarios.
+The lexical source provides concise intent name cues, the canonical source provides semantic definitions, and the scenario source grounds abstract intents into plausible visual situations.
 
 Given an image $x$, we compute image-text similarities:
 \begin{equation}
 s^{\text{prior}}_c = \text{sim}(f_{\text{img}}(x), \mathbf{e}_c).
 \end{equation}
 
-These scores are normalized to obtain $\tilde{s}^{\text{prior}}_c$.
+For each source, we obtain a class-wise similarity score and normalize it independently. The final prior is then constructed by averaging the normalized scores from the three sources:
+\begin{equation}
+\tilde{s}^{\text{prior}}_c = \frac{1}{3}\left(\tilde{s}^{\text{lex}}_c + \tilde{s}^{\text{can}}_c + \tilde{s}^{\text{scen}}_c\right).
+\end{equation}
 
 \subsubsection{Semantic Local Reranking}
 
