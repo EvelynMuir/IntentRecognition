@@ -129,19 +129,19 @@ The results again show that the strong CLIP baseline is already highly effective
 
 \subsubsection{The Effectiveness of Rationale}
 
-We first compare generic image captioning with rationale-style supervision under the same final distillation protocol. We then further ablate the internal structure of the rationale used by the text teacher. Specifically, we compare \textit{Caption}, which only describes visible content in short natural language; \textit{Step 1 only}, which contains observable visual evidence; \textit{Step 1 with Step 2}, which additionally introduces contextual interpretation; and \textit{Full rationale}, which further adds counterfactual disambiguation cues. Table~\ref{tab:rationale_ablation} reports the results under dynamic gated distillation.
+We first compare generic image captioning with rationale-style supervision under the same final distillation protocol. We then further ablate the internal structure of the rationale used by the text teacher. Specifically, we compare Caption, which only describes visible content in short natural language; Step 1 only, which contains observable visual evidence; Step 1 with Step 2, which additionally introduces contextual interpretation; and Full rationale, which further adds counterfactual disambiguation cues. Table~\ref{tab:rationale_ablation} reports the results under dynamic gated distillation.
 \begin{table}[t]
 \centering
 \caption{Ablation on the rationale construction strategy used by UTD. All numbers are percentages.}
 \label{tab:rationale_ablation}
-\begin{tabular}{ccccccccc}
+\begin{tabular}{lccccc}
 \hline
-Caption & Step 1 & Step 2 & Step 3 & Macro & Micro & Samples & Avg. & Hard \\
+Method & Macro & Micro & Samples & Avg. & Hard \\
 \hline
-$\checkmark$ &  &  &  & 49.64 & \textbf{58.64} & 58.29 & 55.52 & 29.14 \\
- & $\checkmark$ &  &  & 49.81 & 56.39 & 57.65 & 54.62 & 29.28 \\
- & $\checkmark$ & $\checkmark$ &  & 49.69 & 54.45 & 55.97 & 53.37 & 28.82 \\
- & $\checkmark$ & $\checkmark$ & $\checkmark$ & \textbf{50.31} & 57.97 & \textbf{59.07} & \textbf{55.78} & \textbf{30.24} \\
+Caption & 49.64 & \textbf{58.64} & 58.29 & 55.52 & 29.14 \\
+Rationale (Step 1) & 49.81 & 56.39 & 57.65 & 54.62 & 29.28 \\
+Rationale (Step 1 \& 2) & 49.69 & 54.45 & 55.97 & 53.37 & 28.82 \\
+Rationale (Step 1 \& 2 \& 3) & \textbf{50.31} & 57.97 & \textbf{59.07} & \textbf{55.78} & \textbf{30.24} \\
 \hline
 \end{tabular}
 \end{table}
@@ -155,13 +155,13 @@ We next isolate the effect of UTD without using the SLR-C prior. Table~\ref{tab:
 \centering
 \caption{Why gated distillation? All numbers are percentages.}
 \label{tab:distill_ablation}
-\begin{tabular}{lcccc}
+\begin{tabular}{lccccc}
 \hline
-Method & Macro & Samples & Avg. & Hard \\
+Method & Macro & Micro & Samples & Avg. & Hard \\
 \hline
-Baseline & 47.40 & 56.41 & 53.41 & 28.45 \\
-UTD (w/o gated) & 49.59 & 58.88 & 55.58 & \textbf{30.44} \\
-UTD (with gated) & \textbf{50.31} & \textbf{59.07} & \textbf{55.78} & 30.24 \\
+Baseline & 47.40 & 56.42 & 56.41 & 53.41 & 28.45 \\
+UTD (w/o gated) & 49.59 & \textbf{58.26} & 58.88 & 55.58 & \textbf{30.44} \\
+UTD (with gated) & \textbf{50.31} & 57.97 & \textbf{59.07} & \textbf{55.78} & 30.24 \\
 \hline
 \end{tabular}
 \end{table}
@@ -195,15 +195,15 @@ Interestingly, the multimodal oracle teacher is not weaker by itself, but it bec
 We next study how SLR-C interacts with residual learning and distillation. Table~\ref{tab:slrc_ablation} shows that under the final heterogeneous prior configuration, a fixed prior alone is insufficient, while adding a trainable student and distillation is essential for recovering robust intent predictions.
 \begin{table}[t]
 \centering
-\caption{Component ablation of SADIR under the final lexical-canonical-scenario prior configuration. All numbers are percentages.}
+\caption{Component ablation of SADIR. All numbers are percentages.}
 \label{tab:slrc_ablation}
-\begin{tabular}{cccccccc}
+\begin{tabular}{lccccc}
 \hline
-Residual Student & Distillation & Gated & Macro & Micro & Samples & Avg. & Hard \\
+Method & Macro & Micro & Samples & Avg. & Hard \\
 \hline
-$\checkmark$ &  &  & 47.90 & 55.98 & 55.18 & 53.02 & 29.71 \\
-$\checkmark$ & $\checkmark$ &  & 49.69 & 57.90 & 58.98 & 55.52 & \textbf{31.69} \\
-$\checkmark$ & $\checkmark$ & $\checkmark$ & \textbf{50.89} & \textbf{59.60} & \textbf{59.85} & \textbf{56.78} & 30.76 \\
+w/o UTC & 47.90 & 55.98 & 55.18 & 53.02 & 29.71 \\
+w/o Gated & 49.69 & 57.90 & 58.98 & 55.52 & \textbf{31.69} \\
+Full Method & \textbf{50.89} & \textbf{59.60} & \textbf{59.85} & \textbf{56.78} & 30.76 \\
 \hline
 \end{tabular}
 \end{table}
@@ -220,8 +220,8 @@ Finally, we compare different textual priors used by SLR-C. We consider three se
 \hline
 Lexical & Canonical & Scenario & Macro & Micro & Samples & Avg. & Hard \\
 \hline
-$\checkmark$ &  &  & 47.06 & -- & -- & -- & 30.53 \\
- & $\checkmark$ &  & 47.76 & -- & -- & -- & 31.01 \\
+$\checkmark$ &  &  & 50.66 & 57.23 & 57.34 & 55.08 & 33.28 \\
+ & $\checkmark$ &  & 50.25 & 57.27 & 57.22 & 54.91 & 33.23 \\
  &  & $\checkmark$ & 51.28 & \textbf{59.13} & 58.47 & \textbf{56.29} & 33.98 \\
 $\checkmark$ & $\checkmark$ &  & 50.65 & 57.37 & 57.46 & 55.16 & 32.38 \\
 $\checkmark$ & $\checkmark$ & $\checkmark$ & \textbf{51.49} & 58.76 & \textbf{58.54} & 56.26 & \textbf{35.08} \\
@@ -246,10 +246,10 @@ To examine whether SADIR depends entirely on a strong backbone, we also test the
 Backbone & Method & Macro & Micro & Samples & Avg. & Hard \\
 \hline
 ResNet101 & Baseline & 36.56 & 41.87 & 43.10 & 40.51 & 18.99 \\
-ResNet101 & Full model & 41.88 & 49.96 & 50.57 & 47.47 & 24.68 \\
+ResNet101 & SADIR & 41.88 & 49.96 & 50.57 & 47.47 & 24.68 \\
 \hline
 CLIP ViT-L/14 & Baseline & 47.40 & 56.42 & 56.41 & 53.41 & 28.45 \\
-CLIP ViT-L/14 & Full model & \textbf{50.89} & \textbf{59.60} & \textbf{59.85} & \textbf{56.78} & \textbf{30.76} \\
+CLIP ViT-L/14 & SADIR & \textbf{50.89} & \textbf{59.60} & \textbf{59.85} & \textbf{56.78} & \textbf{30.76} \\
 \hline
 \end{tabular}
 \end{table}
