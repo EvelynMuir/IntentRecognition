@@ -23,7 +23,7 @@ Table~\ref{tab:main_results} summarizes the main comparison on the testing set. 
 \begin{table}[H]
 \centering
 \small
-\caption{Comparison with state-of-the-art methods. All numbers are percentages.}
+\caption{Comparison with state-of-the-art methods on the Intentonomy test split. We report Macro F1, Micro F1, Samples F1, and Avg. (the mean of the three F1 scores). All numbers are percentages.}
 \label{tab:main_results}
 \begingroup
 \setlength{\tabcolsep}{4pt}
@@ -74,7 +74,7 @@ To better understand the effectiveness of our method, we further evaluate perfor
 
 \begin{table}[t]
 \centering
-\caption{Difficulty-wise comparison on Intentonomy. All numbers are percentages.}
+\caption{Performance on difficulty-based intent subsets (Easy/Medium/Hard) on the Intentonomy test split. Avg. denotes the mean over the three subsets. All numbers are percentages.}
 \label{tab:difficulty_results}
 \begin{tabular}{lcccc}
 \hline
@@ -103,7 +103,7 @@ Table~\ref{tab:content_results} reports results on content-dependent subsets. Fo
 
 \begin{table}[t]
 \centering
-\caption{Comparison of results depending on different visual content. All numbers are percentages.}
+\caption{Performance on content-dependent intent subsets (Object, Context, and Others) on the Intentonomy test split. Avg. denotes the mean over the three subsets. All numbers are percentages.}
 \label{tab:content_results}
 \begin{tabular}{lcccc}
 \hline
@@ -132,7 +132,7 @@ The results again show that the strong CLIP baseline is already highly effective
 We first compare generic image captioning with rationale-style supervision under the same final distillation protocol. We then further ablate the internal structure of the rationale used by the text teacher. Specifically, we compare Caption, which only describes visible content in short natural language; Step 1 only, which contains observable visual evidence; Step 1 with Step 2, which additionally introduces contextual interpretation; and Full rationale, which further adds counterfactual disambiguation cues. Table~\ref{tab:rationale_ablation} reports the results under dynamic gated distillation.
 \begin{table}[t]
 \centering
-\caption{Ablation on the rationale construction strategy used by UTD. All numbers are percentages.}
+\caption{Ablation of rationale construction for UTD on the Intentonomy test split. Step 1/2/3 correspond to visual evidence, contextual bridging, and counterfactual disambiguation. All numbers are percentages.}
 \label{tab:rationale_ablation}
 \begin{tabular}{lccccc}
 \hline
@@ -153,7 +153,7 @@ The trend is revealing. Caption supervision is already a reasonably strong privi
 We next isolate the effect of UTD without using the SLR-C prior. Table~\ref{tab:distill_ablation} compares plain supervised learning, distillation without gating, and agreement-aware gated distillation.
 \begin{table}[t]
 \centering
-\caption{Why gated distillation? All numbers are percentages.}
+\caption{Effect of agreement-aware gated distillation on the Intentonomy test split (UTD without SLR-C). All numbers are percentages.}
 \label{tab:distill_ablation}
 \begin{tabular}{lccccc}
 \hline
@@ -173,7 +173,7 @@ The results show that both distillation variants improve substantially over plai
 We further study whether the teacher should consume both image and text features, or only text features. Table~\ref{tab:teacher_modality_ablation} reports teacher-side oracle performance and student-side dynamic distillation performance as two separate method groups.
 \begin{table}[t]
 \centering
-\caption{Teacher modality ablation. All numbers are percentages.}
+\caption{Teacher modality ablation on the Intentonomy test split. Oracle denotes teacher-only performance, while Dynamic KD reports student performance with gated distillation. All numbers are percentages.}
 \label{tab:teacher_modality_ablation}
 \begin{tabular}{lccccc}
 \hline
@@ -195,7 +195,7 @@ Interestingly, the multimodal oracle teacher is not weaker by itself, but it bec
 We next study how SLR-C interacts with residual learning and distillation. Table~\ref{tab:slrc_ablation} shows that under the final heterogeneous prior configuration, a fixed prior alone is insufficient, while adding a trainable student and distillation is essential for recovering robust intent predictions.
 \begin{table}[t]
 \centering
-\caption{Component ablation of SADIR. All numbers are percentages.}
+\caption{Component ablation of SADIR on the Intentonomy test split. All numbers are percentages.}
 \label{tab:slrc_ablation}
 \begin{tabular}{lccccc}
 \hline
@@ -214,7 +214,7 @@ Two observations are noteworthy. First, naively injecting a heterogeneous prior 
 Finally, we compare different textual priors used by SLR-C. We consider three semantic sources: \textit{Lexical}, which uses short class-name phrases; \textit{Canonical}, which uses the official intent descriptions provided by Intentonomy; and \textit{Scenario}, which uses Gemini-generated visual scenarios. For the ensemble setting, we average the normalized logits from the selected sources before local reranking. Table~\ref{tab:prior_ablation} shows that the three-source ensemble offers the strongest hard-case robustness and is therefore adopted in the final method.
 \begin{table}[t]
 \centering
-\caption{Ablation on heterogeneous textual priors for SLR-C. All numbers are percentages.}
+\caption{Ablation of lexical, canonical, and scenario textual priors in SLR-C on the Intentonomy test split. Ensemble averages normalized logits from selected priors. All numbers are percentages.}
 \label{tab:prior_ablation}
 \begin{tabular}{cccccccc}
 \hline
@@ -239,7 +239,7 @@ To examine whether SADIR depends entirely on a strong backbone, we also test the
 
 \begin{table}[t]
 \centering
-\caption{Backbone sensitivity comparing baseline and full model. All numbers are percentages.}
+\caption{Backbone sensitivity of SADIR on the Intentonomy test split. All numbers are percentages.}
 \label{tab:backbone_ablation}
 \begin{tabular}{lcccccc}
 \hline

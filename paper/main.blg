@@ -1,0 +1,51 @@
+This is BibTeX, Version 0.99e (TeX Live 2026)
+Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
+The top-level auxiliary file: main.aux
+The style file: unsrt.bst
+Database file #1: intentrecognition.bib
+Warning--empty booktitle in ridnik_asymmetric_2021
+Warning--empty booktitle in loshchilov_decoupled_2018
+Warning--empty booktitle in he_deep_2016
+Warning--empty booktitle in li_dividemix_2019
+You've used 30 entries,
+            1791 wiz_defined-function locations,
+            627 strings with 11053 characters,
+and the built_in function-call counts, 10762 in all, are:
+= -- 989
+> -- 541
+< -- 17
++ -- 190
+- -- 160
+* -- 772
+:= -- 1554
+add.period$ -- 107
+call.type$ -- 30
+change.case$ -- 30
+chr.to.int$ -- 0
+cite$ -- 34
+duplicate$ -- 477
+empty$ -- 951
+format.name$ -- 160
+if$ -- 2486
+int.to.chr$ -- 0
+int.to.str$ -- 30
+missing$ -- 27
+newline$ -- 159
+num.names$ -- 32
+pop$ -- 122
+preamble$ -- 1
+purify$ -- 0
+quote$ -- 0
+skip$ -- 320
+stack$ -- 0
+substring$ -- 862
+swap$ -- 206
+text.length$ -- 17
+text.prefix$ -- 0
+top$ -- 0
+type$ -- 0
+warning$ -- 4
+while$ -- 96
+width$ -- 32
+write$ -- 356
+(There were 4 warnings)
