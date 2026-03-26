@@ -1,4 +1,62 @@
 
+@misc{team_gemini_2025,
+	title = {Gemini: {A} {Family} of {Highly} {Capable} {Multimodal} {Models}},
+	shorttitle = {Gemini},
+	url = {http://arxiv.org/abs/2312.11805},
+	doi = {10.48550/arXiv.2312.11805},
+	abstract = {This report introduces a new family of multimodal models, Gemini, that exhibit remarkable capabilities across image, audio, video, and text understanding. The Gemini family consists of Ultra, Pro, and Nano sizes, suitable for applications ranging from complex reasoning tasks to on-device memory-constrained use-cases. Evaluation on a broad range of benchmarks shows that our most-capable Gemini Ultra model advances the state of the art in 30 of 32 of these benchmarks - notably being the first model to achieve human-expert performance on the well-studied exam benchmark MMLU, and improving the state of the art in every one of the 20 multimodal benchmarks we examined. We believe that the new capabilities of the Gemini family in cross-modal reasoning and language understanding will enable a wide variety of use cases. We discuss our approach toward post-training and deploying Gemini models responsibly to users through services including Gemini, Gemini Advanced, Google AI Studio, and Cloud Vertex AI.},
+	urldate = {2026-03-25},
+	publisher = {arXiv},
+	author = {Team, Gemini},
+	month = may,
+	year = {2025},
+	note = {arXiv:2312.11805 [cs]},
+	keywords = {Computer Science - Artificial Intelligence, Computer Science - Computation and Language, Computer Science - Computer Vision and Pattern Recognition},
+}
+
+@inproceedings{loshchilov_decoupled_2018,
+	title = {Decoupled {Weight} {Decay} {Regularization}},
+	url = {https://openreview.net/forum?id=Bkg6RiCqY7},
+	abstract = {L\$\_2\$ regularization and weight decay regularization are equivalent for standard stochastic gradient descent (when rescaled by the learning rate), but as we demonstrate this is {\textbackslash}emph\{not\} the case for adaptive gradient algorithms, such as Adam. While common implementations of these algorithms employ L\$\_2\$ regularization (often calling it ``weight decay'' in what may be misleading due to the inequivalence we expose), we propose a simple modification to recover the original formulation of weight decay regularization by {\textbackslash}emph\{decoupling\} the weight decay from the optimization steps taken w.r.t. the loss function. We provide empirical evidence that our proposed modification (i) decouples the optimal choice of weight decay factor from the setting of the learning rate for both standard SGD and Adam and (ii) substantially improves Adam's generalization performance, allowing it to compete with SGD with momentum on image classification datasets (on which it was previously typically outperformed by the latter). Our proposed decoupled weight decay has already been adopted by many researchers, and the community has implemented it in TensorFlow and PyTorch; the complete source code for our experiments is available at {\textbackslash}url\{https://github.com/loshchil/AdamW-and-SGDW\}},
+	language = {en},
+	urldate = {2026-03-25},
+	author = {Loshchilov, Ilya and Hutter, Frank},
+	month = sep,
+	year = {2018},
+}
+
+@inproceedings{xiao_c-pack_2024,
+	address = {New York, NY, USA},
+	series = {{SIGIR} '24},
+	title = {C-{Pack}: {Packed} {Resources} {For} {General} {Chinese} {Embeddings}},
+	isbn = {979-8-4007-0431-4},
+	shorttitle = {C-{Pack}},
+	url = {https://dl.acm.org/doi/10.1145/3626772.3657878},
+	doi = {10.1145/3626772.3657878},
+	abstract = {We introduce C-Pack, a package of resources that significantly advances the field of general text embeddings for Chinese. C-Pack includes three critical resources. 1) C-MTP is a massive training dataset for text embedding, which is based on the curation of vast unlabeled corpora and the integration of high-quality labeled corpora. 2) C-MTEB is a comprehensive benchmark for Chinese text embeddings covering 6 tasks and 35 datasets. 3) BGE is a family of embedding models covering multiple sizes. Our models outperform all prior Chinese text embeddings on C-MTEB by more than +10\% upon the time of the release. We also integrate and optimize the entire suite of training methods for BGE. Along with our resources on general Chinese embedding, we release our data and models for English text embeddings. The English models also achieve state-of-the-art performance on the MTEB benchmark; meanwhile, our released English data is 2 times larger than the Chinese data. Both Chinese and English datasets are the largest public release of training data for text embeddings. All these resources are made publicly available at https://github.com/FlagOpen/FlagEmbedding.},
+	urldate = {2026-03-25},
+	booktitle = {Proceedings of the 47th {International} {ACM} {SIGIR} {Conference} on {Research} and {Development} in {Information} {Retrieval}},
+	publisher = {Association for Computing Machinery},
+	author = {Xiao, Shitao and Liu, Zheng and Zhang, Peitian and Muennighoff, Niklas and Lian, Defu and Nie, Jian-Yun},
+	year = {2024},
+	pages = {641--649},
+}
+
+@misc{bai_qwen25-vl_2025,
+	title = {Qwen2.5-{VL} {Technical} {Report}},
+	url = {http://arxiv.org/abs/2502.13923},
+	doi = {10.48550/arXiv.2502.13923},
+	abstract = {We introduce Qwen2.5-VL, the latest flagship model of Qwen vision-language series, which demonstrates significant advancements in both foundational capabilities and innovative functionalities. Qwen2.5-VL achieves a major leap forward in understanding and interacting with the world through enhanced visual recognition, precise object localization, robust document parsing, and long-video comprehension. A standout feature of Qwen2.5-VL is its ability to localize objects using bounding boxes or points accurately. It provides robust structured data extraction from invoices, forms, and tables, as well as detailed analysis of charts, diagrams, and layouts. To handle complex inputs, Qwen2.5VL introduces dynamic resolution processing and absolute time encoding, enabling it to process images of varying sizes and videos of extended durations (up to hours) with second-level event localization. This allows the model to natively perceive spatial scales and temporal dynamics without relying on traditional normalization techniques. By training a native dynamic-resolution Vision Transformer (ViT) from scratch and incorporating Window Attention, we have significantly reduced computational overhead while maintaining native resolution. As a result, Qwen2.5-VL excels not only in static image and document understanding but also as an interactive visual agent capable of reasoning, tool usage, and task execution in real-world scenarios such as operating computers and mobile devices. The model achieves strong generalization across domains without requiring task-specific fine-tuning. Qwen2.5-VL is available in three sizes, addressing diverse use cases from edge AI to high-performance computing. The flagship Qwen2.5-VL-72B model matches state-of-the-art models like GPT-4o and Claude 3.5 Sonnet, particularly excelling in document and diagram understanding. The smaller Qwen2.5-VL-7B and Qwen2.5-VL-3B models outperform comparable competitors, offering strong capabilities even in resource-constrained environments. Additionally, Qwen2.5-VL maintains robust linguistic performance, preserving the core language competencies of the Qwen2.5 LLM.},
+	language = {en},
+	urldate = {2026-03-25},
+	publisher = {arXiv},
+	author = {Bai, Shuai and Chen, Keqin and Liu, Xuejing and Wang, Jialin and Ge, Wenbin and Song, Sibo and Dang, Kai and Wang, Peng and Wang, Shijie and Tang, Jun and Zhong, Humen and Zhu, Yuanzhi and Yang, Mingkun and Li, Zhaohai and Wan, Jianqiang and Wang, Pengfei and Ding, Wei and Fu, Zheren and Xu, Yiheng and Ye, Jiabo and Zhang, Xi and Xie, Tianbao and Cheng, Zesen and Zhang, Hang and Yang, Zhibo and Xu, Haiyang and Lin, Junyang},
+	month = feb,
+	year = {2025},
+	note = {arXiv:2502.13923 [cs]},
+	keywords = {Computer Science - Computation and Language, Computer Science - Computer Vision and Pattern Recognition},
+}
+
 @inproceedings{li_dividemix_2019,
 	title = {{DivideMix}: {Learning} with {Noisy} {Labels} as {Semi}-supervised {Learning}},
 	shorttitle = {{DivideMix}},
@@ -427,20 +485,4 @@
 	note = {Conference Name: IEEE Transactions on Image Processing},
 	keywords = {Calibration, Computer vision, Correlation, Data augmentation, Image classification, Task analysis, Visual intention understanding, Visualization, distribution calibration, intention relation},
 	pages = {2627--2638},
-}
-
-@article{chen_bge-m3_2024,
-	title = {{BGE M3}-{Embedding}: {Multi}-{Lingual}, {Multi}-{Functionality}, {Multi}-{Granularity} {Text} {Embeddings} {Through} {Self}-{Knowledge} {Distillation}},
-	url = {https://arxiv.org/abs/2402.03216},
-	journal = {arXiv preprint arXiv:2402.03216},
-	author = {Chen, Junkang and Xiao, Shitao and Zhang, Peitian and Luo, Kun and Lian, Defu and Liu, Zheng},
-	year = {2024}
-}
-
-@inproceedings{loshchilov_decoupled_2019,
-	title = {Decoupled {Weight} {Decay} {Regularization}},
-	booktitle = {International Conference on Learning Representations},
-	author = {Loshchilov, Ilya and Hutter, Frank},
-	year = {2019},
-	url = {https://openreview.net/forum?id=Bkg6RiCqY7}
 }

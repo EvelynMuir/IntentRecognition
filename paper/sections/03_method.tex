@@ -85,7 +85,6 @@ While UTD improves representation robustness, semantic ambiguity still affects f
 \subsubsection{Semantic Prior Construction}
 
 Intent semantics are inherently multi-granular and abstract, making a single textual representation insufficient. We therefore construct semantic priors for each intent using descriptive textual queries that capture typical visual scenarios.
-In practice, these scenario queries are generated offline by Gemini 3.1 Pro and stored as a small pool of intent-specific textual descriptions, which provide visually grounded yet semantically rich prototypes for each intent category.
 
 Given an image $x$, we compute image-text similarities:
 \begin{equation}

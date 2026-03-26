@@ -36,12 +36,75 @@ HLEG \cite{shi_learnable_2023} & TAC 2023 & 35.35 & 46.34 & 47.40 & 43.03 \\
 PIP-Net \cite{wang_prototype-based_2023} & TMM 2023 & 30.71 & 44.84 & 45.48 & 40.34 \\
 LabCR \cite{shi_label-aware_2024} & TIP 2024 & 37.10 & 49.04 & 49.71 & 45.28 \\
 IntCLIP \cite{leonardis_synergy_2025} & ECCV 2024 & 41.55 & 52.61 & 49.75 & 47.97 \\
-\hline
 IntentMLM \cite{wang_unlocking_2026} & PR & 43.06 & 54.77 & 56.93 & 51.59 \\
 \hline
-CLIP ViT-L/14 & - & 55.80 & 59.62 & 60.10 & 58.51 \\
-SADIR (ours) & - & \textbf{58.20} & \textbf{62.69} & \textbf{63.40} & \textbf{61.43} \\
+CLIP ViT-L/14 \cite{radford_learning_2021} & - & 55.80 & 59.62 & 60.10 & 58.51 \\
+SADIR & - & \textbf{58.20} & \textbf{62.69} & \textbf{63.40} & \textbf{61.43} \\
 \hline
 \end{tabular}
 \endgroup
 \end{table}
+
+\section{Prompt Templates}
+
+\subsection{Rationale Generation Prompt}
+\label{app:rationale_prompt}
+
+We use an instruction template to generate the three-stage rationale for each training image. The final prompt used in our experiments is omitted here for brevity and will be inserted in the camera-ready version. The current placeholder structure is shown below.
+
+\begin{quote}
+\textbf{System Instruction:} You are an expert human behavioral analyst and computer vision specialist. Your task is to analyze an image and provide a highly logical, structured reasoning chain that explains the underlying human intent. Strictly follow the requested format and avoid conversational filler.
+
+\textbf{User Prompt:} Given this image, the ground-truth human intents are strictly defined as the concurrent occurrence of: ${y_{true}}$.
+
+Please carefully observe the image and generate a structured reasoning report strictly following these 3 steps:
+
+Step 1: Visual Evidence \\
+Describe the explicit physical actions, key objects, body language, or facial expressions in the image that strongly support the presence of these concurrent intents (${y_{true}}$). Be specific about what you see and how the visual cues correspond to these multiple intents.
+
+Step 2: Contextual Bridging \\
+Explain how the background, environment, or the relationship between the subjects logically connects with the visual cues from Step 1 to reveal why these multiple psychological motivations (${y_{true}}$) naturally co-exist in this specific scene.
+
+Step 3: Counterfactual Disambiguation \\
+In a purely visual context, a machine learning model might easily misclassify this image as also containing the intent of ${y_{confuse}}$. Point out the specific visual clues that are definitively missing, or the contradictory details that are present, which prove the intent of ${y_{confuse}}$ is not happening here.
+\end{quote}
+
+\subsection{Scenario Prompt for SLR-C Prior}
+\label{app:scenario_prompt}
+
+We also use an instruction template to generate scenario descriptions for each intent category, which are later encoded as textual priors in SLR-C.
+
+\begin{quote}
+\textbf{Role}
+You are a top-tier Computer Vision (CV) expert, a Prompt Engineer specializing in multimodal models (e.g., CLIP, BLIP), and an expert in visual psychology.
+
+\textbf{Task}
+Your task is to leverage your extensive world knowledge to generate highly rich, concrete, and visually discriminative descriptions (Visual Anchors) for a specific intent category. These descriptions will serve as text queries to help a Vision-Language model accurately classify images.
+
+\textbf{Target Intent}
+The current intent category to describe is: "Being good looking, attractive."
+
+\textbf{Output Guidelines}
+To fully cover the implicit visual elements, please construct your description strictly across the following 5 dimensions. Translate the abstract intent into concrete visual anchors:
+
+Visual Subjects \& Objects:
+List 3 to 5 typical objects or subject combinations that strongly imply this intent (e.g., for "exploration," do not just say a backpack; include a topographical map, an off-road vehicle, a DSLR camera, or mud-splattered boots).
+
+Actions \& Interactions:
+Describe specific body language, micro-expressions, or ongoing physical interactions using strong action verbs (e.g., leaning in to observe closely, raising hands in triumph, staring intently at a screen).
+
+Settings \& Context:
+To address "intra-class variance," provide at least 3 distinct typical scenarios (e.g., indoor vs. outdoor, daily life vs. extreme environments) where this intent naturally occurs.
+
+Emotion, Vibe \& Atmosphere:
+What is the overall atmosphere conveyed by the image? What are the specific facial expressions or mood indicators? (e.g., a serene gaze, a warm and cozy domestic vibe, high-energy excitement).
+
+Photography Style \& Lighting:
+What visual style typically characterizes web images of this intent? (e.g., high-contrast natural sunlight, warm indoor ambient lighting, vibrant and saturated colors, candid documentary style).
+
+\textbf{Format Requirement}
+First, output a 50-80 word [Comprehensive Summary]. This summary should seamlessly integrate the visual elements above into a natural, cohesive, and highly visual paragraph. This will serve as my core Query.
+Second, provide a concise list breaking down the keywords/phrases for the 5 dimensions mentioned above.
+
+\textbf{Crucial Note:} While generating, actively consider the core visual differences between this intent and other highly similar intents (e.g., distinguishing "Enjoying life" from "Having an easy and comfortable life"), and heavily emphasize those unique visual discriminators in your description.
+\end{quote}

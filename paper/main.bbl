@@ -1,0 +1,215 @@
+\begin{thebibliography}{10}
+
+\bibitem{jia_intentonomy_2021}
+Menglin Jia, Zuxuan Wu, Austin Reiter, Claire Cardie, Serge Belongie, and
+  Ser-Nam Lim.
+\newblock Intentonomy: a {Dataset} and {Study} towards {Human} {Intent}
+  {Understanding}.
+\newblock In {\em 2021 {IEEE}/{CVF} {Conference} on {Computer} {Vision} and
+  {Pattern} {Recognition} ({CVPR})}, pages 12981--12991, June 2021.
+\newblock ISSN: 2575-7075.
+
+\bibitem{wen_dip_2023}
+Changsong Wen, Guoli Jia, and Jufeng Yang.
+\newblock {DIP}: {Dual} {Incongruity} {Perceiving} {Network} for {Sarcasm}
+  {Detection}.
+\newblock In {\em 2023 {IEEE}/{CVF} {Conference} on {Computer} {Vision} and
+  {Pattern} {Recognition} ({CVPR})}, pages 2540--2550, Vancouver, BC, Canada,
+  June 2023. IEEE.
+
+\bibitem{wang_prototype-based_2023}
+Binglu Wang, Kang Yang, Yongqiang Zhao, Teng Long, and Xuelong Li.
+\newblock Prototype-{Based} {Intent} {Perception}.
+\newblock {\em IEEE Transactions on Multimedia}, 25:8308--8319, 2023.
+
+\bibitem{ye_cross-modality_2023}
+Mang Ye, Qinghongya Shi, Kehua Su, and Bo~Du.
+\newblock Cross-{Modality} {Pyramid} {Alignment} for {Visual} {Intention}
+  {Understanding}.
+\newblock {\em IEEE Transactions on Image Processing}, 32:2190--2201, 2023.
+
+\bibitem{shi_learnable_2023}
+QingHongYa Shi, Mang Ye, Ziyi Zhang, and Bo~Du.
+\newblock Learnable {Hierarchical} {Label} {Embedding} and {Grouping} for
+  {Visual} {Intention} {Understanding}.
+\newblock {\em IEEE Trans. Affect. Comput.}, 14(4):3218--3230, 2023.
+
+\bibitem{shi_label-aware_2024}
+QingHongYa Shi, Mang Ye, Wenke Huang, Weijian Ruan, and Bo~Du.
+\newblock Label-{Aware} {Calibration} and {Relation}-{Preserving} in {Visual}
+  {Intention} {Understanding}.
+\newblock {\em IEEE Transactions on Image Processing}, 33:2627--2638, 2024.
+\newblock Conference Name: IEEE Transactions on Image Processing.
+
+\bibitem{leonardis_synergy_2025}
+Qu~Yang, Mang Ye, and Dacheng Tao.
+\newblock Synergy of {Sight} and {Semantics}: {Visual} {Intention}
+  {Understanding} with {CLIP}.
+\newblock In Aleš Leonardis, Elisa Ricci, Stefan Roth, Olga Russakovsky,
+  Torsten Sattler, and Gül Varol, editors, {\em Computer {Vision} – {ECCV}
+  2024}, volume 15069, pages 144--160. Springer Nature Switzerland, Cham, 2025.
+\newblock Series Title: Lecture Notes in Computer Science.
+
+\bibitem{wang_unlocking_2026}
+Zhaozhong Wang, Yao Tian, Shutong Wang, Le~Yang, and Binglu Wang.
+\newblock Unlocking human intent perception through multimodal large models.
+\newblock {\em Pattern Recognition}, 172:112582, April 2026.
+
+\bibitem{joo_visual_2014}
+Jungseock Joo, Weixin Li, Francis~F. Steen, and Song-Chun Zhu.
+\newblock Visual {Persuasion}: {Inferring} {Communicative} {Intents} of
+  {Images}.
+\newblock In {\em 2014 {IEEE} {Conference} on {Computer} {Vision} and {Pattern}
+  {Recognition}}, pages 216--223, June 2014.
+\newblock ISSN: 1063-6919.
+
+\bibitem{joo_automated_2015}
+Jungseock Joo, Francis~F. Steen, and Song-Chun Zhu.
+\newblock Automated {Facial} {Trait} {Judgment} and {Election} {Outcome}
+  {Prediction}: {Social} {Dimensions} of {Face}.
+\newblock In {\em 2015 {IEEE} {International} {Conference} on {Computer}
+  {Vision} ({ICCV})}, pages 3712--3720, Santiago, Chile, December 2015. IEEE.
+
+\bibitem{huang_inferring_2016}
+Xinyue Huang and Adriana Kovashka.
+\newblock Inferring {Visual} {Persuasion} via {Body} {Language}, {Setting}, and
+  {Deep} {Features}.
+\newblock In {\em 2016 {IEEE} {Conference} on {Computer} {Vision} and {Pattern}
+  {Recognition} {Workshops} ({CVPRW})}, pages 778--784, Las Vegas, NV, USA,
+  June 2016. IEEE.
+
+\bibitem{lin_focal_2020}
+Tsung-Yi Lin, Priya Goyal, Ross Girshick, Kaiming He, and Piotr Dollár.
+\newblock Focal {Loss} for {Dense} {Object} {Detection}.
+\newblock {\em IEEE Transactions on Pattern Analysis and Machine Intelligence},
+  42(2):318--327, February 2020.
+
+\bibitem{shrivastava_training_2016}
+Abhinav Shrivastava, Abhinav Gupta, and Ross Girshick.
+\newblock Training {Region}-{Based} {Object} {Detectors} with {Online} {Hard}
+  {Example} {Mining}.
+\newblock In {\em 2016 {IEEE} {Conference} on {Computer} {Vision} and {Pattern}
+  {Recognition} ({CVPR})}, pages 761--769, June 2016.
+\newblock ISSN: 1063-6919.
+
+\bibitem{ye_collaborative_2022}
+Mang Ye, He~Li, Bo~Du, Jianbing Shen, Ling Shao, and Steven C.~H. Hoi.
+\newblock Collaborative {Refining} for {Person} {Re}-{Identification} {With}
+  {Label} {Noise}.
+\newblock {\em IEEE Transactions on Image Processing}, 31:379--391, 2022.
+
+\bibitem{ridnik_asymmetric_2021}
+Tal Ridnik, Emanuel Ben-Baruch, Nadav Zamir, Asaf Noy, Itamar Friedman, Matan
+  Protter, and Lihi Zelnik-Manor.
+\newblock Asymmetric {Loss} {For} {Multi}-{Label} {Classification}.
+\newblock pages 82--91. IEEE Computer Society, October 2021.
+
+\bibitem{zhang_use_2022}
+Shu Zhang, Ran Xu, Caiming Xiong, and Chetan Ramaiah.
+\newblock Use {All} {The} {Labels}: {A} {Hierarchical} {Multi}-{Label}
+  {Contrastive} {Learning} {Framework}.
+\newblock In {\em 2022 {IEEE}/{CVF} {Conference} on {Computer} {Vision} and
+  {Pattern} {Recognition} ({CVPR})}, pages 16639--16648, June 2022.
+\newblock ISSN: 2575-7075.
+
+\bibitem{touvron_training_2021}
+Hugo Touvron, Matthieu Cord, Matthijs Douze, Francisco Massa, Alexandre
+  Sablayrolles, and Herve Jegou.
+\newblock Training data-efficient image transformers \& distillation through
+  attention.
+\newblock In {\em Proceedings of the 38th {International} {Conference} on
+  {Machine} {Learning}}, pages 10347--10357. PMLR, July 2021.
+
+\bibitem{radford_learning_2021}
+Alec Radford, Jong~Wook Kim, Chris Hallacy, Aditya Ramesh, Gabriel Goh,
+  Sandhini Agarwal, Girish Sastry, Amanda Askell, Pamela Mishkin, Jack Clark,
+  Gretchen Krueger, and Ilya Sutskever.
+\newblock Learning {Transferable} {Visual} {Models} {From} {Natural} {Language}
+  {Supervision}.
+\newblock In {\em Proceedings of the 38th {International} {Conference} on
+  {Machine} {Learning}}, pages 8748--8763. PMLR, July 2021.
+
+\bibitem{bai_qwen25-vl_2025}
+Shuai Bai, Keqin Chen, Xuejing Liu, Jialin Wang, Wenbin Ge, Sibo Song, Kai
+  Dang, Peng Wang, Shijie Wang, Jun Tang, Humen Zhong, Yuanzhi Zhu, Mingkun
+  Yang, Zhaohai Li, Jianqiang Wan, Pengfei Wang, Wei Ding, Zheren Fu, Yiheng
+  Xu, Jiabo Ye, Xi~Zhang, Tianbao Xie, Zesen Cheng, Hang Zhang, Zhibo Yang,
+  Haiyang Xu, and Junyang Lin.
+\newblock Qwen2.5-{VL} {Technical} {Report}, February 2025.
+\newblock arXiv:2502.13923 [cs].
+
+\bibitem{xiao_c-pack_2024}
+Shitao Xiao, Zheng Liu, Peitian Zhang, Niklas Muennighoff, Defu Lian, and
+  Jian-Yun Nie.
+\newblock C-{Pack}: {Packed} {Resources} {For} {General} {Chinese}
+  {Embeddings}.
+\newblock In {\em Proceedings of the 47th {International} {ACM} {SIGIR}
+  {Conference} on {Research} and {Development} in {Information} {Retrieval}},
+  {SIGIR} '24, pages 641--649, New York, NY, USA, 2024. Association for
+  Computing Machinery.
+
+\bibitem{loshchilov_decoupled_2018}
+Ilya Loshchilov and Frank Hutter.
+\newblock Decoupled {Weight} {Decay} {Regularization}.
+\newblock September 2018.
+
+\bibitem{team_gemini_2025}
+Gemini Team.
+\newblock Gemini: {A} {Family} of {Highly} {Capable} {Multimodal} {Models}, May
+  2025.
+\newblock arXiv:2312.11805 [cs].
+
+\bibitem{he_deep_2016}
+Kaiming He, Xiangyu Zhang, Shaoqing Ren, and Jian Sun.
+\newblock Deep {Residual} {Learning} for {Image} {Recognition}.
+\newblock pages 770--778, 2016.
+
+\bibitem{jia_multiguard_2022}
+Jinyuan Jia, Wenjie Qu, and Neil Gong.
+\newblock {MultiGuard}: {Provably} {Robust} {Multi}-label {Classification}
+  against {Adversarial} {Examples}.
+\newblock {\em Advances in Neural Information Processing Systems},
+  35:10150--10163, December 2022.
+
+\bibitem{chen_structured_2022}
+Tianshui Chen, Tao Pu, Hefeng Wu, Yuan Xie, and Liang Lin.
+\newblock Structured {Semantic} {Transfer} for {Multi}-{Label} {Recognition}
+  with {Partial} {Labels}.
+\newblock {\em Proceedings of the AAAI Conference on Artificial Intelligence},
+  36(1):339--346, June 2022.
+
+\bibitem{liu_query2label_2021}
+Shilong Liu, Lei Zhang, Xiao Yang, Hang Su, and Jun Zhu.
+\newblock {Query2Label}: {A} {Simple} {Transformer} {Way} to {Multi}-{Label}
+  {Classification}, July 2021.
+\newblock arXiv:2107.10834 [cs].
+
+\bibitem{sun_dualcoop_2022}
+Ximeng Sun, Ping Hu, and Kate Saenko.
+\newblock {DualCoOp}: fast adaptation to multi-label recognition with limited
+  annotations.
+\newblock In {\em Proceedings of the 36th {International} {Conference} on
+  {Neural} {Information} {Processing} {Systems}}, {NIPS} '22, pages
+  30569--30582, Red Hook, NY, USA, 2022. Curran Associates Inc.
+
+\bibitem{lee_cleannet_2018}
+Kuang-Huei Lee, Xiaodong He, Lei Zhang, and Linjun Yang.
+\newblock {CleanNet}: {Transfer} {Learning} for {Scalable} {Image} {Classifier}
+  {Training} with {Label} {Noise}.
+\newblock In {\em 2018 {IEEE}/{CVF} {Conference} on {Computer} {Vision} and
+  {Pattern} {Recognition}}, pages 5447--5456, Salt Lake City, UT, June 2018.
+  IEEE.
+
+\bibitem{lukasik_does_2020}
+Michal Lukasik, Srinadh Bhojanapalli, Aditya Menon, and Sanjiv Kumar.
+\newblock Does label smoothing mitigate label noise?
+\newblock In {\em Proceedings of the 37th {International} {Conference} on
+  {Machine} {Learning}}, pages 6448--6458. PMLR, November 2020.
+
+\bibitem{li_dividemix_2019}
+Junnan Li, Richard Socher, and Steven C.~H. Hoi.
+\newblock {DivideMix}: {Learning} with {Noisy} {Labels} as {Semi}-supervised
+  {Learning}.
+\newblock September 2019.
+
+\end{thebibliography}

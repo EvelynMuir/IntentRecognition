@@ -6,14 +6,19 @@
 \subsubsection{Dataset and Evaluation Metrics}
 We evaluate our method on the Intentonomy dataset \cite{jia_intentonomy_2021}, a multi-label benchmark for visual intention recognition in social media scenarios. Following the standard split used in our experiments, the dataset contains 12,739 training images, 498 validation images, and 1,216 test images. Intentonomy additionally provides soft agreement annotations with values in $\{0, 0.33, 0.66, 1\}$ on the training set, which directly reflect the degree of annotator consensus and serve as the uncertainty signal $\omega_i$ in our framework.
 
-We report Macro F1, Micro F1, Samples F1, and mAP. For consistency with recent Intentonomy papers, the main comparison table additionally reports $\textit{Avg.}$ which is the average of three F1 scores. 
+We report Macro F1, Micro F1, Samples F1. For consistency with recent Intentonomy papers, the main comparison table additionally reports $\textit{Avg.}$ which is the average of three F1 scores. 
 
-To better understand the effectiveness of our method, we further conduct experiments on subsets of the intent classes. Following Jia et al. \cite{jia_intentonomy_2021}, we divide intent classes into \textit{Easy}, \textit{Medium}, and \textit{Hard} groups according to how much a standard ResNet-50 classifier outperforms random prediction. We emphasize the \textit{Hard} score throughout the analysis because it specifically measures performance on ambiguity-prone intent categories, where semantic overlap and subjective disagreement are most severe. Improvements on the hard subset therefore provide stronger evidence that a method is resolving the core difficulty of intention understanding rather than merely exploiting easy classes.
+To better understand the effectiveness of our method, we further conduct experiments on subsets of the intent class. We follow the work of Jia et al. \cite{jia_intentonomy_2021} and break down intent classes according to content difficulty and dependency. Difficulty classes are measured by how much a standard ResNet-50 model outperforms the random results. Content classes are divided into object-dependent ({\itshape Object}-classes), context-dependent ({\itshape Context}-classes) and {\itshape Others} which depends on both foreground and background information. We emphasize the \textit{Hard} score throughout the analysis because it specifically measures performance on ambiguity-prone intent categories, where semantic overlap and subjective disagreement are most severe. Improvements on the hard subset therefore provide stronger evidence that a method is resolving the core difficulty of intention understanding rather than merely exploiting easy classes.
 
 \subsubsection{Implementation Details}
 
-Our default visual backbone is frozen CLIP ViT-L/14, while ResNet101 is used as a weaker alternative backbone in robustness analysis. The visual student is implemented as a lightweight residual MLP trained on top of a fixed SLR-C prior. For UTD, rationale text is generated offline by Qwen2.5-VL-7B-Instruct \cite{bai_qwen25-vl_2025} and then encoded by a frozen bge-large-en-v1.5 text encoder \cite{xiao_c-pack_2024}. The teacher consumes only the resulting text embeddings and is optimized with Asymmetric Loss (ASL) \cite{ridnik_asymmetric_2021} using $\gamma_{neg}=2$, $\gamma_{pos}=0$, and clipping value 0.05. The student is optimized with AdamW \cite{loshchilov_decoupled_2018}, learning rate $5\times10^{-4}$, weight decay $10^{-4}$, batch size 256, and dropout 0.1. The teacher hidden dimension is 1024 and the residual student hidden dimension is 768. The distillation temperature is set to 2.0. In SLR-C, scenario priors are constructed from Gemini 3.1 Pro-generated intent descriptions \cite{team_gemini_2025}, and local reranking is performed within Top-10 visual candidates. During inference, class-wise thresholds are searched on the validation set and then fixed for test evaluation. Notably, UTD introduces \emph{zero extra inference cost}, since the text teacher is only used during training and is discarded at test time.
+Our default visual backbone is frozen CLIP ViT-L/14 \cite{radford_learning_2021}. The visual student is implemented as a lightweight residual MLP trained on top of a fixed SLR-C prior. For UTD, rationale text is generated offline by Qwen2.5-VL-7B-Instruct \cite{bai_qwen25-vl_2025} and then encoded by a frozen bge-large-en-v1.5 text encoder \cite{xiao_c-pack_2024}. The rationale-generation prompt template is provided in \ref{app:rationale_prompt}. The teacher consumes only the resulting text embeddings and is optimized with Asymmetric Loss (ASL) \cite{ridnik_asymmetric_2021} using $\gamma_{-}=2$, $\gamma_{+}=0$, and clipping value 0.05. The student is optimized with AdamW \cite{loshchilov_decoupled_2018}, learning rate $5\times10^{-4}$, weight decay $10^{-4}$, batch size 256, and dropout 0.1. The teacher hidden dimension is 1024 and the residual student hidden dimension is 768. The distillation temperature is set to 2.0. In SLR-C, scenario priors are constructed from Gemini 3.1 Pro-generated intent descriptions \cite{team_gemini_2025}, and local reranking is performed within Top-10 visual candidates. The scenario-prompt template is also provided in \ref{app:scenario_prompt}. During inference, class-wise thresholds are searched on the validation set and then fixed for test evaluation. Notably, UTD introduces \emph{zero extra inference cost}, since the text teacher is only used during training and is discarded at test time.
 
+
+\subsection{Comparative Experiments}
+
+\subsubsection{Comparison with state-of-the-art methods}
+Table~\ref{tab:main_results} summarizes the main comparison on the testing set. More results on validation set can be found in \ref{app:validation_results}. The strong CLIP baseline already surpasses the previously reported best result by a clear margin, confirming that visual representation is no longer the primary bottleneck for this task. Once the backbone is sufficiently strong, the remaining challenge is how to map rich visual semantics into abstract and subjective intent labels. More importantly, \textit{UTD only} already improves over IntentMLM by a large margin while introducing zero extra inference cost, showing that robust training under subjective supervision is by itself sufficient to outperform recent multimodal large-model pipelines. Building on this, the complete SADIR framework further improves all four reported metrics on the testing split, reaching the strongest overall average score. This pattern is consistent with our motivation: SLR-C improves semantic discrimination at inference, whereas UTD stabilizes training under ambiguous supervision.
 
 \begin{table}[H]
 \centering
@@ -55,22 +60,15 @@ IntCLIP \cite{leonardis_synergy_2025} & ECCV 2024 & 40.15 & 53.54 & 51.01 & 48.2
 % GPT-4o & - & 39.48 & 40.57 & 41.45 & 40.50 \\
 IntentMLM \cite{wang_unlocking_2026} & PR & 43.05 & 54.77 & 56.75 & 51.52 \\
 \hline
-CLIP ViT-L/14 & - & 47.40 & 56.42 & 56.41 & 53.41 \\
-SADIR (UTD only, ours) & - & 50.31 & 57.97 & 59.07 & 55.78 \\
-SADIR (ours) & - & \textbf{51.52} & \textbf{59.75} & \textbf{60.30} & \textbf{57.19} \\
+CLIP ViT-L/14 \cite{radford_learning_2021} & - & 47.40 & 56.42 & 56.41 & 53.41 \\
+SADIR (UTD only) & - & 50.31 & 57.97 & 59.07 & 55.78 \\
+SADIR & - & \textbf{51.52} & \textbf{59.75} & \textbf{60.30} & \textbf{57.19} \\
 \hline
 \end{tabular}
 \endgroup
 \end{table}
 
-\subsection{Main Results}
-
-Table~\ref{tab:main_results} summarizes the main comparison on the testing set. More results on validation set can be found in \ref{app:validation_results}.
-Our strong CLIP baseline already surpasses the previously reported best result by a clear margin, confirming that a strong visual prior is highly competitive for this task. More importantly, \textit{UTD only} already improves over IntentMLM by a large margin while introducing zero extra inference cost, showing that robust training under subjective supervision is by itself sufficient to outperform recent multimodal large-model pipelines. Building on this, the complete SADIR framework further improves all four reported metrics on the testing split, reaching the strongest overall average score. This pattern is consistent with our motivation: SLR-C improves semantic discrimination at inference, whereas UTD stabilizes training under ambiguous supervision.
-
-The external baselines reveal a clear progression from generic multi-label recognition to intent-specific modeling and finally large-model-based intent understanding. Against this background, our baseline already exceeds IntentMLM on the testing split, UTD only further raises Macro F1 to 50.31 and Avg. to 55.78 without any extra test-time computation, and SADIR finally improves Macro F1 by 8.47 points and Avg. by 5.67 points over IntentMLM. Validation-split comparisons are provided in Appendix~\ref{app:validation_results}. These results indicate that the proposed design effectively combines robust training and discriminative inference.
-
-\subsection{Difficulty-wise Evaluation}
+\subsubsection{Performance on Different Difficulty Subsets}
 
 To better understand the effectiveness of our method, we further evaluate performance on intent subsets with different difficulty levels. Following Jia et al. \cite{jia_intentonomy_2021}, we divide intent classes into \textit{Easy}, \textit{Medium}, and \textit{Hard} groups according to how much a standard ResNet-50 classifier outperforms random prediction. For previously published methods, we directly adopt the reported values from the difficulty-wise comparison figure provided in the original papers. For our models, the numbers are computed from the corresponding evaluation logs.
 
@@ -83,107 +81,149 @@ To better understand the effectiveness of our method, we further evaluate perfor
 Method & Easy & Medium & Hard & Avg. \\
 \hline
 Random & 19.86 & 7.11 & 2.81 & 9.93 \\
-Visual & 54.64 & 24.92 & 10.71 & 30.09 \\
+Visual \cite{he_deep_2016} & 54.64 & 24.92 & 10.71 & 30.09 \\
 Jia (w/o hashtag) \cite{jia_intentonomy_2021} & 57.10 & 25.68 & 12.72 & 31.83 \\
 Jia (hashtag) \cite{jia_intentonomy_2021} & 58.86 & 26.30 & 13.11 & 32.76 \\
-Query2Label & 81.59 & 38.06 & 14.55 & 44.73 \\
+Query2Label \cite{liu_query2label_2021} & 81.59 & 38.06 & 14.55 & 44.73 \\
 CPAD \cite{ye_cross-modality_2023} & 69.47 & 31.50 & 8.54 & 36.50 \\
 HLEG \cite{shi_learnable_2023} & 81.49 & 38.99 & 20.22 & 46.90 \\
 PIP-Net \cite{wang_prototype-based_2023} & 70.73 & 33.63 & 14.33 & 39.56 \\
 IntentMLM \cite{wang_unlocking_2026} & 76.26 & 46.87 & 27.39 & 50.17 \\
-CLIP ViT-L/14 & 80.99 & 53.32 & 28.45 & 54.25 \\
+\hline
+CLIP ViT-L/14 \cite{radford_learning_2021} & 80.99 & 53.32 & 28.45 & 54.25 \\
 % Fixed SLR-C & 81.55 & 56.39 & 33.98 & 57.30 \\
 % Ours: full model (standard KD) & 81.42 & 56.06 & \textbf{36.43} & \textbf{57.97} \\
-SADIR (ours) & \textbf{82.53} & \textbf{56.60} & \textbf{34.60} & \textbf{57.91} \\
+SADIR & \textbf{82.53} & \textbf{56.60} & \textbf{34.60} & \textbf{57.91} \\
 \hline
 \end{tabular}
 \end{table}
 
 The difficulty-wise results provide two additional insights. First, our baseline is already substantially stronger than prior methods on all three difficulty groups, indicating that the new performance regime is not limited to a specific subset of classes. Second, SADIR further improves medium and hard groups most consistently, which is precisely where semantic ambiguity and supervision uncertainty are more pronounced.
 
+\subsubsection{Performance of Different Content-Dependent Subsets}
+Table~\ref{tab:content_results} reports results on content-dependent subsets. Following the protocol in prior work, intent classes are divided into \textit{Object-dependent}, \textit{Context-dependent}, and \textit{Others}. The first group mainly depends on salient foreground entities, the second relies more strongly on scene or environmental context, and the third requires combined reasoning over both foreground and background cues.
+
+\begin{table}[t]
+\centering
+\caption{Comparison of results depending on different visual content. All numbers are percentages.}
+\label{tab:content_results}
+\begin{tabular}{lcccc}
+\hline
+Method & Object & Context & Others & Avg. \\
+\hline
+Random & 7.75 & 12.53 & 6.05 & 8.78 \\
+Visual \cite{he_deep_2016} & 25.58 & 30.16 & 21.34 & 25.69 \\
+Jia (w/o hashtag) \cite{jia_intentonomy_2021} & 28.15 & 28.62 & 22.60 & 26.46 \\
+Jia (hashtag) \cite{jia_intentonomy_2021} & 29.66 & 32.48 & 22.61 & 28.25 \\
+CPAD \cite{ye_cross-modality_2023} & 28.81 & 47.30 & 24.74 & 33.62 \\
+PIP-Net \cite{wang_prototype-based_2023} & 39.20 & 39.53 & 27.59 & 35.44 \\
+IntentMLM \cite{wang_unlocking_2026} & 50.13 & 49.69 & 39.75 & 46.52 \\
+\hline
+CLIP ViT-L/14 \cite{radford_learning_2021} & \textbf{61.80} & \textbf{61.69} & 40.59 & 54.69 \\
+SADIR & 60.11 & 59.97 & \textbf{47.46} & \textbf{55.85} \\
+\hline
+\end{tabular}
+\end{table}
+
+The results again show that the strong CLIP baseline is already highly effective on object- and context-dependent intents. The major gain of SADIR appears in the \textit{Others} subset, where intent recognition requires more holistic reasoning over multiple weak cues rather than direct reliance on a single object or scene pattern.
+
 \subsection{Ablation Studies}
 
 \subsubsection{The Effectiveness of Rationale}
 
-We first ablate the internal structure of the VLM rationale used by the text teacher. Specifically, we compare three progressively richer versions: \textit{Step 1 only}, which contains observable visual evidence only; \textit{Step 1+2}, which additionally introduces contextual interpretation; and \textit{Full (1+2+3)}, which further adds counterfactual disambiguation cues. Table~\ref{tab:rationale_ablation} reports the results under dynamic gated distillation.
+We first examine whether using rationale-style text is indeed more effective than generic image captioning. In an earlier shared-feature alignment setting, we compare caption supervision and rationale supervision under the same optimization protocol. As shown in Table~\ref{tab:caption_rationale_ablation}, the two are nearly indistinguishable, suggesting that simply replacing captions with free-form rationale text is not sufficient. This observation motivated the final UTD design, which uses structured rationale and agreement-aware distillation rather than shallow text-feature alignment alone.
+
+\begin{table}[t]
+\centering
+\caption{Caption versus rationale in the earlier text-alignment setting. All numbers are percentages.}
+\label{tab:caption_rationale_ablation}
+\begin{tabular}{lcccc}
+\hline
+Text Source & Macro & Micro & Samples & Hard \\
+\hline
+Baseline & 48.23 & 52.04 & 52.94 & 29.71 \\
+Caption & 48.34 & 47.55 & 47.54 & 30.28 \\
+Rationale & 48.34 & 47.55 & 47.54 & 30.28 \\
+\hline
+\end{tabular}
+\end{table}
+
+We then ablate the internal structure of the rationale used by the final text teacher. Specifically, we compare three progressively richer versions: \textit{Step 1 only}, which contains observable visual evidence only; \textit{Step 1 with Step 2}, which additionally introduces contextual interpretation; and \textit{Full rationale}, which further adds counterfactual disambiguation cues. Table~\ref{tab:rationale_ablation} reports the results under dynamic gated distillation.
 
 \begin{table}[t]
 \centering
 \caption{Ablation on the rationale construction strategy used by UTD. All numbers are percentages.}
 \label{tab:rationale_ablation}
-\begin{tabular}{lccccc}
+\begin{tabular}{cccccccc}
 \hline
-Rationale Source & Macro & Micro & Samples & Avg. & Hard \\
+Step 1 & Step 2 & Step 3 & Macro & Micro & Samples & Avg. & Hard \\
 \hline
-Step 1 only & 49.81 & 56.39 & 57.65 & 54.62 & 29.28 \\
-Step 1 + 2 & 49.69 & 54.45 & 55.97 & 53.37 & 28.82 \\
-Full (1 + 2 + 3) & \textbf{50.31} & \textbf{57.97} & \textbf{59.07} & \textbf{55.78} & \textbf{30.24} \\
+$\checkmark$ &  &  & 49.81 & 56.39 & 57.65 & 54.62 & 29.28 \\
+$\checkmark$ & $\checkmark$ &  & 49.69 & 54.45 & 55.97 & 53.37 & 28.82 \\
+$\checkmark$ & $\checkmark$ & $\checkmark$ & \textbf{50.31} & \textbf{57.97} & \textbf{59.07} & \textbf{55.78} & \textbf{30.24} \\
 \hline
 \end{tabular}
 \end{table}
 
-The trend is revealing. Step 1 already provides useful visual facts, but Step 1+2 alone slightly degrades the overall classification metrics, suggesting that contextual interpretation without explicit disambiguation may introduce semantic drift. Once the counterfactual Step 3 is added, however, the rationale becomes significantly more effective. This supports our central claim that subjective intention recognition requires not only richer context, but also explicit boundary contraction among confusing alternatives.
+The trend is revealing. Step 1 already provides useful visual facts, but adding Step 2 alone slightly degrades the overall classification metrics, suggesting that contextual interpretation without explicit disambiguation may introduce semantic drift. Once the counterfactual Step 3 is added, however, the rationale becomes significantly more effective. This supports our central claim that subjective intention recognition requires not only richer context, but also explicit boundary contraction among confusing alternatives.
 
-\subsubsection{Why Gated Distillation?}
+\subsubsection{Effectiveness of Gated Distillation}
 
-We next isolate the effect of UTD without using the SLR-C prior, and further compare the same distillation strategies on a much weaker ResNet101 backbone. Table~\ref{tab:distill_ablation} shows that both KD variants improve over the baseline on CLIP, but the behavior differs noticeably across student capacity levels.
-
+We next isolate the effect of UTD without using the SLR-C prior. Table~\ref{tab:distill_ablation} compares plain supervised learning, distillation without gating, and agreement-aware gated distillation.
 \begin{table}[t]
 \centering
-\caption{Why gated distillation? Comparison on both a strong CLIP student and a weaker ResNet101 student. All numbers are percentages.}
+\caption{Why gated distillation? All numbers are percentages.}
 \label{tab:distill_ablation}
-\begin{tabular}{llcccc}
+\begin{tabular}{ccccccc}
 \hline
-Backbone & Method & Macro & Samples & Avg. & Hard \\
+Backbone & Distillation & Gated & Macro & Samples & Avg. & Hard \\
 \hline
-CLIP ViT-L/14 & Baseline & 47.40 & 56.41 & 53.41 & 28.45 \\
-CLIP ViT-L/14 & Standard KD & 49.59 & 58.88 & 55.58 & \textbf{30.44} \\
-CLIP ViT-L/14 & Dynamic gated KD & \textbf{50.31} & \textbf{59.07} & \textbf{55.78} & 30.24 \\
-ResNet101 & Baseline & 36.56 & 43.10 & 40.51 & 18.99 \\
-ResNet101 & Standard KD & 37.50 & \textbf{47.65} & 43.50 & 19.69 \\
-ResNet101 & Dynamic gated KD & \textbf{39.35} & 46.91 & \textbf{43.66} & \textbf{21.53} \\
+$\checkmark$ & &  & 47.40 & 56.41 & 53.41 & 28.45 \\
+$\checkmark$ &$\checkmark$ &  & 49.59 & 58.88 & 55.58 & \textbf{30.44} \\
+$\checkmark$ &$\checkmark$ & $\checkmark$ & \textbf{50.31} & \textbf{59.07} & \textbf{55.78} & 30.24 \\
 \hline
 \end{tabular}
 \end{table}
 
-The results reveal two regimes. On the strong CLIP backbone, Standard KD already works well, but dynamic gating provides the best overall balance in Macro and Samples F1. On the weaker ResNet101 backbone, the student-teacher capacity gap becomes more severe, and dynamic gating becomes clearly preferable. This supports our interpretation that agreement-aware gating acts as a form of \emph{on-demand distillation}: it suppresses over-regularization on reliable samples while reserving teacher guidance for genuinely ambiguous cases.
+The results show that both distillation variants improve substantially over plain supervised learning, but agreement-aware gating provides the best overall balance in Macro and Samples F1. This supports our interpretation that dynamic gating acts as a form of \emph{on-demand distillation}: it suppresses over-regularization on reliable samples while reserving teacher guidance for genuinely ambiguous cases. The complementary evidence on weaker backbones is reported later in the robustness analysis.
 
 \subsubsection{Modality Collapse Avoidance}
 
-We further study whether the teacher should consume both image and text features, or only text features. Table~\ref{tab:teacher_modality_ablation} shows that text-only teacher supervision is consistently more effective than the previous image+text teacher.
-
+We further study whether the teacher should consume both image and text features, or only text features. Table~\ref{tab:teacher_modality_ablation} reports teacher-side oracle performance and student-side dynamic distillation performance as two separate method groups.
 \begin{table}[t]
 \centering
 \caption{Teacher modality ablation. All numbers are percentages.}
 \label{tab:teacher_modality_ablation}
-\begin{tabular}{lcccc}
+\begin{tabular}{lccccc}
 \hline
-Teacher Input & Oracle Avg. & Dynamic KD Avg. & Dynamic KD Hard & Dynamic KD Macro \\
+Method & Image & Text & Macro & Avg. & Hard \\
 \hline
-Image + text & \textbf{51.12} & 53.93 & 28.58 & 48.57 \\
-Text only & 49.94 & \textbf{55.78} & \textbf{30.24} & \textbf{50.31} \\
+Oracle teacher &  & $\checkmark$ & 45.80 & 49.94 & \textbf{30.21} \\
+Oracle teacher & $\checkmark$ & $\checkmark$ & 45.87 & 51.12 & 28.08 \\
+\hline
+Gated student &  & $\checkmark$ & \textbf{50.31} & \textbf{55.78} & \textbf{30.24} \\
+Gated student & $\checkmark$ & $\checkmark$ & 48.57 & 53.93 & 28.58 \\
 \hline
 \end{tabular}
 \end{table}
 
-Interestingly, the multimodal oracle teacher is not weaker by itself, but it becomes a worse distillation target. This indicates that in a subjective recognition task, explicit multimodal fusion inside the teacher may introduce noisy or redundant visual evidence, whereas a text-only semantic manifold provides cleaner dark knowledge for the student.
+Interestingly, the multimodal oracle teacher is not weaker by itself, but it becomes a worse distillation target. This indicates that in a subjective recognition task, explicit image-text fusion inside the teacher may introduce noisy or redundant visual evidence, whereas a text-only semantic manifold provides cleaner dark knowledge for the student.
 
-\subsubsection{Effect of SLR-C and Residual Refinement}
+\subsubsection{Effectiveness of SLR-C and Residual Refinement}
 
 We next study how SLR-C interacts with residual learning and distillation. As shown in Table~\ref{tab:slrc_ablation}, fixed SLR-C alone already provides a strong boost over the baseline, demonstrating that many remaining errors indeed lie in local candidate discrimination rather than visual representation learning. Training a residual student on top of this prior further improves the results, especially when semantic guidance from the text teacher is incorporated.
-
 \begin{table}[t]
 \centering
 \caption{Component ablation of SADIR. ``Res.'' denotes the residual student, and ``Dyn.'' denotes agreement-aware dynamic gating. All numbers are percentages.}
 \label{tab:slrc_ablation}
-\begin{tabular}{cccccccc}
+\begin{tabular}{ccccccccc}
 \hline
-\textbf{SLR-C} & \textbf{Res.} & \textbf{KD} & \textbf{Dyn.} & \textbf{Macro} & \textbf{Micro} & \textbf{Samples} & \textbf{Avg.} \\
+SLR-C & Student & Distillation & Gated & Macro & Micro & Samples & Avg. & Hard \\
 \hline
-$\checkmark$ &  &  &  & 51.08 & 58.81 & 58.02 & 55.97 \\
-$\checkmark$ & $\checkmark$ &  &  & 50.41 & 57.70 & 57.56 & 55.22 \\
-$\checkmark$ & $\checkmark$ & $\checkmark$ &  & \textbf{51.77} & 58.97 & 58.99 & 56.58 \\
-$\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ & 51.52 & \textbf{59.75} & \textbf{60.30} & \textbf{57.19} \\
+$\checkmark$ & &  &  & 51.08 & 58.81 & 58.02 & 55.97 & 33.98 \\
+$\checkmark$ &$\checkmark$ &  &  & 50.41 & 57.70 & 57.56 & 55.22 & 34.77 \\
+$\checkmark$ &$\checkmark$ & $\checkmark$ &  & \textbf{51.77} & 58.97 & 58.99 & 56.58 & \textbf{36.43} \\
+$\checkmark$ &$\checkmark$ & $\checkmark$ & $\checkmark$ & 51.52 & \textbf{59.75} & \textbf{60.30} & \textbf{57.19} & 34.60 \\
 \hline
 \end{tabular}
 \end{table}
@@ -191,26 +231,25 @@ $\checkmark$ & $\checkmark$ & $\checkmark$ & $\checkmark$ & 51.52 & \textbf{59.7
 Two observations are noteworthy. First, simply adding a residual branch with hard supervision is not sufficient to guarantee gains on all metrics, indicating that the fixed prior already captures much of the easy signal. Second, once semantic distillation is introduced, the residual student becomes consistently beneficial, showing that UTD and SLR-C address different failure modes and are therefore naturally complementary.
 
 \subsubsection{Heterogeneous Priors in SLR-C}
-
-Finally, we compare different textual priors used by SLR-C. Table~\ref{tab:prior_ablation} shows that \textit{Scenario} prior is the strongest single source, while \textit{Lexical + Canonical} provides the best heterogeneous alternative.
-
+Finally, we compare different textual priors used by SLR-C. We consider three semantic sources: \textit{Lexical}, which uses short class-name phrases; \textit{Canonical}, which uses the official intent descriptions provided by Intentonomy; and \textit{Scenario}, which uses Gemini-generated visual scenarios. For the ensemble setting, we average the normalized logits from the selected sources before local reranking. Table~\ref{tab:prior_ablation} shows that \textit{Scenario} prior is the strongest single source, while the heterogeneous lexical-canonical combination provides the best non-scenario alternative.
 \begin{table}[t]
 \centering
 \caption{Ablation on heterogeneous textual priors for SLR-C. All numbers are percentages.}
 \label{tab:prior_ablation}
-\begin{tabular}{lcc}
+\begin{tabular}{cccccccc}
 \hline
-Prior Source & Macro & Hard \\
+Lexical & Canonical & Scenario & Macro & Micro & Samples & Avg. & Hard \\
 \hline
-Lexical & 47.06 & 30.53 \\
-Canonical & 47.76 & 31.01 \\
-Scenario & \textbf{51.28} & \textbf{33.98} \\
-Lexical + Canonical & 50.65 & 32.38 \\
+$\checkmark$ &  &  & 47.06 & -- & -- & -- & 30.53 \\
+ & $\checkmark$ &  & 47.76 & -- & -- & -- & 31.01 \\
+ &  & $\checkmark$ & 51.28 & \textbf{59.13} & 58.47 & \textbf{56.29} & 33.98 \\
+$\checkmark$ & $\checkmark$ &  & 50.65 & 57.37 & 57.46 & 55.16 & 32.38 \\
+$\checkmark$ & $\checkmark$ & $\checkmark$ & \textbf{51.49} & 58.76 & \textbf{58.54} & 56.26 & \textbf{35.08} \\
 \hline
 \end{tabular}
 \end{table}
 
-This result is consistent with our semantic interpretation of the task. Lexical prior is compact but under-expressive, canonical prior is more descriptive but still abstract, while scenario prior translates latent intention into typical visual situations and therefore best bridges the gap between visual content and subjective semantics. The lexical+canonical ensemble remains competitive, showing that heterogeneous priors are beneficial when richer scenario descriptions are not available.
+This result is consistent with our semantic interpretation of the task. Lexical prior is compact but under-expressive, canonical prior is more descriptive but still abstract, while scenario prior translates latent intention into typical visual situations and therefore best bridges the gap between visual content and subjective semantics. The lexical-canonical ensemble remains competitive, showing that heterogeneous priors are beneficial when richer scenario descriptions are not available. When all three sources are combined, the resulting ensemble improves substantially over lexical-canonical priors and further raises the hard score to 35.08, but its overall result remains slightly below the scenario-only prior. This suggests that scenario descriptions already capture the most decisive semantics, while additional sources mainly provide complementary robustness on difficult classes.
 
 \subsection{Robustness and Generalization}
 
@@ -222,18 +261,17 @@ To examine whether SADIR depends entirely on a strong backbone, we also test the
 \centering
 \caption{Backbone sensitivity comparing baseline and full model. All numbers are percentages.}
 \label{tab:backbone_ablation}
-\begin{tabular}{lccccc}
+\begin{tabular}{lcccccc}
 \hline
-Backbone & Method & Macro & Micro & Samples & Avg. \\
+Backbone & Method & Macro & Micro & Samples & Avg. & Hard \\
 \hline
-CLIP ViT-L/14 & Baseline & 47.40 & 56.42 & 56.41 & 53.41 \\
-CLIP ViT-L/14 & Full model & \textbf{51.52} & \textbf{59.75} & \textbf{60.30} & \textbf{57.19} \\
-ResNet101 & Baseline & 36.56 & 41.87 & 43.10 & 40.51 \\
-ResNet101 & Full model & 41.53 & 51.61 & 51.80 & 48.31 \\
+ResNet101 & Baseline & 36.56 & 41.87 & 43.10 & 40.51 & 18.99 \\
+ResNet101 & Full model & 41.53 & 51.61 & 51.80 & 48.31 & 22.10 \\
+\hline
+CLIP ViT-L/14 & Baseline & 47.40 & 56.42 & 56.41 & 53.41 & 28.45 \\
+CLIP ViT-L/14 & Full model & \textbf{51.52} & \textbf{59.75} & \textbf{60.30} & \textbf{57.19} & \textbf{34.60} \\
 \hline
 \end{tabular}
 \end{table}
 
-\subsection{Discussion of Experimental Findings}
-
-Overall, the experiments support three conclusions. First, a substantial portion of the challenge in visual intention recognition lies in local semantic disambiguation at inference time, which explains the strong gains of SLR-C. Second, uncertainty-guided text distillation provides robust complementary supervision during training, improving both overall prediction quality and ambiguity-sensitive performance. Third, their combination yields a stronger system than either component alone, validating our stage-aware view that supervisory ambiguity and semantic ambiguity should be addressed differently across training and inference.
+\subsection{Visualization and Case Study}
