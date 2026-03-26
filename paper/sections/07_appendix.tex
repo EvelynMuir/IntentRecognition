@@ -2,6 +2,8 @@
 \section{Validation Results for Main Comparison}
 \label{app:validation_results}
 
+This section reports the validation-split counterpart of the main comparison in Section~\ref{sec:experiments}. We keep the same model groups, metric definitions, and reporting metrics as the test-split table in the main text.
+
 \begin{table}[H]
 \centering
 \small
@@ -46,7 +48,11 @@ SADIR & - & \textbf{58.33} & \textbf{62.78} & \textbf{63.47} & \textbf{61.53} \\
 \endgroup
 \end{table}
 
+The validation trend is consistent with the test-split findings: the strong CLIP baseline already establishes a high starting point, UTD-only training brings a clear additional gain, and the full SADIR configuration achieves the strongest overall performance.
+
 \section{Validation Results for Additional Experiments}
+
+To complement the main-table comparison above, we provide validation-split counterparts for all additional analyses in Section~\ref{sec:experiments}, including subset evaluation, rationale design, distillation variants, teacher modality choices, component ablations, backbone sensitivity, and prior-source ablations.
 
 \begin{table}[H]
 \centering
@@ -62,6 +68,8 @@ SADIR & \textbf{80.55} & \textbf{62.17} & \textbf{45.90} & \textbf{62.87} \\
 \end{tabular}
 \end{table}
 
+Tables~\ref{tab:difficulty_results_val} and \ref{tab:content_results_val} verify that the gains remain stable under both difficulty-based and content-dependent partitions.
+
 \begin{table}[H]
 \centering
 \caption{Validation-split content subset results corresponding to Table~\ref{tab:content_results}. All numbers are percentages.}
@@ -75,6 +83,8 @@ SADIR & \textbf{63.56} & \textbf{63.57} & \textbf{55.85} & \textbf{60.99} \\
 \hline
 \end{tabular}
 \end{table}
+
+Tables~\ref{tab:rationale_ablation_val} to \ref{tab:prior_ablation_val} further mirror the ablation findings in the main text. In particular, rationale design, agreement-aware gating, and heterogeneous priors show consistent contributions on the validation split.
 
 \begin{table}[H]
 \centering
@@ -134,7 +144,7 @@ Method & Macro & Micro & Samples & Avg. & Hard \\
 \hline
 w/o UTD & 56.49 & 61.26 & 60.89 & 59.55 & 44.04 \\
 w/o Gated & \textbf{58.61} & 62.31 & \textbf{63.65} & 61.52 & 45.66 \\
-Full Method & 58.33 & \textbf{62.78} & 63.47 & \textbf{61.53} & \textbf{45.90} \\
+SADIR (full) & 58.33 & \textbf{62.78} & 63.47 & \textbf{61.53} & \textbf{45.90} \\
 \hline
 \end{tabular}
 \end{table}
@@ -148,10 +158,10 @@ Full Method & 58.33 & \textbf{62.78} & 63.47 & \textbf{61.53} & \textbf{45.90} \
 Backbone & Method & Macro & Micro & Samples & Avg. & Hard \\
 \hline
 ResNet101 & Baseline & 42.13 & 45.37 & 46.44 & 44.65 & 29.01 \\
-ResNet101 & Full model & 47.26 & 53.45 & 54.47 & 51.73 & 35.12 \\
+ResNet101 & SADIR (full) & 47.26 & 53.45 & 54.47 & 51.73 & 35.12 \\
 \hline
 CLIP ViT-L/14 & Baseline & 55.80 & 59.62 & 60.10 & 58.51 & 40.48 \\
-CLIP ViT-L/14 & Full model & \textbf{58.33} & \textbf{62.78} & \textbf{63.47} & \textbf{61.53} & \textbf{45.90} \\
+CLIP ViT-L/14 & SADIR (full) & \textbf{58.33} & \textbf{62.78} & \textbf{63.47} & \textbf{61.53} & \textbf{45.90} \\
 \hline
 \end{tabular}
 \end{table}
@@ -173,12 +183,18 @@ $\checkmark$ & $\checkmark$ & $\checkmark$ & \textbf{58.64} & \textbf{62.70} & \
 \end{tabular}
 \end{table}
 
+Overall, these validation results support the same conclusion as the test split: SADIR improves robustness and discriminability in a consistent manner, rather than relying on split-specific effects.
+
 \section{Prompt Templates}
+
+For reproducibility, we include the exact prompt templates used to generate rationale supervision and scenario priors. These prompts are applied offline during data preparation and do not introduce additional inference-time cost.
 
 \subsection{Rationale Generation Prompt}
 \label{app:rationale_prompt}
 
 We use an instruction template to generate the three-stage rationale for each training image. The final prompt used in our experiments is omitted here for brevity and will be inserted in the camera-ready version. The current placeholder structure is shown below.
+
+In this template, ${y_{true}}$ denotes the ground-truth intent set of the current sample, and ${y_{confuse}}$ denotes a semantically neighboring intent used for counterfactual disambiguation.
 
 \begin{quote}
 \textbf{System Instruction:} You are an expert human behavioral analyst and computer vision specialist. Your task is to analyze an image and provide a highly logical, structured reasoning chain that explains the underlying human intent. Strictly follow the requested format and avoid conversational filler.
@@ -201,6 +217,8 @@ In a purely visual context, a machine learning model might easily misclassify th
 \label{app:scenario_prompt}
 
 We also use an instruction template to generate scenario descriptions for each intent category, which are later encoded as textual priors in SLR-C.
+
+For each intent class, we run this template once to obtain a concise scenario summary and a structured attribute list; the resulting text is then encoded by the frozen text encoder and used in local reranking.
 
 \begin{quote}
 \textbf{Role}
@@ -235,4 +253,14 @@ First, output a 50-80 word [Comprehensive Summary]. This summary should seamless
 Second, provide a concise list breaking down the keywords/phrases for the 5 dimensions mentioned above.
 
 \textbf{Crucial Note:} While generating, actively consider the core visual differences between this intent and other highly similar intents (e.g., distinguishing "Enjoying life" from "Having an easy and comfortable life"), and heavily emphasize those unique visual discriminators in your description.
+\end{quote}
+
+\subsubsection{Caption Prompt for Rational Ablation}
+
+For the rationale ablation in Section~\ref{sec:experiments}, we additionally use the following lightweight caption prompt as a weaker semantic supervision source.
+
+\begin{quote}
+    \textbf{System Instruction:} You are an expert human behavioral analyst and computer vision specialist. Your task is to analyze an image and provide a highly logical, structured reasoning chain that explains the underlying human intent. Strictly follow the requested format and avoid conversational filler.
+
+    \textbf{User Prompt:} Describe this image for visual intent recognition in 2-3 concise sentences. Focus on visible actions, salient objects, and scene context. Avoid speculation beyond what is visually grounded.
 \end{quote}

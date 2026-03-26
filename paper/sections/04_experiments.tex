@@ -195,15 +195,15 @@ Interestingly, the multimodal oracle teacher is not weaker by itself, but it bec
 We next study how SLR-C interacts with residual learning and distillation. Table~\ref{tab:slrc_ablation} shows that under the final heterogeneous prior configuration, a fixed prior alone is insufficient, while adding a trainable student and distillation is essential for recovering robust intent predictions.
 \begin{table}[t]
 \centering
-\caption{Component ablation of SADIR on the Intentonomy test split. All numbers are percentages.}
+\caption{Component ablation of SADIR on the Intentonomy test split. \textit{w/o UTD} removes uncertainty-guided text distillation, and \textit{w/o Gated} removes agreement-aware gating. All numbers are percentages.}
 \label{tab:slrc_ablation}
 \begin{tabular}{lccccc}
 \hline
 Method & Macro & Micro & Samples & Avg. & Hard \\
 \hline
-w/o UTC & 47.90 & 55.98 & 55.18 & 53.02 & 29.71 \\
+w/o UTD & 47.90 & 55.98 & 55.18 & 53.02 & 29.71 \\
 w/o Gated & 49.69 & 57.90 & 58.98 & 55.52 & \textbf{31.69} \\
-Full Method & \textbf{50.89} & \textbf{59.60} & \textbf{59.85} & \textbf{56.78} & 30.76 \\
+SADIR (full) & \textbf{50.89} & \textbf{59.60} & \textbf{59.85} & \textbf{56.78} & 30.76 \\
 \hline
 \end{tabular}
 \end{table}

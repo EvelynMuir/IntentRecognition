@@ -1,19 +1,19 @@
 \section{Discussion}
 \label{sec:discussion}
 
-\subsection{A Stage-aware View of Ambiguity}
+\subsection{A Stage-Aware View of Ambiguity}
 
 The experimental results support the central premise of this work: ambiguity in visual intention recognition is not a single phenomenon, but a stage-dependent one. During training, the main difficulty arises from supervisory ambiguity, where multiple plausible interpretations are compressed into unstable targets. During inference, the dominant challenge shifts to semantic ambiguity, where visually similar images must be separated among semantically adjacent intent labels. This explains why a single mechanism is often insufficient. UTD mainly improves the quality of representation learning under subjective supervision, whereas SLR-C mainly improves local decision refinement among competing candidates.
 
 This viewpoint also clarifies why a strong CLIP baseline already performs well. Once visual representation is sufficiently expressive, the remaining bottleneck is no longer basic visual recognition, but the mapping from rich visual semantics to abstract intent labels. In other words, the main challenge is not merely ``seeing better'', but ``deciding better under ambiguity''.
 
-\subsection{Why Heterogeneous Priors Help, and Why They Must Be Controlled}
+\subsection{Heterogeneous Priors Improve Robustness Only with Controlled Integration}
 
 Our results show that heterogeneous priors are useful, but not in an unconstrained way. In SLR-C, the lexical, canonical, and scenario sources provide complementary signals: lexical phrases are concise but coarse, canonical descriptions are semantically cleaner but still abstract, and scenario descriptions offer the strongest visual grounding. Their combination improves semantic coverage and hard-case robustness. However, the component ablation also shows that a fixed heterogeneous prior alone is insufficient and may even distort the score geometry when directly injected without trainable correction.
 
 This observation is important for understanding the role of SLR-C in the final system. The prior should not be interpreted as a standalone classifier. Instead, it should be viewed as a structured candidate refiner that proposes a more semantically informed local score space, after which the residual student learns to correct the remaining mismatch. This is precisely why the full system outperforms naive prior fusion, and why heterogeneous semantics become most effective when coupled with trainable adaptation.
 
-\subsection{What the Text Teacher Is Actually Teaching}
+\subsection{Text Teacher Distillation Provides Structured Semantic Supervision}
 
 The rationale-related ablations reveal another important point: not every form of text supervision is equally useful. Generic image captions already provide some privileged signal, but they remain weaker than structured rationale. Likewise, simply enriching the text with contextual interpretation is not enough; the largest gain appears only when counterfactual disambiguation is included. This suggests that the most useful textual signal for subjective intent recognition is not raw description, but a semantically sharpened explanation that explicitly contracts the boundary between nearby intents.
 
