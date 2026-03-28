@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+import os
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -38,6 +39,11 @@ from scripts.analyze_privileged_distillation import (
     _set_seed,
     _sigmoid_np,
 )
+from scripts.analyze_text_prior_boundary import (
+    INTENTONOMY_LEXICAL_PHRASES,
+    DEFAULT_PROMPT_TEMPLATE,
+)
+from src.models.intentonomy_clip_vit_slot_module import INTENTONOMY_DESCRIPTIONS
 from src.models.components.aslloss import AsymmetricLossOptimized
 
 DEFAULT_BASE_CACHE_DIR = (
@@ -88,7 +94,30 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--dynamic-kd-weight", type=float, default=1.0)
     parser.add_argument("--topk", type=int, default=10)
     parser.add_argument("--slr-alpha", type=float, default=0.3)
+    parser.add_argument(
+        "--prior-mode",
+        type=str,
+        default="scenario",
+        choices=["scenario", "lexical_canonical_scenario"],
+        help="Which semantic prior to use for SLR-C reconstruction.",
+    )
+    parser.add_argument(
+        "--strict-deterministic",
+        action="store_true",
+        help="Enable strict deterministic training/evaluation settings for reproduction.",
+    )
     return parser.parse_args()
+
+
+def _enable_strict_determinism() -> None:
+    os.environ["CUBLAS_WORKSPACE_CONFIG"] = ":4096:8"
+    torch.backends.cudnn.benchmark = False
+    torch.backends.cudnn.deterministic = True
+    if hasattr(torch.backends.cuda.matmul, "allow_tf32"):
+        torch.backends.cuda.matmul.allow_tf32 = False
+    if hasattr(torch.backends.cudnn, "allow_tf32"):
+        torch.backends.cudnn.allow_tf32 = False
+    torch.use_deterministic_algorithms(True, warn_only=True)
 
 
 def _write_csv(path: Path, rows: Sequence[Dict[str, Any]]) -> None:
@@ -147,6 +176,44 @@ def _ordered_unique(strings: Sequence[str]) -> List[str]:
     return output
 
 
+def _build_text_pools(
+    class_names: Sequence[str],
+    gemini_file: Path,
+) -> Dict[str, List[List[str]]]:
+    lexical_pools = [[phrase] for phrase in INTENTONOMY_LEXICAL_PHRASES[: len(class_names)]]
+    canonical_pools = [[desc] for desc in INTENTONOMY_DESCRIPTIONS[: len(class_names)]]
+
+    data = json.loads(gemini_file.read_text(encoding="utf-8"))
+    scenario_pools: List[List[str]] = []
+    for index, item in enumerate(data[: len(class_names)]):
+        scenario_texts = [str(desc.get("Text Query", "")) for desc in item.get("description", [])]
+        pool = _ordered_unique(scenario_texts)
+        if not pool:
+            pool = [str(canonical_pools[index][0])]
+        scenario_pools.append(pool)
+
+    while len(scenario_pools) < len(class_names):
+        scenario_pools.append([canonical_pools[len(scenario_pools)][0]])
+
+    lexical_plus_canonical: List[List[str]] = []
+    for idx in range(len(class_names)):
+        lexical_plus_canonical.append(
+            _ordered_unique(
+                [
+                    DEFAULT_PROMPT_TEMPLATE.format(text)
+                    for text in lexical_pools[idx] + canonical_pools[idx]
+                ]
+            )
+        )
+
+    return {
+        "lexical": lexical_pools[: len(class_names)],
+        "canonical": canonical_pools[: len(class_names)],
+        "scenario": scenario_pools[: len(class_names)],
+        "lexical_plus_canonical": lexical_plus_canonical[: len(class_names)],
+    }
+
+
 def _build_scenario_text_pool(class_names: Sequence[str], gemini_file: Path) -> List[List[str]]:
     data = json.loads(gemini_file.read_text(encoding="utf-8"))
     if "emotions" in data:
@@ -176,13 +243,18 @@ def _build_scenario_text_pool(class_names: Sequence[str], gemini_file: Path) -> 
 def _encode_text_pool(
     clip_model: torch.nn.Module,
     texts_per_class: Sequence[Sequence[str]],
+    wrap_prompt: bool = False,
 ) -> np.ndarray:
     device = next(clip_model.parameters()).device
     embeddings: List[torch.Tensor] = []
     clip_model.eval()
     with torch.inference_mode():
         for text_group in texts_per_class:
-            tokens = clip.tokenize([str(text) for text in text_group], truncate=True).to(device)
+            prompts = [
+                DEFAULT_PROMPT_TEMPLATE.format(text) if wrap_prompt else str(text)
+                for text in text_group
+            ]
+            tokens = clip.tokenize(prompts, truncate=True).to(device)
             text_features = clip_model.encode_text(tokens).float()
             text_features = F.normalize(text_features, dim=-1)
             mean_feature = text_features.mean(dim=0)
@@ -361,12 +433,16 @@ def _train_residual_student(
     test_targets: np.ndarray,
     device: torch.device,
     args: argparse.Namespace,
+    loader_seed: int,
 ) -> Dict[str, Any]:
+    generator = torch.Generator()
+    generator.manual_seed(int(loader_seed))
     loader = torch.utils.data.DataLoader(
         train_dataset,
         batch_size=int(args.batch_size),
         shuffle=True,
         num_workers=0,
+        generator=generator,
     )
     optimizer = torch.optim.AdamW(model.parameters(), lr=float(args.lr), weight_decay=float(args.weight_decay))
     criterion = AsymmetricLossOptimized(
@@ -547,7 +623,7 @@ def main() -> None:
     )
 
     class_names = _load_class_names(Path(args.annotation_file))
-    scenario_pools = _build_scenario_text_pool(class_names, Path(args.gemini_file))
+    text_pools = _build_text_pools(class_names, Path(args.gemini_file))
     teacher_run_dir = Path(args.teacher_run_dir)
     teacher_summary = json.loads((teacher_run_dir / "summary.json").read_text(encoding="utf-8"))
     baseline_state = torch.load(teacher_run_dir / "baseline_best.pt", map_location="cpu", weights_only=True)
@@ -576,11 +652,38 @@ def main() -> None:
     clip_model, _ = clip.load("ViT-L/14", device=device)
     clip_model = clip_model.eval().to(device)
     logit_scale = float(getattr(clip_model, "logit_scale", torch.tensor(1.0)).exp().item())
-    scenario_text_embeddings = _encode_text_pool(clip_model, scenario_pools)
+    if str(args.prior_mode) == "scenario":
+        slr_text_embeddings = _encode_text_pool(clip_model, text_pools["scenario"])
+        prior_note = "fixed scenario SLR-C"
+    elif str(args.prior_mode) == "lexical_canonical_scenario":
+        lexical_embeddings = _encode_text_pool(clip_model, text_pools["lexical"], wrap_prompt=True)
+        canonical_embeddings = _encode_text_pool(clip_model, text_pools["canonical"], wrap_prompt=True)
+        scenario_embeddings = _encode_text_pool(clip_model, text_pools["scenario"], wrap_prompt=False)
+        slr_text_embeddings = None
+        prior_note = "fixed lexical+canonical+scenario SLR-C"
+    else:
+        raise ValueError(f"Unsupported prior_mode: {args.prior_mode}")
 
-    train_prior_logits = _text_logits_from_features(_slr_feature_view(train_slr_clip), scenario_text_embeddings, logit_scale)
-    val_prior_logits = _text_logits_from_features(_slr_feature_view(val_slr_clip), scenario_text_embeddings, logit_scale)
-    test_prior_logits = _text_logits_from_features(_slr_feature_view(test_slr_clip), scenario_text_embeddings, logit_scale)
+    if str(args.prior_mode) == "lexical_canonical_scenario":
+        train_prior_logits = (
+            _text_logits_from_features(_slr_feature_view(train_slr_clip), lexical_embeddings, logit_scale)
+            + _text_logits_from_features(_slr_feature_view(train_slr_clip), canonical_embeddings, logit_scale)
+            + _text_logits_from_features(_slr_feature_view(train_slr_clip), scenario_embeddings, logit_scale)
+        ) / 3.0
+        val_prior_logits = (
+            _text_logits_from_features(_slr_feature_view(val_slr_clip), lexical_embeddings, logit_scale)
+            + _text_logits_from_features(_slr_feature_view(val_slr_clip), canonical_embeddings, logit_scale)
+            + _text_logits_from_features(_slr_feature_view(val_slr_clip), scenario_embeddings, logit_scale)
+        ) / 3.0
+        test_prior_logits = (
+            _text_logits_from_features(_slr_feature_view(test_slr_clip), lexical_embeddings, logit_scale)
+            + _text_logits_from_features(_slr_feature_view(test_slr_clip), canonical_embeddings, logit_scale)
+            + _text_logits_from_features(_slr_feature_view(test_slr_clip), scenario_embeddings, logit_scale)
+        ) / 3.0
+    else:
+        train_prior_logits = _text_logits_from_features(_slr_feature_view(train_slr_clip), slr_text_embeddings, logit_scale)
+        val_prior_logits = _text_logits_from_features(_slr_feature_view(val_slr_clip), slr_text_embeddings, logit_scale)
+        test_prior_logits = _text_logits_from_features(_slr_feature_view(test_slr_clip), slr_text_embeddings, logit_scale)
 
     train_slr_logits = _apply_slr(train_base["logits"], train_prior_logits, topk=int(args.topk), alpha=float(args.slr_alpha))
     val_slr_logits = _apply_slr(val_base["logits"], val_prior_logits, topk=int(args.topk), alpha=float(args.slr_alpha))
@@ -642,6 +745,7 @@ def main() -> None:
         test_targets=np.asarray(test_base["labels"], dtype=np.float32),
         device=device,
         args=args,
+        loader_seed=supervised_seed,
     )
 
     standard_seed = _set_component_seed(int(args.seed), offset=200)
@@ -659,6 +763,7 @@ def main() -> None:
         test_targets=np.asarray(test_base["labels"], dtype=np.float32),
         device=device,
         args=args,
+        loader_seed=standard_seed,
     )
 
     dynamic_seed = _set_component_seed(int(args.seed), offset=300)
@@ -676,11 +781,12 @@ def main() -> None:
         test_targets=np.asarray(test_base["labels"], dtype=np.float32),
         device=device,
         args=args,
+        loader_seed=dynamic_seed,
     )
 
     comparison_rows = [
         _comparison_row("teacher_text_only", teacher_summary["teacher"]["bundle"], note="reference teacher"),
-        _comparison_row("slr_c_fixed", slr_bundle, note="fixed scenario SLR-C"),
+        _comparison_row("slr_c_fixed", slr_bundle, note=prior_note),
         _comparison_row("slr_c_residual_sup", supervised_result["bundle"], note=f"best_epoch={supervised_result['best_epoch']}"),
         _comparison_row("slr_c_residual_standard_kd", standard_result["bundle"], note=f"best_epoch={standard_result['best_epoch']}"),
         _comparison_row("slr_c_residual_dynamic_kd", dynamic_result["bundle"], note=f"best_epoch={dynamic_result['best_epoch']}"),
@@ -694,6 +800,10 @@ def main() -> None:
         per_class_ap_rows.extend(_per_class_ap_rows("slr_c_residual_standard_kd", class_names, standard_result["bundle"]))
         per_class_ap_rows.extend(_per_class_ap_rows("slr_c_residual_dynamic_kd", class_names, dynamic_result["bundle"]))
         _write_csv(output_dir / "per_class_ap.csv", per_class_ap_rows)
+
+    torch.save(supervised_result["state_dict"], output_dir / "slr_c_residual_sup_best.pt")
+    torch.save(standard_result["state_dict"], output_dir / "slr_c_residual_standard_kd_best.pt")
+    torch.save(dynamic_result["state_dict"], output_dir / "slr_c_residual_dynamic_kd_best.pt")
 
     (output_dir / "summary.json").write_text(
         json.dumps(
@@ -709,6 +819,7 @@ def main() -> None:
                     "teacher_run_dir": str(args.teacher_run_dir),
                     "reuse_cache_dir": str(args.reuse_cache_dir),
                     "slr_cache_dir": str(slr_cache_dir),
+                    "prior_mode": str(args.prior_mode),
                     "topk": int(args.topk),
                     "slr_alpha": float(args.slr_alpha),
                     "temperature": float(args.temperature),

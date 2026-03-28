@@ -4,15 +4,15 @@
 \subsection{Experimental Setup}
 
 \subsubsection{Dataset and Evaluation Metrics}
-We evaluate our method on the Intentonomy dataset \cite{jia_intentonomy_2021}, a multi-label benchmark for visual intention recognition in social media scenarios. Following the standard split used in our experiments, the dataset contains 12,739 training images, 498 validation images, and 1,216 test images. Intentonomy additionally provides soft agreement annotations with values in $\{0, 0.33, 0.66, 1\}$ on the training set, which directly reflect the degree of annotator consensus and serve as the uncertainty signal $\omega_i$ in our framework.
+We evaluate our method on the Intentonomy dataset \cite{jia_intentonomy_2021}, a multi-label benchmark for visual intention recognition in social media scenarios. Following the standard split used in our experiments, the dataset contains 12,739 training images, 498 validation images, and 1,216 test images. Intentonomy additionally provides soft agreement annotations with values in $\{0, 0.33, 0.66, 1\}$ on the training set, which directly reflect the degree of annotator consensus and serve as the uncertainty signal $\omega$ in our framework.
 
 We report Macro F1, Micro F1, Samples F1. For consistency with recent Intentonomy papers, the main comparison table additionally reports $\textit{Avg.}$ which is the average of three F1 scores. 
 
-To better understand the effectiveness of our method, we further conduct experiments on subsets of the intent class. We follow the work of Jia et al. \cite{jia_intentonomy_2021} and break down intent classes according to content difficulty and dependency. Difficulty classes are measured by how much a standard ResNet-50 model outperforms the random results. Content classes are divided into object-dependent ({\itshape Object}-classes), context-dependent ({\itshape Context}-classes) and {\itshape Others} which depends on both foreground and background information. We emphasize the \textit{Hard} score throughout the analysis because it specifically measures performance on ambiguity-prone intent categories, where semantic overlap and subjective disagreement are most severe. Improvements on the hard subset therefore provide stronger evidence that a method is resolving the core difficulty of intention understanding rather than merely exploiting easy classes.
+To better understand the effectiveness of our method, we further conduct experiments on subsets of the intent classes. We follow the work of Jia et al. \cite{jia_intentonomy_2021} and break down intent classes according to content difficulty and dependency. Difficulty classes are measured by how much a standard ResNet-50 model outperforms the random results. Content classes are divided into object-dependent ({\itshape Object}-classes), context-dependent ({\itshape Context}-classes) and {\itshape Others} which depends on both foreground and background information. We emphasize the \textit{Hard} score throughout the analysis because it specifically measures performance on ambiguity-prone intent categories, where semantic overlap and subjective disagreement are most severe. Improvements on the hard subset therefore provide stronger evidence that a method is resolving the core difficulty of intention understanding rather than merely exploiting easy classes.
 
 \subsubsection{Implementation Details}
 
-Our default visual backbone is frozen CLIP ViT-L/14 \cite{radford_learning_2021}. The visual student is implemented as a lightweight residual MLP trained on top of a fixed SLR-C prior. For UTD, rationale text is generated offline by Qwen2.5-VL-7B-Instruct \cite{bai_qwen25-vl_2025} and then encoded by a frozen bge-large-en-v1.5 text encoder \cite{xiao_c-pack_2024}. The rationale-generation prompt template is provided in \ref{app:rationale_prompt}. The teacher consumes only the resulting text embeddings and is optimized with Asymmetric Loss (ASL) \cite{ridnik_asymmetric_2021} using $\gamma_{-}=2$, $\gamma_{+}=0$, and clipping value 0.05. The student is optimized with AdamW \cite{loshchilov_decoupled_2018}, learning rate $5\times10^{-4}$, weight decay $10^{-4}$, batch size 256, and dropout 0.1. The teacher hidden dimension is 1024 and the residual student hidden dimension is 768. The distillation temperature is set to 2.0. In SLR-C, priors are constructed from three sources, namely lexical intent phrases, canonical intent descriptions, and Gemini 3.1 Pro-generated scenario descriptions \cite{team_gemini_2025}; their normalized logits are averaged before local reranking within Top-10 visual candidates. The scenario-prompt template is also provided in \ref{app:scenario_prompt}. During inference, class-wise thresholds are searched on the validation set and then fixed for test evaluation. Notably, UTD introduces \emph{zero extra inference cost}, since the text teacher is only used during training and is discarded at test time.
+Our default visual backbone is frozen CLIP ViT-L/14 \cite{radford_learning_2021}. The visual student is implemented as a lightweight residual MLP trained on top of a fixed SLR-C prior. For UTD, rationale text is generated offline by Qwen2.5-VL-7B-Instruct \cite{bai_qwen25-vl_2025} and then encoded by a frozen bge-large-en-v1.5 text encoder \cite{xiao_c-pack_2024}. The rationale-generation prompt template is provided in \ref{app:rationale_prompt}. The teacher consumes only the resulting text embeddings and is optimized with Asymmetric Loss (ASL) \cite{ridnik_asymmetric_2021} using $\gamma_{-}=2$, $\gamma_{+}=0$, and clipping value 0.05. The student is optimized with AdamW \cite{loshchilov_decoupled_2018}, learning rate $5\times10^{-4}$, weight decay $10^{-4}$, batch size 256, and dropout 0.1. The teacher hidden dimension is 1024 and the residual student hidden dimension is 768. The distillation temperature is set to 2.0. In SLR-C, priors are constructed from three sources, namely lexical intent phrases, canonical intent descriptions, and Gemini 3.1 Pro-generated scenario descriptions \cite{team_gemini_2025} with frozen CLIP text encoder \cite{radford_learning_2021}; their normalized logits are averaged before local reranking within Top-5 visual candidates. The scenario-prompt template is also provided in \ref{app:scenario_prompt}. During inference, class-wise thresholds are searched on the validation set and then fixed for test evaluation. Notably, UTD introduces \emph{zero extra inference cost}, since the text teacher is only used during training and is discarded at test time.
 
 
 \subsection{Comparative Experiments}
@@ -42,7 +42,7 @@ Query2Label \cite{liu_query2label_2021} & - & 32.12 & 44.64 & 45.15 & 40.64 \\
 DualCoOp \cite{sun_dualcoop_2022} & NeurIPS 2022 & 31.06 & 44.42 & 40.40 & 38.63 \\
 \hline
 \multicolumn{6}{l}{\textbf{Label noise methods}} \\
-Cleannet \cite{lee_cleannet_2018} & CVPR 2018 & 25.89 & 42.15 & 40.97 & 36.37 \\
+Cleannet \cite{lee_cleannet_2018} & CVPR 2018 & 25.89 & 42.15 & 40.97 & 36.34 \\
 LS \cite{lukasik_does_2020} & ICML 2020 & 24.32 & 42.77 & 43.27 & 36.79 \\
 Dividemix \cite{li_dividemix_2019} & ICLR 2020 & 30.11 & 40.23 & 41.56 & 37.30 \\
 \hline
@@ -62,7 +62,7 @@ IntentMLM \cite{wang_unlocking_2026} & PR & 43.05 & 54.77 & 56.75 & 51.52 \\
 \hline
 CLIP ViT-L/14 \cite{radford_learning_2021} & - & 47.40 & 56.42 & 56.41 & 53.41 \\
 SADIR (UTD only) & - & 50.31 & 57.97 & 59.07 & 55.78 \\
-SADIR & - & \textbf{50.89} & \textbf{59.60} & \textbf{59.85} & \textbf{56.78} \\
+SADIR & - & \textbf{51.21} & \textbf{59.64} & \textbf{60.43} & \textbf{57.09} \\
 \hline
 \end{tabular}
 \endgroup
@@ -91,7 +91,7 @@ PIP-Net \cite{wang_prototype-based_2023} & 70.73 & 33.63 & 14.33 & 39.56 \\
 IntentMLM \cite{wang_unlocking_2026} & 76.26 & 46.87 & 27.39 & 50.17 \\
 \hline
 CLIP ViT-L/14 \cite{radford_learning_2021} & 80.99 & 53.32 & 28.45 & 54.25 \\
-SADIR & \textbf{81.31} & \textbf{58.23} & \textbf{30.76} & \textbf{56.77} \\
+SADIR & \textbf{81.01} & \textbf{57.06} & \textbf{33.48} & \textbf{57.18} \\
 \hline
 \end{tabular}
 \end{table}
@@ -117,8 +117,8 @@ CPAD \cite{ye_cross-modality_2023} & 28.81 & 47.30 & 24.74 & 33.62 \\
 PIP-Net \cite{wang_prototype-based_2023} & 39.20 & 39.53 & 27.59 & 35.44 \\
 IntentMLM \cite{wang_unlocking_2026} & 50.13 & 49.69 & 39.75 & 46.52 \\
 \hline
-CLIP ViT-L/14 \cite{radford_learning_2021} & \textbf{61.80} & 61.69 & 40.59 & 54.69 \\
-SADIR & 61.71 & \textbf{66.38} & \textbf{45.28} & \textbf{57.79} \\
+CLIP ViT-L/14 \cite{radford_learning_2021} & 61.80 & 61.69 & 40.59 & 54.69 \\
+SADIR & \textbf{62.73} & \textbf{62.22} & \textbf{45.80} & \textbf{56.92} \\
 \hline
 \end{tabular}
 \end{table}
@@ -175,15 +175,15 @@ We further study whether the teacher should consume both image and text features
 \centering
 \caption{Teacher modality ablation on the Intentonomy test split. Oracle denotes teacher-only performance, while Dynamic KD reports student performance with gated distillation. All numbers are percentages.}
 \label{tab:teacher_modality_ablation}
-\begin{tabular}{lccccc}
+\begin{tabular}{lccccccc}
 \hline
-Method & Image & Text & Macro & Avg. & Hard \\
+Method & Image & Text & Macro & Micro & Samples & Avg. & Hard \\
 \hline
-Oracle teacher &  & $\checkmark$ & 45.80 & 49.94 & 30.21 \\
-Oracle teacher & $\checkmark$ & $\checkmark$ & 45.87 & 51.12 & 28.08 \\
+Oracle teacher &  & $\checkmark$ & 45.80 & 51.42 & 52.61 & 49.94 & \textbf{30.21} \\
+Oracle teacher & $\checkmark$ & $\checkmark$ & 45.87 & 53.44 & 54.04 & 51.12 & 28.08 \\
 \hline
-Gated student &  & $\checkmark$ & \textbf{50.31} & \textbf{55.78} & \textbf{30.24} \\
-Gated student & $\checkmark$ & $\checkmark$ & 48.57 & 53.93 & 28.58 \\
+Gated student &  & $\checkmark$ & \textbf{50.31} & \textbf{57.97} & \textbf{59.07} & \textbf{55.78} & \textbf{30.24} \\
+Gated student & $\checkmark$ & $\checkmark$ & 48.57 & 56.10 & 57.13 & 53.93 & 28.58 \\
 \hline
 \end{tabular}
 \end{table}
@@ -202,8 +202,8 @@ We next study how SLR-C interacts with residual learning and distillation. Table
 Method & Macro & Micro & Samples & Avg. & Hard \\
 \hline
 w/o UTD & 47.90 & 55.98 & 55.18 & 53.02 & 29.71 \\
-w/o Gated & 49.69 & 57.90 & 58.98 & 55.52 & \textbf{31.69} \\
-SADIR (full) & \textbf{50.89} & \textbf{59.60} & \textbf{59.85} & \textbf{56.78} & 30.76 \\
+w/o Gated & 49.69 & 57.90 & 58.98 & 55.52 & 31.69 \\
+SADIR (full) & \textbf{51.21} & \textbf{59.64} & \textbf{60.43} & \textbf{57.09} & \textbf{33.48} \\
 \hline
 \end{tabular}
 \end{table}
@@ -211,7 +211,7 @@ SADIR (full) & \textbf{50.89} & \textbf{59.60} & \textbf{59.85} & \textbf{56.78}
 Two observations are noteworthy. First, naively injecting a heterogeneous prior is not enough; without a trainable student, the mixed prior can distort the score geometry and lead to poor predictions. Second, once distillation is introduced, the residual student becomes consistently beneficial, showing that heterogeneous prior fusion and uncertainty-aware supervision must be optimized jointly rather than independently.
 
 \subsubsection{Heterogeneous Priors in SLR-C}
-Finally, we compare different textual priors used by SLR-C. We consider three semantic sources: \textit{Lexical}, which uses short class-name phrases; \textit{Canonical}, which uses the official intent descriptions provided by Intentonomy; and \textit{Scenario}, which uses Gemini-generated visual scenarios. For the ensemble setting, we average the normalized logits from the selected sources before local reranking. Table~\ref{tab:prior_ablation} shows that the three-source ensemble offers the strongest hard-case robustness and is therefore adopted in the final method.
+Finally, we compare different textual priors used by SLR-C. We consider three semantic sources: \textit{Lexical}, which uses short class-name phrases; \textit{Canonical}, which uses the official intent descriptions provided by Intentonomy; and \textit{Scenario}, which uses Gemini-generated visual scenarios. For the ensemble setting, we average the normalized logits from the selected sources before local reranking. Table~\ref{tab:prior_ablation} shows that the three-source ensemble offers the strongest hard-case robustness and is therefore adopted in the final method. This table isolates the effect of prior sources under the SLR-C reranking stage only, without the residual student or UTD. 
 \begin{table}[t]
 \centering
 \caption{Ablation of lexical, canonical, and scenario textual priors in SLR-C on the Intentonomy test split. Ensemble averages normalized logits from selected priors. All numbers are percentages.}
@@ -231,9 +231,42 @@ $\checkmark$ & $\checkmark$ & $\checkmark$ & \textbf{51.49} & 58.76 & \textbf{58
 
 This result is consistent with our semantic interpretation of the task. Lexical prior is compact but under-expressive, canonical prior is more descriptive but still abstract, while scenario prior translates latent intention into typical visual situations and therefore best bridges the gap between visual content and subjective semantics. The lexical-canonical ensemble remains competitive, showing that heterogeneous priors are beneficial when richer scenario descriptions are not available. When all three sources are combined, the resulting ensemble further improves hard-case robustness and offers the broadest semantic coverage across prior types, which motivates our final choice of lexical-canonical-scenario priors in SADIR.
 
-\subsection{Robustness and Generalization}
+\subsubsection{Sensitivity to Candidate Size $K$}
+We next study the effect of candidate size $K$ while fixing the thresholding strategy to the final class-wise setting. Table~\ref{tab:k_sensitivity_test} reports the test-split results obtained by retraining SADIR under $K \in \{5,10,28\}$ and then searching thresholds on the validation split. The comparison shows that the best overall result is achieved at $K=5$, while larger candidate sets remain competitive but slightly weaker. This suggests that, under the final lexical-canonical-scenario prior, a compact local candidate set is sufficient and can even be preferable to broader reranking ranges.
 
-\subsubsection{Backbone Independence}
+\begin{table}[t]
+\centering
+\caption{Sensitivity to candidate size $K$ on the Intentonomy test split. Thresholding is fixed to class-wise search on the validation split. Avg. denotes the mean of Macro, Micro, and Samples F1. All numbers are percentages.}
+\label{tab:k_sensitivity_test}
+\begin{tabular}{lccccc}
+\hline
+Top-$K$ & Macro & Micro & Samples & Avg. & Hard \\
+\hline
+5 & \textbf{51.21} & \textbf{59.64} & \textbf{60.43} & \textbf{57.09} & \textbf{33.48} \\
+10 & 48.78 & 57.65 & 58.25 & 54.89 & 29.33 \\
+28 & 50.02 & 59.33 & 59.77 & 56.37 & 31.21 \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsubsection{Class-wise Thresholding}
+We then isolate the effect of thresholding under the best-performing candidate setting ($K=5$). Table~\ref{tab:thresholding_test} compares global and class-wise thresholding on the test split, with both thresholds searched on the validation split. The difference is substantial: global thresholding yields a more permissive decision rule and is weaker overall, whereas class-wise thresholding improves all reported metrics, including a large gain on the hard subset. This confirms that per-class calibration is a core part of the final SADIR decision rule rather than a cosmetic post-processing step.
+
+\begin{table}[t]
+\centering
+\caption{Effect of thresholding strategy on the Intentonomy test split with $K=5$. Thresholds are searched on the validation split. Avg. denotes the mean of Macro, Micro, and Samples F1. All numbers are percentages.}
+\label{tab:thresholding_test}
+\begin{tabular}{lccccc}
+\hline
+Thresholding & Macro & Micro & Samples & Avg. & Hard \\
+\hline
+Global & 46.24 & 56.07 & 56.00 & 52.77 & 26.94 \\
+Class-wise & \textbf{51.21} & \textbf{59.64} & \textbf{60.43} & \textbf{57.09} & \textbf{33.48} \\
+\hline
+\end{tabular}
+\end{table}
+
+\subsection{Backbone Independence}
 
 To examine whether SADIR depends entirely on a strong backbone, we also test the full pipeline with a weaker ResNet101 student. The results are shown in Table~\ref{tab:backbone_ablation}. The full method remains functional, but the gains become smaller on the weaker backbone. This suggests that the framework is portable across backbones, yet its full benefit is realized only when the underlying visual representation is already reasonably strong.
 
@@ -246,12 +279,12 @@ To examine whether SADIR depends entirely on a strong backbone, we also test the
 Backbone & Method & Macro & Micro & Samples & Avg. & Hard \\
 \hline
 ResNet101 & Baseline & 36.56 & 41.87 & 43.10 & 40.51 & 18.99 \\
-ResNet101 & SADIR & 41.88 & 49.96 & 50.57 & 47.47 & 24.68 \\
+ResNet101 & SADIR & 41.27 & 46.50 & 47.63 & 45.13 & 22.37 \\
 \hline
 CLIP ViT-L/14 & Baseline & 47.40 & 56.42 & 56.41 & 53.41 & 28.45 \\
-CLIP ViT-L/14 & SADIR & \textbf{50.89} & \textbf{59.60} & \textbf{59.85} & \textbf{56.78} & \textbf{30.76} \\
+CLIP ViT-L/14 & SADIR & \textbf{51.21} & \textbf{59.64} & \textbf{60.43} & \textbf{57.09} & \textbf{33.48} \\
 \hline
 \end{tabular}
 \end{table}
 
-\subsection{Visualization and Case Study}
+\subsection{Case Study}

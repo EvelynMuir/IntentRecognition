@@ -15,11 +15,17 @@ Given an input image, the model first produces visual intent scores using a stro
 
 \subsection{Problem Formulation}
 
-Given an input image $x_i$, the goal is to predict a set of intent labels from a predefined label space $\mathcal{Y}=\{1,\dots,C\}$. Due to the subjective nature of visual intention recognition, annotations are provided as soft label vectors $\mathbf{y}^{\text{soft}} \in \{0, 0.33, 0.66, 1\}^C$, reflecting annotator agreement.
+Given an input image $x$, the goal is to predict a set of intent labels from a predefined label space $\mathcal{Y}=\{1,\dots,C\}$. Due to the subjective nature of visual intention recognition, annotations are provided as soft label vectors $\mathbf{y}^{\text{soft}} \in \{0, 0.33, 0.66, 1\}^C$, reflecting annotator agreement.
 
 Existing approaches typically follow either hard binarization or soft regression paradigms, both of which have limitations under ambiguous supervision. To address this, we adopt a \textbf{decoupled utilization} of annotation signals.
 
-Specifically, we derive binarized labels $\mathbf{y}^{\text{hard}}$ for classification supervision, while extracting an image-level agreement score $\omega_i \in (0,1]$ from $\mathbf{y}^{\text{soft}}$. Here, $\omega_i$ reflects annotator consensus, where higher values indicate more reliable supervision.
+Specifically, we derive binarized labels $\mathbf{y}^{\text{hard}}$ for classification supervision, while extracting an image-level agreement score $\omega \in (0,1]$ from $\mathbf{y}^{\text{soft}}$. Here, $\omega$ reflects annotator consensus, where higher values indicate more reliable supervision.
+
+In practice, an image may contain multiple positive intents with different agreement levels. We therefore adopt a conservative pooling rule and define the sample-level agreement as the minimum soft agreement among all positive labels:
+\begin{equation}
+\omega = \min_{c:\, y^{\text{hard}}_{c}=1} y^{\text{soft}}_{c}.
+\end{equation}
+This choice lets the hardest positive label determine how much the sample should trust direct supervision.
 
 This agreement score is used to adaptively control the contribution of semantic guidance during training. The model outputs a logit vector $\mathbf{s}^{v} \in \mathbb{R}^C$, which is later refined and thresholded for final prediction.
 
@@ -50,11 +56,11 @@ The resulting text $T(x)$ is encoded into a dense embedding space using a frozen
 \mathbf{e}_{\text{text}} = f_{\text{text}}(T(x)).
 \end{equation}
 
-A lightweight classifier then maps the embedding into a soft probability distribution:
+A lightweight classifier then maps the embedding into a multi-label teacher distribution:
 \begin{equation}
-\mathbf{P}^{\text{tea}} = \text{Softmax}(g_{\text{tea}}(\mathbf{e}_{\text{text}}) / \tau),
+\mathbf{p}^{\text{tea}} = \sigma(g_{\text{tea}}(\mathbf{e}_{\text{text}}) / \tau),
 \end{equation}
-where $\tau$ is the temperature parameter.
+where $\sigma(\cdot)$ is the sigmoid function and $\tau$ is the temperature parameter.
 
 This design introduces contrastive semantic signals that improve the teacher's ability to distinguish semantically similar intents, while remaining independent of the inference procedure.
 
@@ -62,21 +68,29 @@ This design introduces contrastive semantic signals that improve the teacher's a
 
 The visual backbone produces logits $\mathbf{s}^{v}$ for image $x$. We adopt Asymmetric Loss \cite{ridnik_asymmetric_2021} for classification:
 \begin{equation}
-\mathcal{L}_{\text{vis}} = \frac{1}{C} \sum_{c=1}^{C} \ell_{\text{ASL}}(s^{v}_c, y_c).
+\mathcal{L}_{\text{vis}} = \frac{1}{C} \sum_{c=1}^{C} \ell_{\text{ASL}}(s^{v}_{c}, y^{\text{hard}}_{c}).
 \end{equation}
 
-To incorporate semantic guidance, we introduce an uncertainty-aware distillation loss:
+To incorporate semantic guidance, we introduce an uncertainty-guided Bernoulli distillation loss:
 \begin{equation}
-\mathcal{L}_{\text{distill}} = \text{KL}(\sigma(\mathbf{s}^{v}) \,\|\, \mathbf{P}^{\text{tea}}),
+\mathcal{L}_{\text{distill}} = \sum_{c=1}^{C}\text{KL}\big(\sigma(s_c^{v}/\tau)\,\|\, p_c^{\text{tea}}\big),
 \end{equation}
-where $\sigma(\cdot)$ is the sigmoid function.
+which is applied independently to each label. We use Bernoulli-style distillation rather than softmax distillation because intent recognition is a multi-label problem and class probabilities are not mutually exclusive.
+Here, $\lambda$ denotes the distillation weight that controls the overall contribution of the teacher signal relative to the visual supervision term. In our experiments, $\lambda$ is fixed to 1.0.
 
-The agreement score $\omega_i$ is used to balance the two objectives:
+Rather than mixing the two objectives with a fixed global coefficient, we use a dynamic gate derived from the agreement score. For the current sample, the teacher branch weight is defined as
 \begin{equation}
-\mathcal{L}_{\text{total}} = \omega_i \cdot \mathcal{L}_{\text{vis}} + (1 - \omega_i) \cdot \lambda \cdot \mathcal{L}_{\text{distill}}.
+g = 1 - \omega,
+\end{equation}
+so low-agreement samples receive stronger semantic guidance, while high-agreement samples remain dominated by direct visual supervision.
+
+Using $g$, the final loss is
+\begin{equation}
+\mathcal{L}_{\text{total}} = (1-g)\mathcal{L}_{\text{vis}} + \lambda g \mathcal{L}_{\text{distill}}
+= \omega \mathcal{L}_{\text{vis}} + \lambda (1-\omega)\mathcal{L}_{\text{distill}}.
 \end{equation}
 
-This formulation allows the model to rely more on visual supervision when annotations are reliable, and to leverage semantic guidance when supervision is uncertain.
+This dynamic-gated formulation allows the model to rely more on visual supervision when annotations are reliable, and to leverage semantic guidance when supervision is uncertain. In other words, the gate is not an inference-time module, but a training-time routing mechanism that adaptively reallocates optimization weight between hard-label supervision and text-teacher distillation.
 
 \subsection{Semantic Local Reranking and Calibration (SLR-C)}
 
@@ -91,8 +105,16 @@ Given an image $x$, we compute image-text similarities:
 \begin{equation}
 s^{\text{prior}}_c = \text{sim}(f_{\text{img}}(x), \mathbf{e}_c).
 \end{equation}
+In practice, $\text{sim}(\cdot,\cdot)$ is cosine similarity between L2-normalized image and text embeddings, scaled by the CLIP logit scale $\gamma$, i.e.
+\begin{equation}
+\text{sim}(f_{\text{img}}(x), \mathbf{e}_c) = \gamma \cdot \frac{f_{\text{img}}(x)^\top \mathbf{e}_c}{\|f_{\text{img}}(x)\|_2 \|\mathbf{e}_c\|_2}.
+\end{equation}
 
-For each source, we obtain a class-wise similarity score and normalize it independently. The final prior is then constructed by averaging the normalized scores from the three sources:
+For each source, we obtain a class-wise similarity score and normalize it independently. Specifically, for source $r \in \{\text{lex}, \text{can}, \text{scen}\}$, we perform per-sample normalization across all classes:
+\begin{equation}
+\tilde{s}^{r}_c = \frac{s^{r}_c - \mu^{r}(x)}{\sigma^{r}(x) + \epsilon},
+\end{equation}
+where $\mu^{r}(x)=\frac{1}{C}\sum_{c=1}^{C}s^{r}_c$ and $\sigma^{r}(x)$ is the corresponding standard deviation over the $C$ intent classes, with $\epsilon$ a small constant for numerical stability. The final prior is then constructed by averaging the normalized scores from the three sources:
 \begin{equation}
 \tilde{s}^{\text{prior}}_c = \frac{1}{3}\left(\tilde{s}^{\text{lex}}_c + \tilde{s}^{\text{can}}_c + \tilde{s}^{\text{scen}}_c\right).
 \end{equation}
@@ -121,7 +143,11 @@ To account for class imbalance and varying score distributions, we adopt class-w
 \begin{equation}
 \hat{y}_c = \mathbb{I}[\sigma(\tilde{s}_c) > t_c],
 \end{equation}
-where $t_c$ is determined on the validation set.
+where $t_c$ is determined on the validation set. Concretely, each threshold is selected independently by maximizing the class-wise validation F1:
+\begin{equation}
+t_c^\ast = \arg\max_{t \in \mathcal{T}} \text{F1}_c^{\text{val}}(t),
+\end{equation}
+where $\mathcal{T}$ is a fixed threshold grid. This design lets each class adapt its decision boundary to its own score distribution and frequency level, instead of sharing a single global threshold.
 
 \subsection{Stage-Aware Ambiguity Modeling}
 
