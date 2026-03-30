@@ -6,20 +6,6 @@
 \subsubsection{Dataset and Evaluation Metrics}
 We evaluate our method on the Intentonomy dataset \cite{jia_intentonomy_2021}, a multi-label benchmark for visual intention recognition in social media scenarios. Following the standard split used in our experiments, the dataset contains 12,739 training images, 498 validation images, and 1,216 test images. Intentonomy additionally provides soft agreement annotations with values in $\{0, 0.33, 0.66, 1\}$ on the training set, which directly reflect the degree of annotator consensus and serve as the uncertainty signal $\omega$ in our framework.
 
-We report Macro F1, Micro F1, Samples F1. For consistency with recent Intentonomy papers, the main comparison table additionally reports $\textit{Avg.}$ which is the average of three F1 scores. 
-
-To better understand the effectiveness of our method, we further conduct experiments on subsets of the intent classes. We follow the work of Jia et al. \cite{jia_intentonomy_2021} and break down intent classes according to content difficulty and dependency. Difficulty classes are measured by how much a standard ResNet-50 model outperforms the random results. Content classes are divided into object-dependent ({\itshape Object}-classes), context-dependent ({\itshape Context}-classes) and {\itshape Others} which depends on both foreground and background information. We emphasize the \textit{Hard} score throughout the analysis because it specifically measures performance on ambiguity-prone intent categories, where semantic overlap and subjective disagreement are most severe. Improvements on the hard subset therefore provide stronger evidence that a method is resolving the core difficulty of intention understanding rather than merely exploiting easy classes.
-
-\subsubsection{Implementation Details}
-
-Our default visual backbone is frozen CLIP ViT-L/14 \cite{radford_learning_2021}. The visual student is implemented as a lightweight residual MLP trained on top of a fixed SLR-C prior. For UTD, rationale text is generated offline by Qwen2.5-VL-7B-Instruct \cite{bai_qwen25-vl_2025} and then encoded by a frozen bge-large-en-v1.5 text encoder \cite{xiao_c-pack_2024}. The rationale-generation prompt template is provided in \ref{app:rationale_prompt}. The teacher consumes only the resulting text embeddings and is optimized with Asymmetric Loss (ASL) \cite{ridnik_asymmetric_2021} using $\gamma_{-}=2$, $\gamma_{+}=0$, and clipping value 0.05. The student is optimized with AdamW \cite{loshchilov_decoupled_2018}, learning rate $5\times10^{-4}$, weight decay $10^{-4}$, batch size 256, and dropout 0.1. The teacher hidden dimension is 1024 and the residual student hidden dimension is 768. The distillation temperature is set to 2.0. In SLR-C, priors are constructed from three sources, namely lexical intent phrases, canonical intent descriptions, and Gemini 3.1 Pro-generated scenario descriptions \cite{team_gemini_2025} with frozen CLIP text encoder \cite{radford_learning_2021}; their normalized logits are averaged before local reranking within Top-5 visual candidates. The scenario-prompt template is also provided in \ref{app:scenario_prompt}. During inference, class-wise thresholds are searched on the validation set and then fixed for test evaluation. Notably, UTD introduces \emph{zero extra inference cost}, since the text teacher is only used during training and is discarded at test time.
-
-
-\subsection{Comparative Experiments}
-
-\subsubsection{Comparison with state-of-the-art methods}
-Table~\ref{tab:main_results} summarizes the main comparison on the testing set. More results on validation set can be found in \ref{app:validation_results}. The strong CLIP baseline already surpasses the previously reported best result by a clear margin, confirming that visual representation is no longer the primary bottleneck for this task. Once the backbone is sufficiently strong, the remaining challenge is how to map rich visual semantics into abstract and subjective intent labels. More importantly, \textit{UTD only} already improves over IntentMLM by a large margin while introducing zero extra inference cost, showing that robust training under subjective supervision is by itself sufficient to outperform recent multimodal large-model pipelines. Building on this, the complete SADIR framework with lexical-canonical-scenario priors further improves all four reported metrics on the testing split, reaching the strongest overall average score under this final configuration. This pattern is consistent with our motivation: SLR-C improves semantic discrimination at inference, whereas UTD stabilizes training under ambiguous supervision.
-
 \begin{table}[H]
 \centering
 \small
@@ -68,6 +54,21 @@ SADIR & - & \textbf{51.21} & \textbf{59.64} & \textbf{60.43} & \textbf{57.09} \\
 \endgroup
 \end{table}
 
+We report Macro F1, Micro F1, Samples F1. For consistency with recent Intentonomy papers, the main comparison table additionally reports $\textit{Avg.}$ which is the average of three F1 scores. 
+
+To better understand the effectiveness of our method, we further conduct experiments on subsets of the intent classes. We follow the work of Jia et al. \cite{jia_intentonomy_2021} and break down intent classes according to content difficulty and dependency. Difficulty classes are measured by how much a standard ResNet-50 model outperforms the random results. Content classes are divided into object-dependent ({\itshape Object}-classes), context-dependent ({\itshape Context}-classes) and {\itshape Others} which depends on both foreground and background information. We emphasize the \textit{Hard} score throughout the analysis because it specifically measures performance on ambiguity-prone intent categories, where semantic overlap and subjective disagreement are most severe. Improvements on the hard subset therefore provide stronger evidence that a method is resolving the core difficulty of intention understanding rather than merely exploiting easy classes.
+
+\subsubsection{Implementation Details}
+
+Our default visual backbone is frozen CLIP ViT-L/14 \cite{radford_learning_2021}. The visual student is implemented as a lightweight residual MLP trained on top of a fixed SLR-C prior. For UTD, rationale text is generated offline by Qwen2.5-VL-7B-Instruct \cite{bai_qwen25-vl_2025} and then encoded by a frozen bge-large-en-v1.5 text encoder \cite{xiao_c-pack_2024}. The rationale-generation prompt template is provided in \ref{app:rationale_prompt}. The teacher consumes only the resulting text embeddings and is optimized with Asymmetric Loss (ASL) \cite{ridnik_asymmetric_2021} using $\gamma_{-}=2$, $\gamma_{+}=0$, and clipping value 0.05. The student is optimized with AdamW \cite{loshchilov_decoupled_2018}, learning rate $5\times10^{-4}$, weight decay $10^{-4}$, batch size 256, and dropout 0.1. The teacher hidden dimension is 1024 and the residual student hidden dimension is 768. The distillation temperature is set to 2.0. In SLR-C, priors are constructed from three sources, namely lexical intent phrases, canonical intent descriptions, and Gemini 3.1 Pro-generated scenario descriptions \cite{team_gemini_2025} with frozen CLIP text encoder \cite{radford_learning_2021}; their normalized logits are averaged before local reranking within Top-5 visual candidates. The scenario-prompt template is also provided in \ref{app:scenario_prompt}. During inference, class-wise thresholds are searched on the validation set and then fixed for test evaluation. Notably, UTD introduces \emph{zero extra inference cost}, since the text teacher is only used during training and is discarded at test time.
+
+\subsection{Comparative Experiments}
+
+\subsubsection{Comparison with state-of-the-art methods}
+Table~\ref{tab:main_results} summarizes the main comparison on the testing set.
+% More results on validation set can be found in \ref{app:validation_results}.
+The strong CLIP baseline already surpasses the previously reported best result by a clear margin, confirming that visual representation is no longer the primary bottleneck for this task. Once the backbone is sufficiently strong, the remaining challenge is how to map rich visual semantics into abstract and subjective intent labels. More importantly, \textit{UTD only} already improves over IntentMLM by a large margin while introducing zero extra inference cost, showing that robust training under subjective supervision is by itself sufficient to outperform recent multimodal large-model pipelines. Building on this, the complete SADIR framework with lexical-canonical-scenario priors further improves all four reported metrics on the testing split, reaching the strongest overall average score under this final configuration. This pattern is consistent with our motivation: SLR-C improves semantic discrimination at inference, whereas UTD stabilizes training under ambiguous supervision.
+
 \subsubsection{Performance on Different Difficulty Subsets}
 
 To better understand the effectiveness of our method, we further evaluate performance on intent subsets with different difficulty levels. Following Jia et al. \cite{jia_intentonomy_2021}, we divide intent classes into \textit{Easy}, \textit{Medium}, and \textit{Hard} groups according to how much a standard ResNet-50 classifier outperforms random prediction. For previously published methods, we directly adopt the reported values from the difficulty-wise comparison figure provided in the original papers. For our models, the numbers are computed from the corresponding evaluation logs.
@@ -96,11 +97,6 @@ SADIR & \textbf{81.01} & \textbf{57.06} & \textbf{33.48} & \textbf{57.18} \\
 \end{tabular}
 \end{table}
 
-The difficulty-wise results provide two additional insights. First, our baseline is already substantially stronger than prior methods on all three difficulty groups, indicating that the new performance regime is not limited to a specific subset of classes. Second, SADIR further improves medium and hard groups most consistently, which is precisely where semantic ambiguity and supervision uncertainty are more pronounced.
-
-\subsubsection{Performance of Different Content-Dependent Subsets}
-Table~\ref{tab:content_results} reports results on content-dependent subsets. Following the protocol in prior work, intent classes are divided into \textit{Object-dependent}, \textit{Context-dependent}, and \textit{Others}. The first group mainly depends on salient foreground entities, the second relies more strongly on scene or environmental context, and the third requires combined reasoning over both foreground and background cues.
-
 \begin{table}[t]
 \centering
 \caption{Performance on content-dependent intent subsets (Object, Context, and Others) on the Intentonomy test split. Avg. denotes the mean over the three subsets. All numbers are percentages.}
@@ -122,6 +118,12 @@ SADIR & \textbf{62.73} & \textbf{62.22} & \textbf{45.80} & \textbf{56.92} \\
 \hline
 \end{tabular}
 \end{table}
+
+The difficulty-wise results provide two additional insights. First, our baseline is already substantially stronger than prior methods on all three difficulty groups, indicating that the new performance regime is not limited to a specific subset of classes. Second, SADIR further improves medium and hard groups most consistently, which is precisely where semantic ambiguity and supervision uncertainty are more pronounced.
+
+\subsubsection{Performance of Different Content-Dependent Subsets}
+Table~\ref{tab:content_results} reports results on content-dependent subsets. Following the protocol in prior work, intent classes are divided into \textit{Object-dependent}, \textit{Context-dependent}, and \textit{Others}. The first group mainly depends on salient foreground entities, the second relies more strongly on scene or environmental context, and the third requires combined reasoning over both foreground and background cues.
+
 
 The results again show that the strong CLIP baseline is already highly effective on object- and context-dependent intents. The major gain of SADIR appears in the \textit{Others} subset, where intent recognition requires more holistic reasoning over multiple weak cues rather than direct reliance on a single object or scene pattern.
 
@@ -192,7 +194,7 @@ Interestingly, the multimodal oracle teacher is not weaker by itself, but it bec
 
 \subsubsection{Effectiveness of SLR-C and Residual Refinement}
 
-We next study how SLR-C interacts with residual learning and distillation. Table~\ref{tab:slrc_ablation} shows that under the final heterogeneous prior configuration, a fixed prior alone is insufficient, while adding a trainable student and distillation is essential for recovering robust intent predictions.
+We next study how SLR-C interacts with residual learning and distillation. Table~\ref{tab:slrc_ablation} shows that prior alone is insufficient, while adding a trainable student and distillation is essential for recovering robust intent predictions.
 \begin{table}[t]
 \centering
 \caption{Component ablation of SADIR on the Intentonomy test split. \textit{w/o UTD} removes uncertainty-guided text distillation, and \textit{w/o Gated} removes agreement-aware gating. All numbers are percentages.}
@@ -229,7 +231,7 @@ $\checkmark$ & $\checkmark$ & $\checkmark$ & \textbf{51.49} & 58.76 & \textbf{58
 \end{tabular}
 \end{table}
 
-This result is consistent with our semantic interpretation of the task. Lexical prior is compact but under-expressive, canonical prior is more descriptive but still abstract, while scenario prior translates latent intention into typical visual situations and therefore best bridges the gap between visual content and subjective semantics. The lexical-canonical ensemble remains competitive, showing that heterogeneous priors are beneficial when richer scenario descriptions are not available. When all three sources are combined, the resulting ensemble further improves hard-case robustness and offers the broadest semantic coverage across prior types, which motivates our final choice of lexical-canonical-scenario priors in SADIR.
+This result is consistent with our semantic interpretation of the task. Lexical prior is compact but under-expressive, canonical prior is more descriptive but still abstract, while scenario prior translates latent intention into typical visual situations and therefore best bridges the gap between visual content and subjective semantics. The lexical-canonical ensemble remains competitive, showing that heterogeneous priors are beneficial. When all three sources are combined, the resulting ensemble further improves hard-case robustness and offers the broadest semantic coverage across prior types, which motivates our final choice of lexical-canonical-scenario priors in SADIR.
 
 \subsubsection{Sensitivity to Candidate Size $K$}
 We next study the effect of candidate size $K$ while fixing the thresholding strategy to the final class-wise setting. Table~\ref{tab:k_sensitivity_test} reports the test-split results obtained by retraining SADIR under $K \in \{5,10,28\}$ and then searching thresholds on the validation split. The comparison shows that the best overall result is achieved at $K=5$, while larger candidate sets remain competitive but slightly weaker. This suggests that, under the final lexical-canonical-scenario prior, a compact local candidate set is sufficient and can even be preferable to broader reranking ranges.
@@ -287,4 +289,36 @@ CLIP ViT-L/14 & SADIR & \textbf{51.21} & \textbf{59.64} & \textbf{60.43} & \text
 \end{tabular}
 \end{table}
 
+\subsection{Efficiency Comparison}
+
+Finally, we compare the inference cost of the baseline, SADIR (UTD only), and the full SADIR pipeline. Since all three methods share the same frozen CLIP ViT-L/14 feature extractor, Table~\ref{tab:efficiency_comparison} reports the \emph{additional} inference cost on top of pre-extracted CLIP features. Parameters count the inference-active prediction heads only, FLOPs are computed per image under the same feature-level protocol, and latency is measured with batch size 1 on a single RTX 4090 GPU.
+
+\begin{table}[t]
+\centering
+\caption{Efficiency comparison on top of frozen CLIP features. Params count inference-active heads only; FLOPs are reported per image; latency is measured with batch size 1 on a single RTX 4090.}
+\label{tab:efficiency_comparison}
+\begin{tabular}{lccc}
+\hline
+Method & Params (M) & FLOPs (M) & Latency (ms) \\
+\hline
+Baseline & 1.20 & 2.40 & 0.109 \\
+SADIR (UTD only) & 1.20 & 2.40 & 0.109 \\
+SADIR & 2.41 & 4.93 & 0.466 \\
+\hline
+\end{tabular}
+\end{table}
+
+The table confirms two intended properties of our design. First, SADIR (UTD only) has exactly the same inference cost as the baseline, because the text teacher is used only during training and discarded at test time. Second, the full SADIR pipeline introduces additional reranking and residual refinement, but the absolute overhead remains small: even with the full lexical-canonical-scenario prior and residual head, the feature-level inference latency stays well below 1 ms per image. This shows that the final performance gains are not obtained by paying a large deployment cost.
+
 \subsection{Case Study}
+
+Figure~\ref{fig:case_study} provides a qualitative comparison between the CLIP baseline and SADIR. Each row summarizes the input image together with its soft label, model predictions and supporting rationale. These examples help clarify both where SADIR gains its robustness and where residual ambiguity remains difficult even for the full model.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{srcs/cases.pdf}
+\caption{Qualitative case study of baseline and SADIR on representative Intentonomy samples. In the first row, the baseline predicts an incorrect semantic alternative, whereas SADIR removes that distractor by leveraging counterfactual evidence in the rationale and yields the correct intent decision. In the second row, SADIR makes an error, but the annotated soft label itself has only 0.33 agreement, indicating substantial ambiguity; under such weak supervision, the alternative prediction made by SADIR remains semantically plausible rather than arbitrarily wrong.}
+\label{fig:case_study}
+\end{figure*}
+
+Two observations are particularly useful. First, the top row illustrates the main advantage of rationale-guided training: once the teacher explicitly states why a confusing option should be rejected, the student learns a sharper semantic boundary and avoids the baseline's over-prediction. This behavior is consistent with our design motivation for counterfactual disambiguation in UTD. Second, the bottom row reveals an important limitation of subjective intention recognition. When the annotated label itself carries only 0.33 soft agreement, even the wrong prediction can remain compatible with the scene semantics. In this regime, SADIR should not be interpreted as making an arbitrary mistake; rather, it selects a nearby and still defensible intent hypothesis under intrinsically weak human consensus.

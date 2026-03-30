@@ -32,8 +32,8 @@ except ImportError as exc:
     ) from exc
 
 
-DEFAULT_RUN_DIR = PROJECT_ROOT / "logs" / "analysis" / "privileged_distillation_full_20260316"
-DEFAULT_SADIR_FULL_DIR = PROJECT_ROOT / "logs" / "analysis" / "distillation_slrc_lcs_rebuild_20260327"
+DEFAULT_RUN_DIR = PROJECT_ROOT / "logs" / "analysis" / "privileged_distillation_text_teacher_seedfix_20260316"
+DEFAULT_SADIR_FULL_DIR = PROJECT_ROOT / "logs" / "analysis" / "distillation_slrc_lcs_topk5_20260327"
 DEFAULT_CACHE_DIR = (
     PROJECT_ROOT / "logs" / "analysis" / "min_agent_evidence_verification_v2_comparative_add_20260312" / "_cache"
 )
@@ -101,6 +101,8 @@ class LoadedArtifacts:
     prior_scores: np.ndarray | None
     prior_mode: str | None
     full_method_name: str
+    slr_topk: int | None
+    slr_alpha: float | None
 
 
 class LegacyStudentMLP(nn.Module):
@@ -515,6 +517,8 @@ def load_artifacts(
     rationale_texts = [""] * len(image_ids)
     prior_scores: np.ndarray | None = None
     prior_mode: str | None = None
+    slr_topk: int | None = None
+    slr_alpha: float | None = None
 
     if text_npz_path.exists():
         text_feature_key, text_string_key = _resolve_text_keys(text_feature_source)
@@ -549,6 +553,9 @@ def load_artifacts(
         sadir_summary_path = sadir_full_dir / "summary.json"
         if sadir_summary_path.exists():
             sadir_summary = json.loads(sadir_summary_path.read_text(encoding="utf-8"))
+            sadir_config = sadir_summary.get("config", {})
+            slr_topk = int(sadir_config.get("topk", 5))
+            slr_alpha = float(sadir_config.get("slr_alpha", 0.3))
             utd_logits = _predict_logits(full_model, features, batch_size=int(batch_size))
             clip_model, _ = clip.load("ViT-L/14", device="cpu")
             clip_model = clip_model.eval()
@@ -571,8 +578,8 @@ def load_artifacts(
             slr_logits = _apply_topk_rerank(
                 baseline_logits=utd_logits,
                 prior_logits=prior_scores,
-                topk=10,
-                alpha=0.3,
+                topk=slr_topk,
+                alpha=slr_alpha,
             )
             residual_ckpt = sadir_full_dir / "slr_c_residual_dynamic_kd_best.pt"
             if residual_ckpt.exists():
@@ -588,10 +595,10 @@ def load_artifacts(
                     slr_logits=slr_logits,
                     batch_size=int(batch_size),
                 )
-                full_method_name = "SADIR full (checkpoint)"
+                full_method_name = f"SADIR full (checkpoint, K={slr_topk})"
             else:
                 sadir_logits = slr_logits
-                full_method_name = "SADIR full (SLR-C reconstructed)"
+                full_method_name = f"SADIR full (SLR-C reconstructed, K={slr_topk})"
             full_scores = 1.0 / (1.0 + np.exp(-sadir_logits))
             full_thresholds = np.asarray(
                 sadir_summary["slr_c_residual_dynamic_kd"]["bundle"]["classwise"]["val"]["class_thresholds"],
@@ -616,6 +623,8 @@ def load_artifacts(
         prior_scores=prior_scores,
         prior_mode=prior_mode,
         full_method_name=full_method_name,
+        slr_topk=slr_topk,
+        slr_alpha=slr_alpha,
     )
 
 
@@ -709,7 +718,12 @@ def main() -> None:
     st.metric("Candidate Count", len(candidate_indices))
     st.caption(caption)
     if artifacts.prior_scores is not None:
-        st.caption(f"Full method: {artifacts.full_method_name}; prior source: `{artifacts.prior_mode}`.")
+        config_suffix = ""
+        if artifacts.slr_topk is not None and artifacts.slr_alpha is not None:
+            config_suffix = f"; rerank config: `K={artifacts.slr_topk}`, `alpha={artifacts.slr_alpha:.2f}`"
+        st.caption(
+            f"Full method: {artifacts.full_method_name}; prior source: `{artifacts.prior_mode}`{config_suffix}."
+        )
 
     if not candidate_indices:
         st.warning("当前配置下没有找到符合条件的样本。")

@@ -1,222 +1,222 @@
 \appendix
-\section{Validation Results for Main Comparison}
-\label{app:validation_results}
+% \section{Validation Results for Main Comparison}
+% \label{app:validation_results}
 
-This section reports the validation-split counterpart of the main comparison in Section~\ref{sec:experiments}. We keep the same model groups, metric definitions, and reporting metrics as the test-split table in the main text.
+% This section reports the validation-split counterpart of the main comparison in Section~\ref{sec:experiments}. We keep the same model groups, metric definitions, and reporting metrics as the test-split table in the main text.
 
-\begin{table}[H]
-\centering
-\small
-\caption{Validation-split results corresponding to Table~\ref{tab:main_results}. We report Macro F1, Micro F1, Samples F1, and their average (Avg.). All numbers are percentages.}
-\label{tab:main_results_val}
-\begingroup
-\renewcommand{\arraystretch}{1.0}
-\setlength{\tabcolsep}{4pt}
-\begin{tabular}{llcccc}
-\hline
-Method & Publication & Macro F1 & Micro F1 & Samples F1 & Avg. \\
-\hline
-Random & - & 6.94 & 7.18 & 7.10 & 7.07 \\
-Visual \cite{he_deep_2016} & CVPR 2016 & 23.03 & 31.36 & 29.91 & 28.10 \\
-\hline
-\multicolumn{6}{l}{\textbf{Multi-label classification methods}} \\
-HiMulConE \cite{zhang_use_2022} & CVPR 2022 & 28.14 & 41.30 & 42.50 & 37.31 \\
-MultiGuard \cite{jia_multiguard_2022} & NeurIPS 2022 & 27.74 & 41.03 & 41.58 & 36.78 \\
-SST \cite{chen_structured_2022} & AAAI 2022 & 28.78 & 41.03 & 41.75 & 37.19 \\
-Query2Label \cite{liu_query2label_2021} & - & 32.77 & 44.60 & 45.40 & 40.92 \\
-DualCoOp \cite{sun_dualcoop_2022} & NeurIPS 2022 & 32.67 & 46.29 & 42.97 & 40.64 \\
-\hline
-\multicolumn{6}{l}{\textbf{Label noise methods}} \\
-Cleannet \cite{lee_cleannet_2018} & CVPR 2018 & 26.78 & 42.31 & 41.57 & 36.89 \\
-LS \cite{lukasik_does_2020} & ICML 2020 & 24.68 & 42.97 & 44.23 & 37.29 \\
-Dividemix \cite{li_dividemix_2019} & ICLR 2020 & 31.01 & 41.67 & 41.89 & 38.19 \\
-\hline
-\multicolumn{6}{l}{\textbf{Intent perception methods}} \\
-Jia \cite{jia_intentonomy_2021} & CVPR 2021 & 25.07 & 32.94 & 33.61 & 30.54 \\
-CPAD \cite{ye_cross-modality_2023} & TIP 2023 & 27.37 & 41.77 & 42.68 & 37.27 \\
-HLEG \cite{shi_learnable_2023} & TAC 2023 & 35.35 & 46.34 & 47.40 & 43.03 \\
-PIP-Net \cite{wang_prototype-based_2023} & TMM 2023 & 30.71 & 44.84 & 45.48 & 40.34 \\
-LabCR \cite{shi_label-aware_2024} & TIP 2024 & 37.10 & 49.04 & 49.71 & 45.28 \\
-IntCLIP \cite{leonardis_synergy_2025} & ECCV 2024 & 41.55 & 52.61 & 49.75 & 47.97 \\
-IntentMLM \cite{wang_unlocking_2026} & PR & 43.06 & 54.77 & 56.93 & 51.59 \\
-\hline
-CLIP ViT-L/14 \cite{radford_learning_2021} & - & 55.80 & 59.62 & 60.10 & 58.51 \\
-SADIR (UTD only) & - & 57.86 & 62.16 & 63.88 & 61.30 \\
-SADIR & - & \textbf{59.34} & \textbf{63.06} & \textbf{63.51} & \textbf{61.97} \\
-\hline
-\end{tabular}
-\endgroup
-\end{table}
+% \begin{table}[H]
+% \centering
+% \small
+% \caption{Validation-split results corresponding to Table~\ref{tab:main_results}. We report Macro F1, Micro F1, Samples F1, and their average (Avg.). All numbers are percentages.}
+% \label{tab:main_results_val}
+% \begingroup
+% \renewcommand{\arraystretch}{1.0}
+% \setlength{\tabcolsep}{4pt}
+% \begin{tabular}{llcccc}
+% \hline
+% Method & Publication & Macro F1 & Micro F1 & Samples F1 & Avg. \\
+% \hline
+% Random & - & 6.94 & 7.18 & 7.10 & 7.07 \\
+% Visual \cite{he_deep_2016} & CVPR 2016 & 23.03 & 31.36 & 29.91 & 28.10 \\
+% \hline
+% \multicolumn{6}{l}{\textbf{Multi-label classification methods}} \\
+% HiMulConE \cite{zhang_use_2022} & CVPR 2022 & 28.14 & 41.30 & 42.50 & 37.31 \\
+% MultiGuard \cite{jia_multiguard_2022} & NeurIPS 2022 & 27.74 & 41.03 & 41.58 & 36.78 \\
+% SST \cite{chen_structured_2022} & AAAI 2022 & 28.78 & 41.03 & 41.75 & 37.19 \\
+% Query2Label \cite{liu_query2label_2021} & - & 32.77 & 44.60 & 45.40 & 40.92 \\
+% DualCoOp \cite{sun_dualcoop_2022} & NeurIPS 2022 & 32.67 & 46.29 & 42.97 & 40.64 \\
+% \hline
+% \multicolumn{6}{l}{\textbf{Label noise methods}} \\
+% Cleannet \cite{lee_cleannet_2018} & CVPR 2018 & 26.78 & 42.31 & 41.57 & 36.89 \\
+% LS \cite{lukasik_does_2020} & ICML 2020 & 24.68 & 42.97 & 44.23 & 37.29 \\
+% Dividemix \cite{li_dividemix_2019} & ICLR 2020 & 31.01 & 41.67 & 41.89 & 38.19 \\
+% \hline
+% \multicolumn{6}{l}{\textbf{Intent perception methods}} \\
+% Jia \cite{jia_intentonomy_2021} & CVPR 2021 & 25.07 & 32.94 & 33.61 & 30.54 \\
+% CPAD \cite{ye_cross-modality_2023} & TIP 2023 & 27.37 & 41.77 & 42.68 & 37.27 \\
+% HLEG \cite{shi_learnable_2023} & TAC 2023 & 35.35 & 46.34 & 47.40 & 43.03 \\
+% PIP-Net \cite{wang_prototype-based_2023} & TMM 2023 & 30.71 & 44.84 & 45.48 & 40.34 \\
+% LabCR \cite{shi_label-aware_2024} & TIP 2024 & 37.10 & 49.04 & 49.71 & 45.28 \\
+% IntCLIP \cite{leonardis_synergy_2025} & ECCV 2024 & 41.55 & 52.61 & 49.75 & 47.97 \\
+% IntentMLM \cite{wang_unlocking_2026} & PR & 43.06 & 54.77 & 56.93 & 51.59 \\
+% \hline
+% CLIP ViT-L/14 \cite{radford_learning_2021} & - & 55.80 & 59.62 & 60.10 & 58.51 \\
+% SADIR (UTD only) & - & 57.86 & 62.16 & 63.88 & 61.30 \\
+% SADIR & - & \textbf{59.34} & \textbf{63.06} & \textbf{63.51} & \textbf{61.97} \\
+% \hline
+% \end{tabular}
+% \endgroup
+% \end{table}
 
-The validation trend is consistent with the test-split findings: the strong CLIP baseline already establishes a high starting point, UTD-only training brings a clear additional gain, and the full SADIR configuration achieves the strongest overall performance.
+% The validation trend is consistent with the test-split findings: the strong CLIP baseline already establishes a high starting point, UTD-only training brings a clear additional gain, and the full SADIR configuration achieves the strongest overall performance.
 
-\section{Validation Results for Additional Experiments}
+% \section{Validation Results for Additional Experiments}
 
-To complement the main-table comparison above, we provide validation-split counterparts for all additional analyses in Section~\ref{sec:experiments}, including subset evaluation, rationale design, distillation variants, teacher modality choices, component ablations, backbone sensitivity, and prior-source ablations.
+% To complement the main-table comparison above, we provide validation-split counterparts for all additional analyses in Section~\ref{sec:experiments}, including subset evaluation, rationale design, distillation variants, teacher modality choices, component ablations, backbone sensitivity, and prior-source ablations.
 
-\begin{table}[H]
-\centering
-\caption{Validation-split difficulty subset results corresponding to Table~\ref{tab:difficulty_results}. All numbers are percentages.}
-\label{tab:difficulty_results_val}
-\begin{tabular}{lcccc}
-\hline
-Method & Easy & Medium & Hard & Avg. \\
-\hline
-CLIP ViT-L/14 \cite{radford_learning_2021} & 78.82 & 59.89 & 42.77 & 60.49 \\
-SADIR & \textbf{79.66} & \textbf{61.73} & \textbf{49.65} & \textbf{63.68} \\
-\hline
-\end{tabular}
-\end{table}
+% \begin{table}[H]
+% \centering
+% \caption{Validation-split difficulty subset results corresponding to Table~\ref{tab:difficulty_results}. All numbers are percentages.}
+% \label{tab:difficulty_results_val}
+% \begin{tabular}{lcccc}
+% \hline
+% Method & Easy & Medium & Hard & Avg. \\
+% \hline
+% CLIP ViT-L/14 \cite{radford_learning_2021} & 78.82 & 59.89 & 42.77 & 60.49 \\
+% SADIR & \textbf{79.66} & \textbf{61.73} & \textbf{49.65} & \textbf{63.68} \\
+% \hline
+% \end{tabular}
+% \end{table}
 
-Tables~\ref{tab:difficulty_results_val} and \ref{tab:content_results_val} verify that the gains remain stable under both difficulty-based and content-dependent partitions.
+% Tables~\ref{tab:difficulty_results_val} and \ref{tab:content_results_val} verify that the gains remain stable under both difficulty-based and content-dependent partitions.
 
-\begin{table}[H]
-\centering
-\caption{Validation-split content subset results corresponding to Table~\ref{tab:content_results}. All numbers are percentages.}
-\label{tab:content_results_val}
-\begin{tabular}{lcccc}
-\hline
-Method & Object & Context & Others & Avg. \\
-\hline
-CLIP ViT-L/14 \cite{radford_learning_2021} & 62.67 & 61.53 & 52.67 & 58.96 \\
-SADIR & \textbf{63.13} & \textbf{68.33} & \textbf{56.99} & \textbf{62.82} \\
-\hline
-\end{tabular}
-\end{table}
+% \begin{table}[H]
+% \centering
+% \caption{Validation-split content subset results corresponding to Table~\ref{tab:content_results}. All numbers are percentages.}
+% \label{tab:content_results_val}
+% \begin{tabular}{lcccc}
+% \hline
+% Method & Object & Context & Others & Avg. \\
+% \hline
+% CLIP ViT-L/14 \cite{radford_learning_2021} & 62.67 & 61.53 & 52.67 & 58.96 \\
+% SADIR & \textbf{63.13} & \textbf{68.33} & \textbf{56.99} & \textbf{62.82} \\
+% \hline
+% \end{tabular}
+% \end{table}
 
-Tables~\ref{tab:rationale_ablation_val} to \ref{tab:thresholding_val} further mirror the ablation findings in the main text. In particular, rationale design, agreement-aware gating, and heterogeneous priors show consistent contributions on the validation split.
+% Tables~\ref{tab:rationale_ablation_val} to \ref{tab:thresholding_val} further mirror the ablation findings in the main text. In particular, rationale design, agreement-aware gating, and heterogeneous priors show consistent contributions on the validation split.
 
-\begin{table}[H]
-\centering
-\caption{Validation-split results corresponding to Table~\ref{tab:rationale_ablation}. All numbers are percentages.}
-\label{tab:rationale_ablation_val}
-\begin{tabular}{ccccccccc}
-\hline
-Caption & Step 1 & Step 2 & Step 3 & Macro & Micro & Samples & Avg. & Hard \\
-\hline
-$\checkmark$ &  &  &  & 57.79 & \textbf{62.94} & 63.44 & 61.39 & 42.47 \\
- & $\checkmark$ &  &  & 57.61 & 60.10 & 61.98 & 59.90 & 42.73 \\
- & $\checkmark$ & $\checkmark$ &  & \textbf{58.37} & 58.42 & 60.17 & 58.99 & 43.19 \\
- & $\checkmark$ & $\checkmark$ & $\checkmark$ & 57.86 & 62.16 & \textbf{63.88} & \textbf{61.30} & \textbf{43.51} \\
-\hline
-\end{tabular}
-\end{table}
+% \begin{table}[H]
+% \centering
+% \caption{Validation-split results corresponding to Table~\ref{tab:rationale_ablation}. All numbers are percentages.}
+% \label{tab:rationale_ablation_val}
+% \begin{tabular}{ccccccccc}
+% \hline
+% Caption & Step 1 & Step 2 & Step 3 & Macro & Micro & Samples & Avg. & Hard \\
+% \hline
+% $\checkmark$ &  &  &  & 57.79 & \textbf{62.94} & 63.44 & 61.39 & 42.47 \\
+%  & $\checkmark$ &  &  & 57.61 & 60.10 & 61.98 & 59.90 & 42.73 \\
+%  & $\checkmark$ & $\checkmark$ &  & \textbf{58.37} & 58.42 & 60.17 & 58.99 & 43.19 \\
+%  & $\checkmark$ & $\checkmark$ & $\checkmark$ & 57.86 & 62.16 & \textbf{63.88} & \textbf{61.30} & \textbf{43.51} \\
+% \hline
+% \end{tabular}
+% \end{table}
 
-\begin{table}[H]
-\centering
-\caption{Validation-split results corresponding to Table~\ref{tab:distill_ablation}. All numbers are percentages.}
-\label{tab:distill_ablation_val}
-\begin{tabular}{lccccc}
-\hline
-Method & Macro & Micro & Samples & Avg. & Hard \\
-\hline
-Baseline & 55.80 & 59.62 & 60.10 & 58.51 & 42.77 \\
-UTD (w/o gated) & 57.78 & \textbf{62.42} & 63.79 & \textbf{61.33} & 43.09 \\
-UTD (with gated) & \textbf{57.86} & 62.16 & \textbf{63.88} & 61.30 & \textbf{43.51} \\
-\hline
-\end{tabular}
-\end{table}
+% \begin{table}[H]
+% \centering
+% \caption{Validation-split results corresponding to Table~\ref{tab:distill_ablation}. All numbers are percentages.}
+% \label{tab:distill_ablation_val}
+% \begin{tabular}{lccccc}
+% \hline
+% Method & Macro & Micro & Samples & Avg. & Hard \\
+% \hline
+% Baseline & 55.80 & 59.62 & 60.10 & 58.51 & 42.77 \\
+% UTD (w/o gated) & 57.78 & \textbf{62.42} & 63.79 & \textbf{61.33} & 43.09 \\
+% UTD (with gated) & \textbf{57.86} & 62.16 & \textbf{63.88} & 61.30 & \textbf{43.51} \\
+% \hline
+% \end{tabular}
+% \end{table}
 
-The validation split reveals a slightly different trade-off from the test split. In particular, \textit{UTD (w/o gated)} achieves the highest validation Micro F1 and a marginally higher Avg., while \textit{UTD (with gated)} remains better in Macro, Samples, and Hard. This suggests that ungated distillation can fit the validation distribution a bit more aggressively, whereas gated distillation imposes a more conservative supervision schedule that sacrifices a small amount of validation fit in exchange for better robustness on ambiguous samples. Because the validation set is relatively small and class imbalance is severe, such differences can be amplified by a few difficult classes and threshold decisions.
+% The validation split reveals a slightly different trade-off from the test split. In particular, \textit{UTD (w/o gated)} achieves the highest validation Micro F1 and a marginally higher Avg., while \textit{UTD (with gated)} remains better in Macro, Samples, and Hard. This suggests that ungated distillation can fit the validation distribution a bit more aggressively, whereas gated distillation imposes a more conservative supervision schedule that sacrifices a small amount of validation fit in exchange for better robustness on ambiguous samples. Because the validation set is relatively small and class imbalance is severe, such differences can be amplified by a few difficult classes and threshold decisions.
 
-\begin{table}[H]
-\centering
-\caption{Validation-split results corresponding to Table~\ref{tab:teacher_modality_ablation}. All numbers are percentages.}
-\label{tab:teacher_modality_ablation_val}
-\begin{tabular}{lccccccc}
-\hline
-Method & Image & Text & Macro & Micro & Samples & Avg. & Hard \\
-\hline
-Oracle teacher &  & $\checkmark$ & 52.08 & 54.43 & 55.64 & 54.05 & \textbf{36.69} \\
-Oracle teacher & $\checkmark$ & $\checkmark$ & 52.60 & 57.14 & 57.66 & \textbf{55.80} & 35.60 \\
-\hline
-Gated student &  & $\checkmark$ & \textbf{57.86} & \textbf{62.16} & \textbf{63.88} & \textbf{61.30} & \textbf{43.51} \\
-Gated student & $\checkmark$ & $\checkmark$ & 56.43 & 59.75 & 61.19 & 59.12 & 39.80 \\
-\hline
-\end{tabular}
-\end{table}
+% \begin{table}[H]
+% \centering
+% \caption{Validation-split results corresponding to Table~\ref{tab:teacher_modality_ablation}. All numbers are percentages.}
+% \label{tab:teacher_modality_ablation_val}
+% \begin{tabular}{lccccccc}
+% \hline
+% Method & Image & Text & Macro & Micro & Samples & Avg. & Hard \\
+% \hline
+% Oracle teacher &  & $\checkmark$ & 52.08 & 54.43 & 55.64 & 54.05 & \textbf{36.69} \\
+% Oracle teacher & $\checkmark$ & $\checkmark$ & 52.60 & 57.14 & 57.66 & \textbf{55.80} & 35.60 \\
+% \hline
+% Gated student &  & $\checkmark$ & \textbf{57.86} & \textbf{62.16} & \textbf{63.88} & \textbf{61.30} & \textbf{43.51} \\
+% Gated student & $\checkmark$ & $\checkmark$ & 56.43 & 59.75 & 61.19 & 59.12 & 39.80 \\
+% \hline
+% \end{tabular}
+% \end{table}
 
-\begin{table}[H]
-\centering
-\caption{Validation-split results corresponding to Table~\ref{tab:slrc_ablation}. All numbers are percentages.}
-\label{tab:slrc_ablation_val}
-\begin{tabular}{lccccc}
-\hline
-Method & Macro & Micro & Samples & Avg. & Hard \\
-\hline
-w/o UTD & 57.22 & 60.04 & 60.71 & 59.32 & 46.15 \\
-w/o Gated & \textbf{59.81} & 62.75 & \textbf{64.02} & \textbf{62.20} & \textbf{49.80} \\
-SADIR (full) & 59.34 & \textbf{63.06} & 63.51 & 61.97 & 49.65 \\
-\hline
-\end{tabular}
-\end{table}
+% \begin{table}[H]
+% \centering
+% \caption{Validation-split results corresponding to Table~\ref{tab:slrc_ablation}. All numbers are percentages.}
+% \label{tab:slrc_ablation_val}
+% \begin{tabular}{lccccc}
+% \hline
+% Method & Macro & Micro & Samples & Avg. & Hard \\
+% \hline
+% w/o UTD & 57.22 & 60.04 & 60.71 & 59.32 & 46.15 \\
+% w/o Gated & \textbf{59.81} & 62.75 & \textbf{64.02} & \textbf{62.20} & \textbf{49.80} \\
+% SADIR (full) & 59.34 & \textbf{63.06} & 63.51 & 61.97 & 49.65 \\
+% \hline
+% \end{tabular}
+% \end{table}
 
-The validation SLR-C ablation shows that \textit{w/o Gated} is highly competitive and even exceeds the full model on Macro and Samples, while the full model retains the best validation Micro and a slightly higher Avg. The gap is therefore much smaller on validation than on test. We interpret this as another sign of metric trade-off rather than contradiction: ungated distillation is more willing to overfit the validation score geometry, whereas the gated version regularizes teacher influence according to supervision reliability. This regularization is especially important when moving from the small validation split to the larger and more heterogeneous test split, where better robustness to ambiguous and disagreement-prone samples leads to stronger final generalization.
+% The validation SLR-C ablation shows that \textit{w/o Gated} is highly competitive and even exceeds the full model on Macro and Samples, while the full model retains the best validation Micro and a slightly higher Avg. The gap is therefore much smaller on validation than on test. We interpret this as another sign of metric trade-off rather than contradiction: ungated distillation is more willing to overfit the validation score geometry, whereas the gated version regularizes teacher influence according to supervision reliability. This regularization is especially important when moving from the small validation split to the larger and more heterogeneous test split, where better robustness to ambiguous and disagreement-prone samples leads to stronger final generalization.
 
-\begin{table}[H]
-\centering
-\caption{Validation-split results corresponding to Table~\ref{tab:backbone_ablation}. All numbers are percentages.}
-\label{tab:backbone_ablation_val}
-\begin{tabular}{lcccccc}
-\hline
-Backbone & Method & Macro & Micro & Samples & Avg. & Hard \\
-\hline
-ResNet101 & Baseline & 42.13 & 45.37 & 46.44 & 44.65 & 29.01 \\
-ResNet101 & SADIR (full) & 46.15 & 49.29 & 50.98 & 48.81 & 31.67 \\
-\hline
-CLIP ViT-L/14 & Baseline & 55.80 & 59.62 & 60.10 & 58.51 & 40.48 \\
-CLIP ViT-L/14 & SADIR (full) & \textbf{59.34} & \textbf{63.06} & \textbf{63.51} & \textbf{61.97} & \textbf{49.65} \\
-\hline
-\end{tabular}
-\end{table}
+% \begin{table}[H]
+% \centering
+% \caption{Validation-split results corresponding to Table~\ref{tab:backbone_ablation}. All numbers are percentages.}
+% \label{tab:backbone_ablation_val}
+% \begin{tabular}{lcccccc}
+% \hline
+% Backbone & Method & Macro & Micro & Samples & Avg. & Hard \\
+% \hline
+% ResNet101 & Baseline & 42.13 & 45.37 & 46.44 & 44.65 & 29.01 \\
+% ResNet101 & SADIR (full) & 46.15 & 49.29 & 50.98 & 48.81 & 31.67 \\
+% \hline
+% CLIP ViT-L/14 & Baseline & 55.80 & 59.62 & 60.10 & 58.51 & 40.48 \\
+% CLIP ViT-L/14 & SADIR (full) & \textbf{59.34} & \textbf{63.06} & \textbf{63.51} & \textbf{61.97} & \textbf{49.65} \\
+% \hline
+% \end{tabular}
+% \end{table}
 
-\begin{table}[H]
-\centering
-\caption{Validation-split results corresponding to Table~\ref{tab:prior_ablation}. All numbers are percentages.}
-\label{tab:prior_ablation_val}
-\begin{tabular}{cccccccc}
-\hline
-Lexical & Canonical & Scenario & Macro & Micro & Samples & Avg. & Hard \\
-\hline
-$\checkmark$ &  &  & 57.51 & 61.55 & 61.88 & 60.31 & 44.84 \\
- & $\checkmark$ &  & 57.88 & 61.37 & 61.28 & 60.18 & 45.20 \\
- &  & $\checkmark$ & 58.38 & 62.71 & 62.04 & 61.04 & 45.77 \\
-$\checkmark$ & $\checkmark$ &  & 57.98 & 61.72 & 61.78 & 60.49 & 45.89 \\
-$\checkmark$ & $\checkmark$ & $\checkmark$ & \textbf{58.64} & \textbf{62.70} & \textbf{62.23} & \textbf{61.19} & \textbf{47.19} \\
-\hline
-\end{tabular}
-\end{table}
+% \begin{table}[H]
+% \centering
+% \caption{Validation-split results corresponding to Table~\ref{tab:prior_ablation}. All numbers are percentages.}
+% \label{tab:prior_ablation_val}
+% \begin{tabular}{cccccccc}
+% \hline
+% Lexical & Canonical & Scenario & Macro & Micro & Samples & Avg. & Hard \\
+% \hline
+% $\checkmark$ &  &  & 57.51 & 61.55 & 61.88 & 60.31 & 44.84 \\
+%  & $\checkmark$ &  & 57.88 & 61.37 & 61.28 & 60.18 & 45.20 \\
+%  &  & $\checkmark$ & 58.38 & 62.71 & 62.04 & 61.04 & 45.77 \\
+% $\checkmark$ & $\checkmark$ &  & 57.98 & 61.72 & 61.78 & 60.49 & 45.89 \\
+% $\checkmark$ & $\checkmark$ & $\checkmark$ & \textbf{58.64} & \textbf{62.70} & \textbf{62.23} & \textbf{61.19} & \textbf{47.19} \\
+% \hline
+% \end{tabular}
+% \end{table}
 
-\begin{table}[H]
-\centering
-\caption{Validation-split results corresponding to Table~\ref{tab:k_sensitivity_test}. All numbers are percentages.}
-\label{tab:k_sensitivity_val}
-\begin{tabular}{lccccc}
-\hline
-Top-$K$ & Macro & Micro & Samples & Avg. & Hard \\
-\hline
-5 & \textbf{59.34} & \textbf{63.06} & \textbf{63.51} & 61.97 & \textbf{49.65} \\
-10 & 58.13 & 62.23 & 63.00 & 61.12 & 44.74 \\
-28 & 58.42 & 63.16 & 64.42 & \textbf{62.00} & 46.65 \\
-\hline
-\end{tabular}
-\end{table}
+% \begin{table}[H]
+% \centering
+% \caption{Validation-split results corresponding to Table~\ref{tab:k_sensitivity_test}. All numbers are percentages.}
+% \label{tab:k_sensitivity_val}
+% \begin{tabular}{lccccc}
+% \hline
+% Top-$K$ & Macro & Micro & Samples & Avg. & Hard \\
+% \hline
+% 5 & \textbf{59.34} & \textbf{63.06} & \textbf{63.51} & 61.97 & \textbf{49.65} \\
+% 10 & 58.13 & 62.23 & 63.00 & 61.12 & 44.74 \\
+% 28 & 58.42 & 63.16 & 64.42 & \textbf{62.00} & 46.65 \\
+% \hline
+% \end{tabular}
+% \end{table}
 
-\begin{table}[H]
-\centering
-\caption{Validation-split results corresponding to Table~\ref{tab:thresholding_test}. All numbers are percentages.}
-\label{tab:thresholding_val}
-\begin{tabular}{lccccc}
-\hline
-Thresholding & Macro & Micro & Samples & Avg. & Hard \\
-\hline
-Global & 50.87 & 57.21 & 57.06 & 55.05 & 40.49 \\
-Class-wise & \textbf{59.34} & \textbf{63.06} & \textbf{63.51} & \textbf{61.97} & \textbf{49.65} \\
-\hline
-\end{tabular}
-\end{table}
+% \begin{table}[H]
+% \centering
+% \caption{Validation-split results corresponding to Table~\ref{tab:thresholding_test}. All numbers are percentages.}
+% \label{tab:thresholding_val}
+% \begin{tabular}{lccccc}
+% \hline
+% Thresholding & Macro & Micro & Samples & Avg. & Hard \\
+% \hline
+% Global & 50.87 & 57.21 & 57.06 & 55.05 & 40.49 \\
+% Class-wise & \textbf{59.34} & \textbf{63.06} & \textbf{63.51} & \textbf{61.97} & \textbf{49.65} \\
+% \hline
+% \end{tabular}
+% \end{table}
 
-Overall, these validation results support the same conclusion as the test split: SADIR improves robustness and discriminability in a consistent manner, rather than relying on split-specific effects.
+% Overall, these validation results support the same conclusion as the test split: SADIR improves robustness and discriminability in a consistent manner, rather than relying on split-specific effects.
 
 \section{Prompt Templates}
 

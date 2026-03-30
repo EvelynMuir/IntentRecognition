@@ -12,7 +12,7 @@ In contrast, intention recognition requires mapping visual evidence to abstract 
 These labels are rarely determined by local visual cues alone; instead, they often emerge from a holistic interpretation of scene context, human activities, object configurations, social interactions, and commonsense knowledge.
 Therefore, the main difficulty of this task lies not merely in visual representation learning, but in establishing a reliable bridge between concrete image content and abstract intention semantics.
 
-A central challenge of this task is its inherent ambiguity, which manifests in two distinct forms. 
+A central challenge of this task is its inherent ambiguity, which manifests in two distinct forms, as shown in Figure~\ref{fig:teaser} (a).
 The first is semantic ambiguity. 
 Intent labels are often semantically adjacent, partially overlapping, or hierarchically correlated. 
 Different labels may correspond to visually similar patterns, while the same intent may be expressed through diverse appearances. 
@@ -21,6 +21,21 @@ The second is supervisory ambiguity.
 Since intention recognition is intrinsically subjective, different audiences may infer different yet plausible intentions from the same image. 
 As a result, the supervisory signal itself may become unstable, especially for difficult samples with severe disagreement. 
 Under such circumstances, directly optimizing against hard labels can force the model to fit oversimplified or unreliable targets, thereby harming the robustness of the learned decision boundaries.
+
+\begin{figure}[t]
+\centering
+\begin{subfigure}[t]{0.49\linewidth}
+\centering
+\includegraphics[width=\linewidth]{srcs/teaser_a.pdf}
+\end{subfigure}
+\hfill
+\begin{subfigure}[t]{0.48\linewidth}
+\centering
+\includegraphics[width=\linewidth]{srcs/teaser_b.pdf}
+\end{subfigure}
+\caption{\textbf{The Stage-Aware Disambiguation paradigm of SADIR.} \textbf{(a) The Dual Ambiguity Challenge:} Subjective visual intent recognition is fundamentally bottlenecked by \textit{semantic ambiguity} (highly overlapping conceptual boundaries during inference) and \textit{supervisory ambiguity} (annotator disagreement and noise during training). \textbf{(b) Stage-Aware Pipeline:} our SADIR framework introduces a \textit{stage-aware} paradigm. During training, the model resolves supervisory ambiguity by leveraging VLM-derived commonsense, adaptively gated by annotator agreement. During inference, the model tackles semantic ambiguity by refining predictions within a compact Top-$K$ candidate pool using text priors, with zero extra visual computational overhead.}
+\label{fig:teaser}
+\end{figure}
 
 Existing studies have attempted to alleviate these difficulties from different perspectives. 
 Prototype-based methods, such as PIP-Net \cite{wang_prototype-based_2023}, introduce representative anchors to reduce feature-space confusion. 
@@ -34,7 +49,8 @@ In our view, the core difficulty of subjective visual intention recognition is n
 The former primarily corrupts training by compressing diverse subjective interpretations into rigid supervisory targets, whereas the latter primarily affects inference by making semantically adjacent candidate labels difficult to distinguish. 
 Treating these two failure modes within one mechanism may therefore be suboptimal, as it is difficult to simultaneously achieve robust learning on disagreement-prone samples and precise discrimination among closely related intents.
 
-Motivated by this observation, we propose \textbf{SADIR} (\textbf{S}tage-\textbf{A}ware \textbf{D}isambiguation for \textbf{I}ntent \textbf{R}ecognition) to address ambiguity in visual intention recognition. 
+Motivated by this observation, we propose \textbf{SADIR} (\textbf{S}tage-\textbf{A}ware \textbf{D}is-\\
+ambiguation for \textbf{I}ntent \textbf{R}ecognition) to address ambiguity in visual intention recognition, as shown in Figure~\ref{fig:teaser} (b). 
 Instead of treating ambiguity as a unified problem, we consider its different roles during training and inference, and design complementary mechanisms accordingly.
 During training, the primary challenge lies in handling unreliable supervision caused by annotator disagreement. 
 To address this, we propose Uncertainty-guided Text Distillation (UTD), which leverages disagreement as an uncertainty signal to adaptively introduce semantic guidance. 

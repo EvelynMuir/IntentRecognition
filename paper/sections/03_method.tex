@@ -1,3 +1,10 @@
+\begin{figure}[th]
+\centering
+\includegraphics[width=\linewidth]{srcs/framework.pdf}
+\caption{Overview of the SADIR framework. The framework explicitly decouples the disambiguation process into two stages. \textbf{(Top) Training Stage:} The Uncertainty-guided Text Distillation (UTD) module employs a VLM-derived teacher to generate contrastive textual rationales. The distillation process is adaptively gated by the annotator agreement score $\omega$, balancing objective visual supervision and subjective semantic guidance. \textbf{(Bottom) Inference Stage:} The Semantic Local Reranking and Calibration (SLR-C) module extracts Top-$K$ candidate intents from the visual logits and refines them using visually-grounded semantic priors, followed by class-wise calibration for the final prediction.}
+\label{fig:sadir_framework}
+\end{figure}
+
 \section{Method}
 \label{sec:method}
 
@@ -5,7 +12,7 @@
 
 To address the dual challenges of supervisory ambiguity and semantic ambiguity in visual intention recognition, we propose \textbf{SADIR} (\textbf{S}tage-\textbf{A}ware \textbf{D}isambiguation for \textbf{I}ntent \textbf{R}ecognition), which explicitly decouples training and inference. Instead of handling these two forms of ambiguity within a unified mechanism, we address them in a stage-specific manner.
 
-SADIR consists of two key components:
+SADIR consists of two key components, as shown in Figure~\ref{fig:sadir_framework}:
 \begin{itemize}
     \item \textbf{Uncertainty-guided Text Distillation (UTD)}, which introduces adaptive semantic guidance during training to improve robustness under ambiguous supervision;
     \item \textbf{Semantic Local Reranking and Calibration (SLR-C)}, which performs lightweight semantic refinement during inference to enhance discrimination among competing intents.
