@@ -3,13 +3,13 @@
 
 \subsection{Image Intent Recognition}
 Intent recognition seeks to decode the underlying purposes of humans. 
-Early studies mainly focus on specific domains such as political persuasion \cite{joo_visual_2014, joo_automated_2015, huang_inferring_2016}, where intent is inferred from facial expressions, body language, and scene context. 
+Early studies mainly focus on specific domains, \textit{e.g.} political persuasion \cite{joo_visual_2014, joo_automated_2015, huang_inferring_2016}, where intent is inferred from facial expressions, body language, and scene contexts. 
 More recently, the release of the Intentonomy dataset \cite{jia_intentonomy_2021} has facilitated the study of general-purpose visual intention understanding in unconstrained social media scenarios.
 
 Existing methods for visual intention recognition seek to solve the problem from different perspectives. 
-Methods such as PIP-Net \cite{wang_prototype-based_2023} concentrate on feature and representation learning, which introduce prototype-based representations to capture diverse visual patterns and improve interpretability. 
+Methods \textit{e.g.} PIP-Net \cite{wang_prototype-based_2023} concentrate on feature and representation learning, which introduce prototype-based representations to capture diverse visual patterns and improve interpretability. 
 Considering the hierarchical nature of intent labels, approaches like CPAD \cite{ye_cross-modality_2023} and HLEG \cite{shi_learnable_2023} exploit label hierarchies to improve multi-level semantic alignment and mitigate ambiguity.  
-LabCR \cite{shi_label-aware_2024} addresses label noise and shifting through calibration strategies, while recent works such as IntCLIP \cite{leonardis_synergy_2025} and IntentMLM \cite{wang_unlocking_2026} leverage vision-language models and textual priors to align visual features with semantic intent descriptions.
+LabCR \cite{shi_label-aware_2024} addresses label noise and shifting through calibration strategies, while recent works including IntCLIP \cite{leonardis_synergy_2025} and IntentMLM \cite{wang_unlocking_2026} leverage vision-language models and textual priors to align visual features with semantic intent descriptions.
 
 Despite these advances, most existing methods address ambiguity from a single perspective, such as feature representation, label structure, or external knowledge. 
 They implicitly assume that ambiguity should be handled uniformly within a model. 
@@ -18,7 +18,7 @@ However, in visual intention recognition, ambiguity arises from different source
 \subsection{Learning under Ambiguous or Uncertain Supervision}
 
 Learning under ambiguous or noisy supervision has been extensively studied in multi-label recognition and subjective understanding tasks, where label reliability is often compromised by annotation noise, semantic overlap, or annotator disagreement. 
-Existing approaches typically address this issue through three main directions.
+Existing approaches typically address this issue in three main directions.
 
 First, noise-robust learning methods mitigate unreliable supervision through robust objectives, hard-example handling, or noise-aware optimization \cite{lin_focal_2020, shrivastava_training_2016, ye_collaborative_2022, ridnik_asymmetric_2021}. 
 These methods reduce the adverse impact of corrupted or hard labels, but they usually treat uncertainty as a generic optimization issue rather than modeling its semantic origin.

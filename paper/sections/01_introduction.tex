@@ -2,12 +2,12 @@
 \label{sec:intro}
 
 With the rapid proliferation of social media, images are increasingly used as a medium for users to share daily experiences, emotions, and personal viewpoints. 
-Visual intention understanding aims to infer the latent purpose conveyed by an image, and has become an important problem in human-centered multimedia analysis \cite{jia_intentonomy_2021, wen_dip_2023}. 
-Unlike explicit textual statements, such visual expressions often imply intentions in an indirect and abstract manner. 
-Accurately recognizing these intentions is valuable for a variety of downstream applications, including user interest understanding, psychological and behavioral profiling, and broader social media content analysis.
+Visual intention recognition aims to infer the latent purpose conveyed by an image, and has become an important problem in human-centered multimedia analysis \cite{jia_intentonomy_2021, wen_dip_2023}. 
+% Unlike explicit textual statements, such visual expressions often imply intentions in an indirect and abstract manner. 
+Accurately recognizing these intentions is valuable for a variety of downstream applications, including user interest understanding, psychological and behavioral profiling, broader social media content analysis, \textit{etc}.
 
 Compared with conventional image classification, visual intention recognition is fundamentally more challenging.
-In traditional recognition tasks, the goal is to assign images to relatively objective semantic categories, such as objects, scenes, or actions. 
+In traditional classification tasks, the goal is to assign images to relatively objective semantic categories, such as objects, scenes, or actions. 
 In contrast, intention recognition requires mapping visual evidence to abstract and subjective intent labels.
 These labels are rarely determined by local visual cues alone; instead, they often emerge from a holistic interpretation of scene context, human activities, object configurations, social interactions, and commonsense knowledge.
 Therefore, the main difficulty of this task lies not merely in visual representation learning, but in establishing a reliable bridge between concrete image content and abstract intention semantics.
@@ -33,12 +33,12 @@ Under such circumstances, directly optimizing against hard labels can force the 
 \centering
 \includegraphics[width=\linewidth]{srcs/teaser_b.pdf}
 \end{subfigure}
-\caption{\textbf{Functionally decoupled ambiguity modeling in FDIL.} \textbf{(a) The dual ambiguity challenge:} subjective visual intent recognition is fundamentally bottlenecked by \textit{semantic ambiguity} (highly overlapping conceptual boundaries) and \textit{supervisory ambiguity} (annotator disagreement and unstable training targets). \textbf{(b) Functionally decoupled pipeline:} FDIL separates ambiguity-aware semantic refinement from ambiguity-aware semantic supervision. SLR-C builds a semantic prior from textual cues to provide structured candidate semantics, while UTD stabilizes learning under disagreement through rationale-guided text distillation and supports image-aware prediction on top of the semantic prior.}
+\caption{\textbf{Functionally decoupled ambiguity modeling in FDIL.} \textbf{(a) The dual ambiguity challenge:} subjective visual intent recognition is fundamentally bottlenecked by \textit{semantic ambiguity} (highly overlapping conceptual boundaries) and \textit{supervisory ambiguity} (annotator disagreement and unstable training targets). \textbf{(b) Functionally decoupled pipeline:} FDIL separates ambiguity-aware semantic refinement from ambiguity-aware semantic supervision. Semantic Local Reranking and Calibration (SLR-C) builds a semantic prior from textual cues to provide structured candidate semantics, while Uncertainty-guided Text Distillation (UTD) stabilizes learning under disagreement through rationale-guided text distillation and supports image-aware prediction on top of the semantic prior.}
 \label{fig:teaser}
 \end{figure}
 
 Existing studies have attempted to alleviate these difficulties from different perspectives. 
-Prototype-based methods, such as PIP-Net \cite{wang_prototype-based_2023}, introduce representative anchors to reduce feature-space confusion. 
+Prototype-based methods, \textit{e.g.} PIP-Net \cite{wang_prototype-based_2023}, introduce representative anchors to reduce feature-space confusion. 
 Structure-aware methods, including CPAD \cite{ye_cross-modality_2023} and HLEG \cite{shi_learnable_2023}, exploit hierarchical label relationships to enhance multi-level semantic modeling and strengthen supervision. 
 From the perspective of label quality, LabCR \cite{shi_label-aware_2024} explicitly models label shifting and label blemish to better cope with imperfect annotation distributions. 
 More recently, knowledge-enhanced approaches have recognized that visual evidence alone is often insufficient for subjective intention understanding. 
@@ -49,11 +49,13 @@ In our view, the core difficulty of subjective visual intention recognition is n
 The former primarily corrupts supervision by compressing diverse subjective interpretations into rigid targets, whereas the latter primarily distorts local decision geometry by making neighboring labels difficult to separate. 
 Treating these two failure modes within one mechanism may therefore be suboptimal, as it is difficult to simultaneously achieve robust learning on disagreement-prone samples and precise discrimination among closely related intents.
 
-Motivated by this observation, we propose \textbf{FDIL} (\textbf{F}unctionally \textbf{D}ecoupled \textbf{I}ntent \textbf{L}earning), a functionally decoupled framework for subjective intent recognition, as illustrated in Figure~\ref{fig:teaser}(b), where fixed semantic priors provide structured candidate semantics, uncertainty-aware text teachers stabilize ambiguous supervision, and a residual student learns image-aware intent prediction on top of the semantic prior.
+Motivated by this observation, we propose the \textbf{FDIL} (\textbf{F}unctionally \textbf{D}ecoupled \textbf{I}ntent \textbf{L}earning), a functionally decoupled framework for subjective intent recognition, as illustrated in Figure~\ref{fig:teaser}(b), where fixed semantic priors provide structured candidate semantics, uncertainty-aware text teachers stabilize ambiguous supervision, and a residual student learns image-aware intent prediction on top of the semantic prior.
 We decouple ambiguity handling into two complementary functions.
 First, Semantic Local Reranking and Calibration (SLR-C) provides ambiguity-aware semantic refinement: heterogeneous lexical, canonical, and scenario priors define a semantic prior that supplies structured candidate semantics.
 Second, Uncertainty-guided Text Distillation (UTD) provides ambiguity-aware semantic supervision: a text-only teacher distilled from rationale embeddings regularizes the visual model according to annotator agreement, improving robustness under subjective supervision and supporting image-aware prediction on top of the semantic prior.
-Together, these two functions improve both robustness and discriminability without introducing heavy architectural complexity.
+Together, these two functions improve both robustness and discriminability without introducing high architectural complexity.
+
+Extensive experiments on the Intentonomy dataset show that our FDIL consistently outperforms strong existing baselines and recent state-of-the-art methods, yielding improvements in both hard-sample robustness and overall multi-label prediction quality.
 
 The main contributions of this work are summarized as follows:
 \begin{itemize}
@@ -62,4 +64,3 @@ The main contributions of this work are summarized as follows:
     \item We propose Uncertainty-guided Text Distillation (UTD), which leverages annotator disagreement as an uncertainty signal to adaptively introduce semantic guidance, improving robustness under ambiguous supervision.
 \end{itemize}
 
-Extensive experiments on the Intentonomy dataset show that FDIL consistently outperforms strong existing baselines and recent state-of-the-art methods, yielding improvements in both hard-sample robustness and overall multi-label prediction quality.
