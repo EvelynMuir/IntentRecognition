@@ -136,6 +136,11 @@ Junnan Li, Richard Socher, and Steven C.~H. Hoi.
 \newblock {DivideMix}: {Learning} with {Noisy} {Labels} as {Semi}-supervised {Learning}.
 \newblock September 2019.
 
+\bibitem{team_gemini_2025}
+Gemini Team.
+\newblock Gemini: {A} {Family} of {Highly} {Capable} {Multimodal} {Models}, May 2025.
+\newblock arXiv:2312.11805 [cs].
+
 \bibitem{bai_qwen25-vl_2025}
 Shuai Bai, Keqin Chen, Xuejing Liu, Jialin Wang, Wenbin Ge, Sibo Song, Kai Dang, Peng Wang, Shijie Wang, Jun Tang, Humen Zhong, Yuanzhi Zhu, Mingkun Yang, Zhaohai Li, Jianqiang Wan, Pengfei Wang, Wei Ding, Zheren Fu, Yiheng Xu, Jiabo Ye, Xi~Zhang, Tianbao Xie, Zesen Cheng, Hang Zhang, Zhibo Yang, Haiyang Xu, and Junyang Lin.
 \newblock Qwen2.5-{VL} {Technical} {Report}, February 2025.
@@ -150,10 +155,5 @@ Shitao Xiao, Zheng Liu, Peitian Zhang, Niklas Muennighoff, Defu Lian, and Jian-Y
 Ilya Loshchilov and Frank Hutter.
 \newblock Decoupled {Weight} {Decay} {Regularization}.
 \newblock September 2018.
-
-\bibitem{team_gemini_2025}
-Gemini Team.
-\newblock Gemini: {A} {Family} of {Highly} {Capable} {Multimodal} {Models}, May 2025.
-\newblock arXiv:2312.11805 [cs].
 
 \end{thebibliography}

@@ -61,7 +61,7 @@
 %%             country={}}
 %% \fntext[label3]{}
 
-\title{Stage-Aware Disambiguation for Subjective Visual Intention Recognition}
+\title{Functionally Decoupled Intent Learning under Supervisory and Semantic Ambiguity}
 
 %% use optional labels to link authors explicitly to addresses:
 %% \author[label1,label2]{}
@@ -91,7 +91,7 @@
 %% Author affiliation
 \affiliation[BUAA]{organization={Beihang University},%Department and Organization
             addressline={No. 37 Xueyuan Road}, 
-            city={Haidian Distirct},
+            city={Haidian District},
             postcode={100191}, 
             state={Beijing},
             country={China}}
@@ -113,8 +113,8 @@
 %% Abstract
 \begin{abstract}
 %% Text of abstract
-Visual intention understanding aims to infer the latent purpose conveyed by an image, and is fundamentally more challenging than conventional image classification due to its abstract and subjective nature. A central difficulty of this task lies in two distinct forms of ambiguity: supervisory ambiguity, caused by subjective annotation over plausible intentions, and semantic ambiguity, caused by semantically adjacent and overlapping intents.
-In this work, we propose SADIR (\textbf{Stage-Aware Disambiguation for Intent Recognition}), a framework that treats ambiguity differently across stages: training focuses on stabilizing supervision under disagreement, while inference focuses on discriminating semantically adjacent candidates. To address supervisory ambiguity, we introduce Uncertainty-guided Text Distillation (UTD), which converts annotator disagreement into an adaptive semantic regularization signal. To address semantic ambiguity, we further propose Semantic Local Reranking and Calibration (SLR-C), which performs lightweight reranking within a compact Top-K candidate set using heterogeneous textual priors. Extensive experiments on the Intentonomy dataset demonstrate that SADIR consistently improves both hard-sample robustness and overall multi-label prediction performance over strong baselines and recent state-of-the-art methods.
+Visual intention understanding aims to infer the latent purpose conveyed by an image, and is fundamentally more challenging than conventional image classification due to its abstract and subjective nature. A central difficulty of this task lies in two complementary forms of ambiguity: supervisory ambiguity, caused by subjective annotation over plausible intentions, and semantic ambiguity, caused by semantically adjacent and overlapping intents.
+In this work, we propose FDIL (\textbf{F}unctionally \textbf{D}ecoupled \textbf{I}ntent \textbf{L}earning), a framework that treats these two sources of ambiguity through complementary roles. FDIL first introduces a semantic prior built from textual cues to provide structured candidate semantics, and then learns image-aware intent prediction under uncertainty-guided teacher supervision. Concretely, we develop Semantic Local Reranking and Calibration (SLR-C) to form the semantic prior, and Uncertainty-guided Text Distillation (UTD) to transform annotator disagreement into an adaptive training signal. By combining semantic structure with uncertainty-aware learning, FDIL improves both the stability of supervision and the discrimination of semantically similar intents. Extensive experiments on the Intentonomy dataset demonstrate that FDIL consistently improves both hard-sample robustness and overall multi-label prediction performance over strong baselines and recent state-of-the-art methods.
 \end{abstract}
 
 %%Graphical abstract
@@ -155,6 +155,9 @@ Intent recognition \sep Image Understanding \sep VLM
 \input{sections/05_discussion}
 \input{sections/06_conclusion}
 
+\section{Declaration of generative AI and AI-assisted technologies in the manuscript preparation process}
+During the preparation of this work the authors used ChatGPT in order to improve language and readability. After using this tool, the authors reviewed and edited the content as needed and take full responsibility for the content of the published article.
+
 
 
 %% The Appendices part is started with the command \appendix;
@@ -188,14 +191,4 @@ Intent recognition \sep Image Understanding \sep VLM
 %   1994.
 
 % \end{thebibliography}
-\end{document}
-
-\endinput
-%%
-%% End of file `elsarticle-template-num.tex'.
-
-
-
-
-
 \end{document}

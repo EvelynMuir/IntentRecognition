@@ -222,30 +222,6 @@
 
 For reproducibility, we include the exact prompt templates used to generate rationale supervision and scenario priors. These prompts are applied offline during data preparation and do not introduce additional inference-time cost.
 
-\subsection{Rationale Generation Prompt}
-\label{app:rationale_prompt}
-
-We use an instruction template to generate the three-stage rationale for each training image. The final prompt used in our experiments is omitted here for brevity and will be inserted in the camera-ready version. The current placeholder structure is shown below.
-
-In this template, ${y_{true}}$ denotes the ground-truth intent set of the current sample, and ${y_{confuse}}$ denotes a semantically neighboring intent used for counterfactual disambiguation.
-
-\begin{quote}
-\textbf{System Instruction:} You are an expert human behavioral analyst and computer vision specialist. Your task is to analyze an image and provide a highly logical, structured reasoning chain that explains the underlying human intent. Strictly follow the requested format and avoid conversational filler.
-
-\textbf{User Prompt:} Given this image, the ground-truth human intents are strictly defined as the concurrent occurrence of: ${y_{true}}$.
-
-Please carefully observe the image and generate a structured reasoning report strictly following these 3 steps:
-
-Step 1: Visual Evidence \\
-Describe the explicit physical actions, key objects, body language, or facial expressions in the image that strongly support the presence of these concurrent intents (${y_{true}}$). Be specific about what you see and how the visual cues correspond to these multiple intents.
-
-Step 2: Contextual Bridging \\
-Explain how the background, environment, or the relationship between the subjects logically connects with the visual cues from Step 1 to reveal why these multiple psychological motivations (${y_{true}}$) naturally co-exist in this specific scene.
-
-Step 3: Counterfactual Disambiguation \\
-In a purely visual context, a machine learning model might easily misclassify this image as also containing the intent of ${y_{confuse}}$. Point out the specific visual clues that are definitively missing, or the contradictory details that are present, which prove the intent of ${y_{confuse}}$ is not happening here.
-\end{quote}
-
 \subsection{Scenario Prompt for SLR-C Prior}
 \label{app:scenario_prompt}
 
@@ -288,12 +264,35 @@ Second, provide a concise list breaking down the keywords/phrases for the 5 dime
 \textbf{Crucial Note:} While generating, actively consider the core visual differences between this intent and other highly similar intents (e.g., distinguishing "Enjoying life" from "Having an easy and comfortable life"), and heavily emphasize those unique visual discriminators in your description.
 \end{quote}
 
-\subsubsection{Caption Prompt for Rational Ablation}
+\subsection{Rationale Generation Prompt}
+\label{app:rationale_prompt}
 
-For the rationale ablation in Section~\ref{sec:experiments}, we additionally use the following lightweight caption prompt as a weaker semantic supervision source.
+We use an instruction template to generate the three-stage rationale for each training image.
+In this template, ${y_{true}}$ denotes the ground-truth intent set of the current sample, and ${y_{confuse}}$ denotes a semantically neighboring intent used for counterfactual disambiguation.
 
 \begin{quote}
-    \textbf{System Instruction:} You are an expert human behavioral analyst and computer vision specialist. Your task is to analyze an image and provide a highly logical, structured reasoning chain that explains the underlying human intent. Strictly follow the requested format and avoid conversational filler.
+\textbf{System Instruction:} You are an expert human behavioral analyst and computer vision specialist. Your task is to analyze an image and provide a highly logical, structured reasoning chain that explains the underlying human intent. Strictly follow the requested format and avoid conversational filler.
 
-    \textbf{User Prompt:} Describe this image for visual intent recognition in 2-3 concise sentences. Focus on visible actions, salient objects, and scene context. Avoid speculation beyond what is visually grounded.
+\textbf{User Prompt:} Given this image, the ground-truth human intents are strictly defined as the concurrent occurrence of: ${y_{true}}$.
+
+Please carefully observe the image and generate a structured reasoning report strictly following these 3 steps:
+
+Step 1: Visual Evidence \\
+Describe the explicit physical actions, key objects, body language, or facial expressions in the image that strongly support the presence of these concurrent intents (${y_{true}}$). Be specific about what you see and how the visual cues correspond to these multiple intents.
+
+Step 2: Contextual Bridging \\
+Explain how the background, environment, or the relationship between the subjects logically connects with the visual cues from Step 1 to reveal why these multiple psychological motivations (${y_{true}}$) naturally co-exist in this specific scene.
+
+Step 3: Counterfactual Disambiguation \\
+In a purely visual context, a machine learning model might easily misclassify this image as also containing the intent of ${y_{confuse}}$. Point out the specific visual clues that are definitively missing, or the contradictory details that are present, which prove the intent of ${y_{confuse}}$ is not happening here.
 \end{quote}
+
+% \subsection{Caption Prompt for Rationale Ablation}
+
+% For the rationale ablation in Section~\ref{sec:experiments}, we additionally use the following lightweight caption prompt as a weaker semantic supervision source.
+
+% \begin{quote}
+%     \textbf{System Instruction:} You are an expert human behavioral analyst and computer vision specialist. Your task is to analyze an image and provide a highly logical, structured reasoning chain that explains the underlying human intent. Strictly follow the requested format and avoid conversational filler.
+
+%     \textbf{User Prompt:} Describe this image for visual intent recognition in 2-3 concise sentences. Focus on visible actions, salient objects, and scene context. Avoid speculation beyond what is visually grounded.
+% \end{quote}

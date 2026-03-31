@@ -24,16 +24,16 @@ Under such circumstances, directly optimizing against hard labels can force the 
 
 \begin{figure}[t]
 \centering
-\begin{subfigure}[t]{0.49\linewidth}
+\begin{subfigure}[t]{0.51\linewidth}
 \centering
 \includegraphics[width=\linewidth]{srcs/teaser_a.pdf}
 \end{subfigure}
 \hfill
-\begin{subfigure}[t]{0.48\linewidth}
+\begin{subfigure}[t]{0.43\linewidth}
 \centering
 \includegraphics[width=\linewidth]{srcs/teaser_b.pdf}
 \end{subfigure}
-\caption{\textbf{The Stage-Aware Disambiguation paradigm of SADIR.} \textbf{(a) The Dual Ambiguity Challenge:} Subjective visual intent recognition is fundamentally bottlenecked by \textit{semantic ambiguity} (highly overlapping conceptual boundaries during inference) and \textit{supervisory ambiguity} (annotator disagreement and noise during training). \textbf{(b) Stage-Aware Pipeline:} our SADIR framework introduces a \textit{stage-aware} paradigm. During training, the model resolves supervisory ambiguity by leveraging VLM-derived commonsense, adaptively gated by annotator agreement. During inference, the model tackles semantic ambiguity by refining predictions within a compact Top-$K$ candidate pool using text priors, with zero extra visual computational overhead.}
+\caption{\textbf{Functionally decoupled ambiguity modeling in FDIL.} \textbf{(a) The dual ambiguity challenge:} subjective visual intent recognition is fundamentally bottlenecked by \textit{semantic ambiguity} (highly overlapping conceptual boundaries) and \textit{supervisory ambiguity} (annotator disagreement and unstable training targets). \textbf{(b) Functionally decoupled pipeline:} FDIL separates ambiguity-aware semantic refinement from ambiguity-aware semantic supervision. SLR-C builds a semantic prior from textual cues to provide structured candidate semantics, while UTD stabilizes learning under disagreement through rationale-guided text distillation and supports image-aware prediction on top of the semantic prior.}
 \label{fig:teaser}
 \end{figure}
 
@@ -45,25 +45,21 @@ More recently, knowledge-enhanced approaches have recognized that visual evidenc
 IntCLIP \cite{leonardis_synergy_2025} incorporates the vision-language alignment knowledge of CLIP into the task, while IntentMLM \cite{wang_unlocking_2026} further leverages multimodal large models, caption generation, and retrieval to perform more holistic intention perception.
 
 Although these methods have yielded encouraging progress, they typically treat one perspective of ambiguity as dominant. 
-In our view, the core difficulty of subjective visual intention recognition is not any single ambiguity alone, but the coexistence of supervisory ambiguity and semantic ambiguity, which arise at different stages and affect prediction in different ways. 
-The former primarily corrupts training by compressing diverse subjective interpretations into rigid supervisory targets, whereas the latter primarily affects inference by making semantically adjacent candidate labels difficult to distinguish. 
+In our view, the core difficulty of subjective visual intention recognition is not any single ambiguity alone, but the coexistence of supervisory ambiguity and semantic ambiguity, which interfere with different functional components of the system. 
+The former primarily corrupts supervision by compressing diverse subjective interpretations into rigid targets, whereas the latter primarily distorts local decision geometry by making neighboring labels difficult to separate. 
 Treating these two failure modes within one mechanism may therefore be suboptimal, as it is difficult to simultaneously achieve robust learning on disagreement-prone samples and precise discrimination among closely related intents.
 
-Motivated by this observation, we propose \textbf{SADIR} (\textbf{S}tage-\textbf{A}ware \textbf{D}is-\\
-ambiguation for \textbf{I}ntent \textbf{R}ecognition) to address ambiguity in visual intention recognition, as shown in Figure~\ref{fig:teaser} (b). 
-Instead of treating ambiguity as a unified problem, we consider its different roles during training and inference, and design complementary mechanisms accordingly.
-During training, the primary challenge lies in handling unreliable supervision caused by annotator disagreement. 
-To address this, we propose Uncertainty-guided Text Distillation (UTD), which leverages disagreement as an uncertainty signal to adaptively introduce semantic guidance. 
-This enables the model to learn more robust decision boundaries without overfitting to noisy or oversimplified labels.
-During inference, the challenge shifts to distinguishing among semantically similar candidate intents. 
-To improve fine-grained discrimination, we introduce Semantic Local Reranking and Calibration (SLR-C), which performs lightweight semantic refinement within a compact candidate set using multiple forms of textual priors.
-Together, SADIR improves both robustness and discriminability without introducing significant additional complexity.
+Motivated by this observation, we propose \textbf{FDIL} (\textbf{F}unctionally \textbf{D}ecoupled \textbf{I}ntent \textbf{L}earning), a functionally decoupled framework for subjective intent recognition, as illustrated in Figure~\ref{fig:teaser}(b), where fixed semantic priors provide structured candidate semantics, uncertainty-aware text teachers stabilize ambiguous supervision, and a residual student learns image-aware intent prediction on top of the semantic prior.
+We decouple ambiguity handling into two complementary functions.
+First, Semantic Local Reranking and Calibration (SLR-C) provides ambiguity-aware semantic refinement: heterogeneous lexical, canonical, and scenario priors define a semantic prior that supplies structured candidate semantics.
+Second, Uncertainty-guided Text Distillation (UTD) provides ambiguity-aware semantic supervision: a text-only teacher distilled from rationale embeddings regularizes the visual model according to annotator agreement, improving robustness under subjective supervision and supporting image-aware prediction on top of the semantic prior.
+Together, these two functions improve both robustness and discriminability without introducing heavy architectural complexity.
 
 The main contributions of this work are summarized as follows:
 \begin{itemize}
-    \item We analyze visual intention recognition from a stage-dependent perspective and highlight that ambiguity plays different roles during training and inference. This perspective provides a clearer understanding of why existing methods struggle with both robustness and fine-grained discrimination.
-    \item We propose Uncertainty-guided Text Distillation (UTD), a training strategy that leverages annotator disagreement as an uncertainty signal to adaptively introduce semantic guidance, improving robustness under ambiguous supervision.
-    \item We propose Semantic Local Reranking and Calibration (SLR-C), an inference-time refinement module that enhances discrimination among semantically similar intents through lightweight local reranking with textual priors.
+    \item We reformulate visual intention recognition as a \emph{functionally decoupled} ambiguity problem, and show that supervisory ambiguity and semantic ambiguity should be handled by different functional modules rather than by one unified mechanism.
+    \item We propose Semantic Local Reranking and Calibration (SLR-C) together with residual semantic refinement, where heterogeneous textual priors first define a semantic prior with structured candidate semantics and a lightweight residual student further adapts prediction to image evidence.
+    \item We propose Uncertainty-guided Text Distillation (UTD), which leverages annotator disagreement as an uncertainty signal to adaptively introduce semantic guidance, improving robustness under ambiguous supervision.
 \end{itemize}
 
-Extensive experiments on the Intentonomy dataset show that SADIR consistently outperforms strong existing baselines and recent state-of-the-art methods, yielding improvements in both hard-sample robustness and overall multi-label prediction quality.
+Extensive experiments on the Intentonomy dataset show that FDIL consistently outperforms strong existing baselines and recent state-of-the-art methods, yielding improvements in both hard-sample robustness and overall multi-label prediction quality.
