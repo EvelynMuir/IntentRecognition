@@ -49,6 +49,25 @@ Semantic ambiguity mainly manifests as local confusion among visually plausible 
 
 Intent semantics are inherently multi-granular and abstract, making a single textual representation insufficient. We therefore construct a heterogeneous semantic prior for each intent by combining three complementary textual sources: lexical intent phrases, canonical intent descriptions, and descriptive visual scenarios. The lexical source provides concise intent name cues, the canonical source provides semantic definitions, and the scenario source grounds abstract intents into plausible visual situations.
 
+\paragraph{Example}
+For the intent \textit{SocialLifeFriendship}, the laxical phrase is \textit{``Social Life and Friendship''}, and the canonical description is:
+\textit{``Being part of a social group. Having people to do things with. Having close friends, others to rely on. Making friends, drawing others near.''}
+This intent can be further expanded into multiple scenario archetypes with distinct visual realizations:
+\begin{quote}
+\small
+\textbf{Scenario 1}
+\textit{``A photo of a group of friends hiking up a steep mountain trail together, wearing backpacks, laughing and giving high-fives under a bright sunny sky.''}
+
+\textbf{Scenario 2}
+\textit{``An image showing two close friends sitting on a comfortable living room couch, drinking coffee, leaning in closely to share a deep, supportive conversation.''}
+
+\textbf{Scenario 3:}
+\textit{``A photo of a large group of diverse people gathered around a busy dinner table, laughing loudly and toasting glasses of wine in a warmly lit room.''}
+
+\textbf{Scenario 4:}
+\textit{``An image showing a group of cheerful volunteers working together in a lush community garden, planting flowers side-by-side with dirty hands and bright smiles.''}
+\end{quote}
+
 Given an image $x$, we compute image-text similarities:
 \begin{equation}
 s^{\text{prior}}_c = \text{sim}(f_{\text{img}}(x), \mathbf{e}_c).
@@ -147,9 +166,9 @@ The visual backbone produces logits $\mathbf{s}^{v}$ for image $x$. We adopt Asy
 
 To incorporate semantic guidance, we introduce an uncertainty-guided Bernoulli distillation loss:
 \begin{equation}
-\mathcal{L}_{\text{distill}} = \sum_{c=1}^{C}\text{KL}\big(\sigma(s_c^{v}/\tau)\,\|\, p_c^{\text{tea}}\big),
+\mathcal{L}_{\text{distill}} = \sum_{c=1}^{C}\text{KL}\big(\mathrm{Bern}(p_c^{\text{tea}})\,\|\, \mathrm{Bern}(\sigma(s_c^{v}/\tau))\big),
 \end{equation}
-which is applied independently to each label. We use Bernoulli-style distillation rather than softmax distillation because intent recognition is a multi-label problem and class probabilities are not mutually exclusive. Here, $\lambda$ denotes the distillation weight that controls the overall contribution of the teacher signal relative to the visual supervision term. In our experiments, $\lambda$ is fixed to 1.0.
+which is applied independently to each label. We use Bernoulli-style distillation rather than softmax distillation because intent recognition is a multi-label problem: each intent is modeled as an independent Bernoulli variable rather than as a mutually exclusive class on a probability simplex. This formulation preserves per-class uncertainty and avoids imposing artificial competition among labels.
 
 Rather than mixing the two objectives with a fixed global coefficient, we use a gate derived from the agreement score. For the current sample, the teacher branch weight is defined as $g = 1 - \omega$ so low-agreement samples receive stronger semantic guidance, while high-agreement samples remain dominated by direct visual supervision.
 

@@ -32,22 +32,24 @@
 \@writefile{toc}{\contentsline {subsection}{\numberline {2.2}Learning under Ambiguous or Uncertain Supervision}{6}{}\protected@file@percent }
 \citation{jia_intentonomy_2021,shi_learnable_2023}
 \@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Overview of the FDIL framework. The framework functionally decouples ambiguity handling into \textbf  {semantic refinement} and \textbf  {semantic supervision}. \textbf  {(Bottom) SLR-C module:} heterogeneous lexical, canonical, and scenario priors define a semantic prior through Top-$K$ reranking, after which a lightweight residual student adapts the final prediction to image evidence before class-wise calibration. \textbf  {(Top) UTD module:} a VLM-derived text teacher provides rationale-based semantic supervision, and its contribution is adaptively gated by the annotator agreement score $\omega $ to stabilize learning under supervisory ambiguity.}}{7}{}\protected@file@percent }
-\newlabel{fig:fdir_framework}{{2}{7}{}{figure.2}{}}
+\newlabel{fig:fdil_framework}{{2}{7}{}{figure.2}{}}
 \@writefile{toc}{\contentsline {section}{\numberline {3}Method}{8}{}\protected@file@percent }
 \newlabel{sec:method}{{3}{8}{}{section.3}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Overview}{8}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {3.2}Problem Formulation}{8}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {3.3}Semantic Local Reranking and Calibration (SLR-C)}{9}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {3.3.1}Semantic Prior Construction}{9}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.3.2}Semantic Local Reranking}{10}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Example.}{10}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.3.2}Semantic Local Reranking}{11}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {3.3.3}Residual Refinement on the Semantic Prior}{11}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.3.4}Class-wise Calibration}{11}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {3.3.4}Class-wise Calibration}{12}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {3.4}Uncertainty-guided Text Distillation (UTD)}{12}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {3.4.1}Motivation}{12}{}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {3.4.2}Text-derived Teacher}{12}{}\protected@file@percent }
 \citation{ridnik_asymmetric_2021}
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {3.4.3}Uncertainty-guided Distillation}{13}{}\protected@file@percent }
 \citation{jia_intentonomy_2021}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.5}Functionally Decoupled Ambiguity Modeling}{14}{}\protected@file@percent }
 \citation{he_deep_2016}
 \citation{zhang_use_2022}
 \citation{jia_multiguard_2022}
@@ -65,14 +67,13 @@
 \citation{leonardis_synergy_2025}
 \citation{wang_unlocking_2026}
 \citation{radford_learning_2021}
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.5}Functionally Decoupled Ambiguity Modeling}{14}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {4}Experiments}{14}{}\protected@file@percent }
-\newlabel{sec:experiments}{{4}{14}{}{section.4}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Experimental Setup}{14}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.1.1}Dataset and Evaluation Metrics}{14}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {4}Experiments}{15}{}\protected@file@percent }
+\newlabel{sec:experiments}{{4}{15}{}{section.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Experimental Setup}{15}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.1.1}Dataset and Evaluation Metrics}{15}{}\protected@file@percent }
 \citation{jia_intentonomy_2021}
-\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Comparison with state-of-the-art methods on the Intentonomy test split. We report Macro F1, Micro F1, Samples F1, and Avg. (the mean of the three F1 scores). All numbers are percentages.}}{15}{}\protected@file@percent }
-\newlabel{tab:main_results}{{1}{15}{}{table.1}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Comparison with state-of-the-art methods on the Intentonomy test split. We report Macro F1, Micro F1, Samples F1, and Avg. (the mean of the three F1 scores). All numbers are percentages.}}{16}{}\protected@file@percent }
+\newlabel{tab:main_results}{{1}{16}{}{table.1}{}}
 \citation{radford_learning_2021}
 \citation{team_gemini_2025}
 \citation{radford_learning_2021}
@@ -80,7 +81,7 @@
 \citation{xiao_c-pack_2024}
 \citation{ridnik_asymmetric_2021}
 \citation{loshchilov_decoupled_2018}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.1.2}Implementation Details}{16}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.1.2}Implementation Details}{17}{}\protected@file@percent }
 \citation{jia_intentonomy_2021}
 \citation{he_deep_2016}
 \citation{jia_intentonomy_2021}
@@ -98,66 +99,67 @@
 \citation{wang_prototype-based_2023}
 \citation{wang_unlocking_2026}
 \citation{radford_learning_2021}
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}Comparative Experiments}{17}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.2.1}Comparison with state-of-the-art methods}{17}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.2.2}Performance on Different Difficulty Subsets}{17}{}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Performance on difficulty-based intent subsets (Easy/Medium/Hard) on the Intentonomy test split. Avg. denotes the mean over the three subsets. All numbers are percentages.}}{18}{}\protected@file@percent }
-\newlabel{tab:difficulty_results}{{2}{18}{}{table.2}{}}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.2.3}Performance of Different Content-Dependent Subsets}{18}{}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Performance on content-dependent intent subsets (Object, Context, and Others) on the Intentonomy test split. Avg. denotes the mean over the three subsets. All numbers are percentages.}}{19}{}\protected@file@percent }
-\newlabel{tab:content_results}{{3}{19}{}{table.3}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Component ablation of FDIL on the Intentonomy test split. \textit  {w/o UTD} removes uncertainty-guided text distillation, and \textit  {w/o Gated} removes agreement-aware gating. All numbers are percentages.}}{19}{}\protected@file@percent }
-\newlabel{tab:slrc_ablation}{{4}{19}{}{table.4}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}Ablation Studies}{19}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.3.1}Effectiveness of SLR-C and Residual Refinement}{19}{}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces Ablation of lexical, canonical, and scenario textual priors in SLR-C on the Intentonomy test split. Ensemble averages normalized logits from selected priors. All numbers are percentages.}}{20}{}\protected@file@percent }
-\newlabel{tab:prior_ablation}{{5}{20}{}{table.5}{}}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.3.2}Heterogeneous Priors in SLR-C}{20}{}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {6}{\ignorespaces Sensitivity to candidate size $K$ on the Intentonomy test split. Thresholding is fixed to class-wise search on the validation split. Avg. denotes the mean of Macro, Micro, and Samples F1. All numbers are percentages.}}{21}{}\protected@file@percent }
-\newlabel{tab:k_sensitivity_test}{{6}{21}{}{table.6}{}}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.3.3}Sensitivity to Candidate Size $K$}{21}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.3.4}Class-wise Thresholding}{21}{}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {7}{\ignorespaces Effect of thresholding strategy on the Intentonomy test split with $K=5$. Thresholds are searched on the validation split. Avg. denotes the mean of Macro, Micro, and Samples F1. All numbers are percentages.}}{22}{}\protected@file@percent }
-\newlabel{tab:thresholding_test}{{7}{22}{}{table.7}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {8}{\ignorespaces Ablation of rationale construction for UTD on the Intentonomy test split. Step 1/2/3 correspond to visual evidence, contextual bridging, and counterfactual disambiguation. All numbers are percentages.}}{22}{}\protected@file@percent }
-\newlabel{tab:rationale_ablation}{{8}{22}{}{table.8}{}}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.3.5}The Effectiveness of Rationale}{22}{}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {9}{\ignorespaces Effect of agreement-aware gated distillation on the Intentonomy test split (UTD without SLR-C). All numbers are percentages.}}{23}{}\protected@file@percent }
-\newlabel{tab:distill_ablation}{{9}{23}{}{table.9}{}}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.3.6}Effectiveness of Gated Distillation}{23}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.3.7}Modality Collapse Avoidance}{23}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}Comparative Experiments}{18}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.2.1}Comparison with state-of-the-art methods}{18}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.2.2}Performance on Different Difficulty Subsets}{18}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Performance on difficulty-based intent subsets (Easy/Medium/Hard) on the Intentonomy test split. Avg. denotes the mean over the three subsets. All numbers are percentages.}}{19}{}\protected@file@percent }
+\newlabel{tab:difficulty_results}{{2}{19}{}{table.2}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.2.3}Performance of Different Content-Dependent Subsets}{19}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Performance on content-dependent intent subsets (Object, Context, and Others) on the Intentonomy test split. Avg. denotes the mean over the three subsets. All numbers are percentages.}}{20}{}\protected@file@percent }
+\newlabel{tab:content_results}{{3}{20}{}{table.3}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Component ablation of FDIL on the Intentonomy test split. \textit  {w/o UTD} removes uncertainty-guided text distillation, and \textit  {w/o Gated} removes agreement-aware gating. All numbers are percentages.}}{20}{}\protected@file@percent }
+\newlabel{tab:slrc_ablation}{{4}{20}{}{table.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}Ablation Studies}{20}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.3.1}Effectiveness of SLR-C and Residual Refinement}{20}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces Ablation of lexical, canonical, and scenario textual priors in SLR-C on the Intentonomy test split. Ensemble averages normalized logits from selected priors. All numbers are percentages.}}{21}{}\protected@file@percent }
+\newlabel{tab:prior_ablation}{{5}{21}{}{table.5}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.3.2}Heterogeneous Priors in SLR-C}{21}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {6}{\ignorespaces Sensitivity to candidate size $K$ on the Intentonomy test split. Thresholding is fixed to class-wise search on the validation split. Avg. denotes the mean of Macro, Micro, and Samples F1. All numbers are percentages.}}{22}{}\protected@file@percent }
+\newlabel{tab:k_sensitivity_test}{{6}{22}{}{table.6}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.3.3}Sensitivity to Candidate Size $K$}{22}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.3.4}Class-wise Thresholding}{22}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {7}{\ignorespaces Effect of thresholding strategy on the Intentonomy test split with $K=5$. Thresholds are searched on the validation split. Avg. denotes the mean of Macro, Micro, and Samples F1. All numbers are percentages.}}{23}{}\protected@file@percent }
+\newlabel{tab:thresholding_test}{{7}{23}{}{table.7}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {8}{\ignorespaces Ablation of rationale construction for UTD on the Intentonomy test split. Step 1/2/3 correspond to visual evidence, contextual bridging, and counterfactual disambiguation. All numbers are percentages.}}{23}{}\protected@file@percent }
+\newlabel{tab:rationale_ablation}{{8}{23}{}{table.8}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.3.5}The Effectiveness of Rationale}{23}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {9}{\ignorespaces Effect of agreement-aware gated distillation on the Intentonomy test split (UTD without SLR-C). All numbers are percentages.}}{24}{}\protected@file@percent }
+\newlabel{tab:distill_ablation}{{9}{24}{}{table.9}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.3.6}Effectiveness of Gated Distillation}{24}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.3.7}Modality Collapse Avoidance}{24}{}\protected@file@percent }
 \citation{he_deep_2016}
+\citation{he_deep_2016}
+\citation{leonardis_synergy_2025}
 \citation{he_deep_2016}
 \citation{radford_learning_2021}
 \citation{radford_learning_2021}
-\@writefile{lot}{\contentsline {table}{\numberline {10}{\ignorespaces Teacher modality ablation on the Intentonomy test split. Oracle denotes teacher-only performance, while Gated Student performance with gated distillation. All numbers are percentages.}}{24}{}\protected@file@percent }
-\newlabel{tab:teacher_modality_ablation}{{10}{24}{}{table.10}{}}
-\@writefile{lot}{\contentsline {table}{\numberline {11}{\ignorespaces Backbone sensitivity of FDIL on the Intentonomy test split. All numbers are percentages.}}{24}{}\protected@file@percent }
-\newlabel{tab:backbone_ablation}{{11}{24}{}{table.11}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.4}Backbone Independence}{24}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.5}Efficiency Comparison}{24}{}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {12}{\ignorespaces Efficiency comparison on top of frozen CLIP features. Params count inference-active heads only; FLOPs are reported per image; latency is measured with batch size 1 on a single RTX 4090.}}{25}{}\protected@file@percent }
-\newlabel{tab:efficiency_comparison}{{12}{25}{}{table.12}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {4.6}Case Study}{25}{}\protected@file@percent }
-\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Qualitative case study of baseline and FDIL on representative Intentonomy samples. In the first row, the baseline predicts an incorrect semantic alternative, whereas FDIL removes that distractor by leveraging counterfactual evidence in the rationale and yields the correct intent decision. In the second row, FDIL makes an error, but the annotated soft label itself has only 0.33 agreement, indicating substantial ambiguity; under such weak supervision, the alternative prediction made by FDIL remains semantically plausible rather than arbitrarily wrong.}}{26}{}\protected@file@percent }
-\newlabel{fig:case_study}{{3}{26}{}{figure.3}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {5}Discussion}{26}{}\protected@file@percent }
-\newlabel{sec:discussion}{{5}{26}{}{section.5}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}A Functionally Decoupled View of Ambiguity}{26}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}Limitations and Future Directions}{27}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {section}{\numberline {6}Conclusion}{27}{}\protected@file@percent }
-\newlabel{sec:conclusion}{{6}{27}{}{section.6}{}}
-\@writefile{toc}{\contentsline {section}{\numberline {7}Declaration of generative AI and AI-assisted technologies in the manuscript preparation process}{28}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {10}{\ignorespaces Teacher modality ablation on the Intentonomy test split. Oracle denotes teacher-only performance, while Gated Student performance with gated distillation. All numbers are percentages.}}{25}{}\protected@file@percent }
+\newlabel{tab:teacher_modality_ablation}{{10}{25}{}{table.10}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {11}{\ignorespaces Backbone sensitivity of FDIL on the Intentonomy test split. All numbers are percentages.}}{25}{}\protected@file@percent }
+\newlabel{tab:backbone_ablation}{{11}{25}{}{table.11}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.4}Backbone Independence}{25}{}\protected@file@percent }
+\@writefile{lot}{\contentsline {table}{\numberline {12}{\ignorespaces Efficiency comparison on top of frozen CLIP features. Params count inference-active heads only; FLOPs are reported per image; latency is measured with batch size 1 on a single RTX 4090.}}{26}{}\protected@file@percent }
+\newlabel{tab:efficiency_comparison}{{12}{26}{}{table.12}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.5}Efficiency Comparison}{26}{}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Qualitative case study of baseline and FDIL on representative Intentonomy samples. In the first row, the baseline predicts an incorrect semantic alternative, whereas FDIL removes that distractor by leveraging counterfactual evidence in the rationale and yields the correct intent decision. In the second row, FDIL makes an error, but the annotated soft label itself has only 0.33 agreement, indicating substantial ambiguity; under such weak supervision, the alternative prediction made by FDIL remains semantically plausible rather than arbitrarily wrong.}}{27}{}\protected@file@percent }
+\newlabel{fig:case_study}{{3}{27}{}{figure.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.6}Case Study}{27}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {5}Discussion}{28}{}\protected@file@percent }
+\newlabel{sec:discussion}{{5}{28}{}{section.5}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.1}A Functionally Decoupled View of Ambiguity}{28}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2}Limitations and Future Directions}{28}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {6}Conclusion}{29}{}\protected@file@percent }
+\newlabel{sec:conclusion}{{6}{29}{}{section.6}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {7}Declaration of generative AI and AI-assisted technologies in the manuscript preparation process}{29}{}\protected@file@percent }
 \@writefile{toc}{\let\numberline\tmptocnumberline}
-\@writefile{toc}{\contentsline {section}{\numberline {Appendix~A}Prompt Templates}{28}{}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {Appendix~A.1}Scenario Prompt for SLR-C Prior}{28}{}\protected@file@percent }
-\newlabel{app:scenario_prompt}{{Appendix~A.1}{28}{}{subsection.1.1}{}}
-\@writefile{toc}{\contentsline {subsection}{\numberline {Appendix~A.2}Rationale Generation Prompt}{30}{}\protected@file@percent }
-\newlabel{app:rationale_prompt}{{Appendix~A.2}{30}{}{subsection.1.2}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {Appendix~A}Prompt Templates}{29}{}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {Appendix~A.1}Scenario Prompt for SLR-C Prior}{30}{}\protected@file@percent }
+\newlabel{app:scenario_prompt}{{Appendix~A.1}{30}{}{subsection.1.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {Appendix~A.2}Rationale Generation Prompt}{31}{}\protected@file@percent }
+\newlabel{app:rationale_prompt}{{Appendix~A.2}{31}{}{subsection.1.2}{}}
 \bibstyle{unsrt}
 \bibdata{intentrecognition}
 \bibcite{jia_intentonomy_2021}{{1}{}{{}}{{}}}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {Appendix~A.2.1}Caption Prompt for Rational Ablation}{31}{}\protected@file@percent }
 \bibcite{wen_dip_2023}{{2}{}{{}}{{}}}
 \bibcite{wang_prototype-based_2023}{{3}{}{{}}{{}}}
 \bibcite{ye_cross-modality_2023}{{4}{}{{}}{{}}}

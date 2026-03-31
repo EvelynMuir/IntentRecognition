@@ -44,11 +44,11 @@ IntCLIP \cite{leonardis_synergy_2025} & ECCV 2024 & 40.15 & 53.54 & 51.01 & 48.2
 % Qwen2-VL-7B & - & 21.85 & 27.06 & 33.48 & 27.46 \\
 % Ovis1.6-Gemma2-9B & - & 36.14 & 34.52 & 33.93 & 34.86 \\
 % GPT-4o & - & 39.48 & 40.57 & 41.45 & 40.50 \\
-IntentMLM \cite{wang_unlocking_2026} & PR & 43.05 & 54.77 & 56.75 & 51.52 \\
+IntentMLM \cite{wang_unlocking_2026} & PR 2026 & 43.05 & 54.77 & 56.75 & 51.52 \\
 \hline
-CLIP ViT-L/14 \cite{radford_learning_2021} & - & 47.40 & 56.42 & 56.41 & 53.41 \\
-FDIL (UTD only) & - & 50.31 & 57.97 & 59.07 & 55.78 \\
-FDIL & - & \textbf{51.21} & \textbf{59.64} & \textbf{60.43} & \textbf{57.09} \\
+CLIP ViT-L/14 \cite{radford_learning_2021} & ICML 2021 & 47.40 & 56.42 & 56.41 & 53.41 \\
+FDIL (UTD only) & Ours & 50.31 & 57.97 & 59.07 & 55.78 \\
+FDIL & Ours & \textbf{51.21} & \textbf{59.64} & \textbf{60.43} & \textbf{57.09} \\
 \hline
 \end{tabular}
 \endgroup
@@ -273,7 +273,7 @@ Interestingly, the multimodal oracle teacher is not weaker by itself, but it bec
 
 \subsection{Backbone Independence}
 
-To examine whether FDIL depends entirely on a strong backbone, we also test the full pipeline with a weaker ResNet101 student. The results are shown in Table~\ref{tab:backbone_ablation}. The full method remains functional, but the gains become smaller on the weaker backbone. This suggests that the framework is portable across backbones, yet its full benefit is realized only when the underlying visual representation is already reasonably strong.
+To examine whether FDIL depends entirely on a strong backbone, we also test the full pipeline with a weaker ResNet101 student under the best configuration. The results are shown in Table~\ref{tab:backbone_ablation}. The value of $K$ is set to 28 to give the weaker backbone the widest semantic candidate scaffold.
 
 \begin{table}[t]
 \centering
@@ -284,13 +284,16 @@ To examine whether FDIL depends entirely on a strong backbone, we also test the 
 Backbone & Method & Macro & Micro & Samples & Avg. & Hard \\
 \hline
 ResNet101 \cite{he_deep_2016} & Baseline & 36.56 & 41.87 & 43.10 & 40.51 & 18.99 \\
-ResNet101 \cite{he_deep_2016}& FDIL & 41.27 & 46.50 & 47.63 & 45.13 & 22.37 \\
+ResNet101 \cite{he_deep_2016} & IntCLIP \cite{leonardis_synergy_2025} & 40.15 & 53.54 & 51.01 & 48.23 & - \\
+ResNet101 \cite{he_deep_2016}& FDIL & 43.20 & 50.63 & 52.02 & 48.62 & 25.65 \\
 \hline
 CLIP ViT-L/14 \cite{radford_learning_2021} & Baseline & 47.40 & 56.42 & 56.41 & 53.41 & 28.45 \\
 CLIP ViT-L/14 \cite{radford_learning_2021}& FDIL & \textbf{51.21} & \textbf{59.64} & \textbf{60.43} & \textbf{57.09} & \textbf{33.48} \\
 \hline
 \end{tabular}
 \end{table}
+
+Three conclusions follow from Table~\ref{tab:backbone_ablation}. First, FDIL remains clearly effective on ResNet101 and shows that the functionally decoupled design is not exclusive to CLIP features. Second, compared with IntCLIP, which achieves state-of-the-art under the same ResNet101 backbone, FDIL achieves better result. Third, the best ResNet101 configuration prefers a much larger candidate set than the CLIP backbone, suggesting that weaker visual representations benefit from a broader semantic scaffold before residual correction. At the same time, the remaining gap to CLIP ViT-L/14 indicates that strong visual features are still important for fully exploiting the semantic prior and the uncertainty-aware teacher.
 
 \subsection{Efficiency Comparison}
 
