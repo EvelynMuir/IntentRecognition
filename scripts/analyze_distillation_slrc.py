@@ -816,6 +816,10 @@ def main() -> None:
                 "slr_c_residual_standard_kd": _json_ready({k: v for k, v in standard_result.items() if k != "state_dict"}),
                 "slr_c_residual_dynamic_kd": _json_ready({k: v for k, v in dynamic_result.items() if k != "state_dict"}),
                 "config": {
+                    "base_seed": int(args.seed),
+                    "supervised_seed": int(args.seed) + 100,
+                    "standard_kd_seed": int(args.seed) + 200,
+                    "dynamic_kd_seed": int(args.seed) + 300,
                     "teacher_run_dir": str(args.teacher_run_dir),
                     "reuse_cache_dir": str(args.reuse_cache_dir),
                     "slr_cache_dir": str(slr_cache_dir),

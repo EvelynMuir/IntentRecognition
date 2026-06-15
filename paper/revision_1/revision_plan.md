@@ -27,7 +27,7 @@
 |------|------|-----------|------|
 | 同 backbone + 同阈值的受控基线 | 公平对比网格 + 重跑 SOTA on CLIP 特征 | E1 | ◐ E1a 已完成，E1b 待外部方法复现 |
 | class-wise 阈值效应过强 | 四宫格隔离阈值贡献 vs 方法贡献 | E1 | ☑ |
-| 报告多次运行方差 | ≥3 seed，mean±std | E2 | ☐ |
+| 报告多次运行方差 | ≥3 seed，mean±std | E2 | ☑ |
 | validation-only 模型选择需澄清 | 写明协议 | W12 | ☐ |
 | 释放/记录生成 artifact（rationale、prior） | 复现性声明 + 释放方案 | W12 | ☐ |
 | 复现细节不足 | 补实现细节 | W12 | ☐ |
@@ -89,8 +89,12 @@
   - **E1a 必做**: ☑ 所有 in-house controllable baselines 在同一 CLIP ViT-L/14 特征、同一 train/val/test、同一 validation-only threshold search 下比较。
   - **E1b 尽力做**: ☐ 重跑/复现代表性 SOTA（HLEG/LabCR/PIP-Net/IntCLIP）于 CLIP ViT-L/14 特征 + class-wise 阈值；若外部方法无法无痛换 backbone，需要在 response 中说明协议限制，并用 E1a 作为公平性主证据。
   - 基础: `scripts/analyze_calibrated_decision_rule.py`, `scripts/run_clip_feature_baseline.py`
-- ☐ **E2 多种子方差**: FDIL + 关键基线各 ≥3 seed，主表/消融加 mean±std。
-  - 基础: `scripts/run_multiseed_slr_calibration.sh` + `scripts/aggregate_multirun_stability.py`（现成）
+- ☑ **E2 多种子方差**: FDIL + 关键基线各 ≥3 seed，主表/消融加 mean±std。
+  - **输出**: `logs/analysis/e2_multiseed_stability_20260615/REPORT.md`, `e2_mean_std.csv`, `e2_seed_level_metrics.csv`, `summary.json`
+  - **种子**: CLIP baseline / UTD only 使用 `20260316,20260615,20260616`；final FDIL LCS K=5 使用 `20260317,20260615,20260616`。
+  - **class-wise 结论**: CLIP baseline Macro `47.07±0.83`, AvgF1 `53.37±0.72`, Hard `27.19±1.14`；UTD only Macro `50.20±0.44`, AvgF1 `55.68±0.44`, Hard `30.27±0.57`；final FDIL Macro `51.14±0.39`, AvgF1 `56.73±0.27`, Hard `32.12±1.26`。
+  - **补充说明**: 本轮 E2 在 frozen CLIP ViT-L/14 cache 与 cached text features 上训练/聚合 lightweight student/residual heads；threshold 仍由各 seed 的 validation split 独立选择。
+  - 基础: `scripts/build_e2_multiseed_stability.py`；历史 calibration-only 聚合器 `scripts/aggregate_multirun_stability.py` 保留但不作为本轮 E2 主证据。
 - ☐ **E3 解耦原则正面证据**: unified（单机制处理两种歧义）vs decoupled（FDIL）对照，证明解耦非空话。（需新增脚本）
 
 ### P1 — 分量重
