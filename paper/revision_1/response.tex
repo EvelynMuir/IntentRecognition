@@ -1,0 +1,67 @@
+% ============================================================
+% Response to Reviewers -- standalone letter
+% Manuscript: Functionally Decoupled Visual Intent Learning under
+%             Supervisory and Semantic Ambiguity (FDIL)
+% Journal:    Pattern Recognition  |  Decision: Major Revision
+%
+% Structure (after the LanEvil_TPAMI revision package):
+%   - General Response / Summary of Changes
+%   - Point-by-point responses, one section per reviewer, with each
+%     comment shown verbatim in a tcolorbox followed by our Response.
+% Changes in the revised manuscript (main.tex) are highlighted in \revised{red}.
+% ============================================================
+\documentclass[11pt]{article}
+
+\usepackage[a4paper,margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage[table,xcdraw]{xcolor}
+\usepackage{graphicx}
+\usepackage[most]{tcolorbox}
+\usepackage{enumitem}
+\usepackage[colorlinks,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
+\usepackage{titlesec}
+
+% red markup, matching the manuscript's \revised macro
+\newcommand{\revised}[1]{\textcolor{red}{#1}}
+
+\setlength{\parskip}{0.4em}
+\setlength{\parindent}{0pt}
+\titleformat{\section}{\large\bfseries}{\thesection.}{0.6em}{}
+\titlespacing*{\section}{0pt}{1.4em}{0.6em}
+
+\input{responses/0_macros}
+
+\begin{document}
+
+\begin{center}
+  {\LARGE\bfseries Response to Reviewers\par}
+  \vspace{0.4em}
+  {\large Functionally Decoupled Visual Intent Learning under Supervisory and
+  Semantic Ambiguity\par}
+  \vspace{0.3em}
+  {\itshape Pattern Recognition\quad--\quad Major Revision}
+\end{center}
+\vspace{0.5em}
+
+\hrule
+\vspace{0.3em}
+{\small\itshape Note to co-authors (remove before submission): items marked
+\todo{\ldots} depend on experiments/writing not yet finalized. Confirmed results
+from experiments E1 (single-seed grid) and E2 (3-seed stability) are filled in;
+all reported FDIL/baseline numbers use the E2 mean$\pm$std and supersede the
+earlier single-seed values. Re-check all page/line/Table references against the
+revised manuscript in the final cross-reference pass.}
+\vspace{0.3em}
+\hrule
+\vspace{0.5em}
+
+\input{responses/1_general}
+\input{responses/2_reviewer1}
+\input{responses/3_reviewer2}
+\input{responses/4_reviewer3_ae}
+\input{responses/5_reviewer4}
+\input{responses/6_reviewer5}
+\input{responses/7_eic}
+\input{responses/8_summary}
+
+\end{document}

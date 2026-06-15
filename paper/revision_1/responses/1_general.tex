@@ -1,0 +1,56 @@
+\section{General Response}
+
+We thank the Associate Editor and all five reviewers for their careful and
+constructive evaluation. The reviews were detailed and fair, and they have
+substantially improved the manuscript. We are encouraged that the reviewers
+found the problem \textbf{important} (R1, R2, R4), the functional-decoupling
+perspective \textbf{theoretically well-motivated} (R5), and the framework
+\textbf{architecturally clean, technically sound, and empirically interesting} --
+including gains over a strong CLIP ViT-L/14 baseline and larger improvements on
+hard intent categories (R1, R5).
+
+We have grouped the major concerns into five themes and addressed each one with
+new experiments, new analysis, and substantial rewriting:
+
+\begin{itemize}
+  \item \textbf{Fairness and interpretability of the comparisons; the effect of
+  class-wise thresholding (R1).} We added a controlled protocol in which all
+  in-house baselines and FDIL share the \emph{same} CLIP ViT-L/14 features, the
+  \emph{same} train/val/test split, and the \emph{same} validation-only
+  thresholding protocol, together with a four-cell grid that decomposes the
+  contribution of the \emph{method} from that of \emph{calibration} (global vs.\
+  class-wise thresholding), reported as mean$\pm$std over 3 seeds. FDIL improves
+  over the CLIP baseline under \emph{both} thresholding protocols, and the
+  threshold-free mAP confirms the gain is not a calibration artifact.
+
+  \item \textbf{Novelty and theoretical depth (R2, R4, R1).} We added a formal,
+  information-theoretic / feature-selection motivation for \emph{why} the two
+  ambiguities must be handled by orthogonal components, a head-to-head
+  unified-vs-decoupled comparison, negative-control experiments showing that
+  arbitrary VLM text priors do \emph{not} reproduce the gains, and a second
+  dataset to probe generalization.
+
+  \item \textbf{Presentation and clarity (R4, R5, R3).} We rewrote the
+  Introduction (clear purpose, critical analysis of how existing methods fail on
+  each ambiguity type, expanded LLM-based intent-understanding survey), added a
+  notation table and a Discussion section, fixed the Figure~2 caption, corrected
+  the ``FDIR''$\rightarrow$``FDIL'' typos, and proofread the manuscript and
+  bibliography.
+
+  \item \textbf{Stronger and larger-scale evaluation (R4, R3).} We added a second
+  dataset, comparisons against 2025/2026 large multimodal models, t-SNE embedding
+  visualizations, ROC/PR curves, threshold-free metrics with statistical
+  significance testing, and an extended efficiency comparison
+  (params/FLOPs/latency).
+
+  \item \textbf{Reproducibility (R1, EiC).} We documented the validation-only
+  selection protocol, expanded implementation details, and replaced the
+  ``available on request'' statement with a concrete artifact-release plan.
+\end{itemize}
+
+Below we provide point-by-point responses to each reviewer. Newly added or
+revised content is referenced by section, table, or figure. In the revised
+manuscript, all changes are highlighted in \revised{red}. Items still marked
+\todo{\ldots} depend on experiments or writing that are not yet finalized and
+will be replaced with the final numbers, table/figure pointers, and page
+references before submission.

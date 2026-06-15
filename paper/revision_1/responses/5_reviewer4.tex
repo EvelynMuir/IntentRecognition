@@ -1,0 +1,60 @@
+% ================================
+% === Reviewer 4 ===
+% ================================
+\reviewerblock{Reviewer~4}{%
+We thank the reviewer for the thorough, itemized list, which we address point by
+point.}
+
+\cresp{The manuscript requires careful proofreading, such as [7] IEEE Trans.\
+Affect.\ Comput., and so on.}
+{Done -- a full proofread and bibliography format pass. \todo{confirm reference
+[7] and all journal abbreviations corrected}.}
+
+\cresp{Give more analysis of the disadvantages of existing visual-intention
+understanding methods on the two forms of ambiguity.}
+{We rewrote the Introduction with an explicit critical analysis of how prior
+visual-intent methods handle (or conflate) supervisory and semantic ambiguity
+\todo{\S1 final}.}
+
+\cresp{The clear purpose of the proposed work is lacking in the Introduction.}
+{Done -- the Introduction now states the purpose and objectives explicitly.}
+
+\cresp{The Introduction should be re-discussed and extended; more LLM-based
+visual-intention understanding methods should be mentioned, as the latest
+development is hard for readers to follow.}
+{We expanded the survey of LLM/MLLM-based visual-intent understanding, including
+recent work. \todo{add 2024--2026 references; ensure peer-reviewed versions per
+EiC-a}.}
+
+\cresp{Consider including a table of notations.}
+{Added \todo{Table~X}.}
+
+\cresp{There should be larger-scale datasets to better evaluate the method.}
+{We added a second / larger-scale evaluation (E4, \todo{dataset name +
+Table~X}). \todo{see R2 comment~(c) framing note}.}
+
+\cresp{Experimental evaluation is not sufficient; more comparisons with 2025/2026
+LLM methods and t-SNE are needed.}
+{We restored and extended the large-model comparison (Qwen2-VL-7B / Ovis1.6 /
+GPT-4o plus 1--2 newer MLLMs, E5) and added t-SNE visualizations of intent
+embeddings for FDIL vs.\ the baseline, emphasizing hard / semantically adjacent
+classes (E6, \todo{Fig~X}).}
+
+\cresp{Use ROC-based curves for a clearer evaluation against other SOTA methods.}
+{Added ROC and PR curves vs.\ SOTA from the existing evaluation logits
+(E7, \todo{Fig~X}).}
+
+\cresp{A ``Discussion'' section could be added covering main findings, advantages,
+and disadvantages.}
+{Added / expanded a Discussion section covering main findings, advantages, and
+failure modes \todo{\S X}.}
+
+\cresp{Add more theoretical analysis, e.g.\ from information-theoretic or
+feature-selection perspectives.}
+{Added -- see Reviewer~2 comment~(a) and the new theory section \todo{\S X}.}
+
+\cresp{A comparative analysis of model parameters, FLOPs, or inference times is
+necessary.}
+{We extended the efficiency table (E8, \todo{Table~8}) to include IntentMLM /
+IntCLIP / HLEG params, FLOPs, and latency, highlighting FDIL's low inference
+overhead.}

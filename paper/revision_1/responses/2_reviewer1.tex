@@ -1,0 +1,97 @@
+% ================================
+% === Reviewer 1 ===
+% ================================
+\reviewerblock{Reviewer~1}{%
+We thank the reviewer for a very constructive review and for recognizing the
+importance of the problem and the empirical interest of FDIL. The reviewer's
+central concerns -- comparison fairness, the strength of class-wise thresholding,
+dependence on offline VLM artifacts, and reproducibility -- directly shaped our
+revision.}
+
+\cresp{Please provide controlled baselines under the same backbone and thresholding
+protocol.}
+{We added a fair-comparison protocol (new \textbf{Thresholding-decomposition
+table}) in which every in-house controllable baseline and FDIL are evaluated on
+identical CLIP ViT-L/14 features, the identical train/val/test split, and an
+identical validation-only threshold search, isolating the contribution of FDIL's
+mechanisms from backbone strength.
+\emph{Result (E2, 3-seed mean$\pm$std):} under the matched class-wise protocol,
+FDIL improves over the CLIP baseline by \res{Macro-F1 $+4.07$} ($47.07\!\to\!51.14$),
+\res{Avg-F1 $+3.36$} ($53.37\!\to\!56.73$), and \res{Hard-F1 $+4.93$}
+($27.19\!\to\!32.12$), with the gains stable across seeds (FDIL Avg-F1 std $=0.27$).
+We also re-ran representative external SOTA (HLEG / LabCR / PIP-Net / IntCLIP) on
+CLIP ViT-L/14 features where feasible; \todo{E1b not yet complete -- for any
+external method that cannot be ported to the same backbone, state the protocol
+limitation explicitly and rely on the in-house controlled baselines as the
+primary fairness evidence}.}
+
+\cresp{The effect of class-wise thresholding is very strong; please isolate it.}
+{We now isolate it over 3 seeds in a four-cell decomposition
+$\{\text{CLIP baseline, FDIL}\}\times\{\text{global, class-wise threshold}\}$.
+The decomposition shows three things. (i)~FDIL beats the CLIP baseline under
+\emph{both} protocols -- class-wise (Avg-F1 $+3.36$, Hard $+4.93$) and global
+(Avg-F1 $+2.83$, Hard $+8.45$) -- so the advantage is not produced by a
+particular decision rule. (ii)~Class-wise thresholding lifts the baseline and
+FDIL by \emph{comparable} amounts (Avg-F1 $+2.29$ vs.\ $+2.82$), i.e.\
+calibration is a shared, method-agnostic post-processing gain. (iii)~The
+\res{threshold-free mAP} confirms the same conclusion (FDIL $54.55$ vs.\ baseline
+$50.98$, \res{$+3.57$}). The global-threshold F1 metrics carry large seed
+variance (hard-subset std up to $\pm3.9$), so we treat class-wise F1 and mAP as
+the primary metrics. We clarify that the reported baseline Avg-F1 of
+$53.37\!\pm\!0.72$ is the class-wise value (mean of Macro/Micro/Samples F1),
+\emph{not} mAP.
+
+\emph{Correction note (internal):} an earlier single-seed grid (E1a) had
+suggested the global-threshold gain was near-zero ($+0.84$ Avg-F1); the 3-seed
+E2 result shows this was a single-seed artifact, and all ``gain is mostly
+calibration'' wording has been removed.}
+
+\cresp{Report variance over runs.}
+{Done. We now report mean$\pm$std over \res{3 seeds} for the CLIP baseline,
+UTD-only, and full FDIL in the main results table and in the
+method-vs-calibration decomposition. Component/ablation tables report a single
+representative seed and are explicitly labeled as such.}
+
+\cresp{Clarify validation-only model selection.}
+{We added an explicit protocol statement \todo{\S X}: all thresholds and model
+selection use the validation split only; test logits/rationales are used for
+evaluation only and never for model or threshold selection. \todo{confirm via
+the leakage/protocol audit (E15) and cite its outcome}.}
+
+\cresp{Release or document the generated artifacts (rationales, semantic priors).}
+{We replaced ``available on request'' with a concrete Data/Artifact Availability
+statement \todo{\S X / repository link} listing scenario priors, rationale JSONL,
+BGE/CLIP text features, threshold files, train/val/test logits, prompt templates,
+seeds, VLM version, and checksums.}
+
+\cresp{Incomplete reproducibility details.}
+{We expanded the implementation details \todo{\S X / Appendix~X}, including
+feature extraction, threshold search, teacher generation, and the agreement gate.}
+
+\cresp{Tone down ``functional decoupling'' / ``SOTA'' claims unless the ablations
+isolate these factors more cleanly.}
+{Done. We rewrote the main-comparison discussion so that the large margin over
+external methods is attributed primarily to backbone strength (the external rows
+use weaker backbones) rather than to FDIL, and we now point to the
+matched-backbone, matched-thresholding decomposition as the evidence for FDIL
+itself. Decoupling is retained as a contribution because the isolation
+experiments (the four-cell decomposition, threshold-free mAP, and the
+unified-vs-decoupled comparison in R2) support it. Absolute-SOTA language has
+been removed in favor of controlled, seed-averaged gains \todo{finalize
+external-comparison wording once E1b is available}.}
+
+\cresp{Comparison interpretability / attribution is insufficient.}
+{We added per-class gain/loss, confusion-pair shift, and hard-category
+attribution analysis (E12, \todo{Table/Fig~X}) that identifies \emph{which}
+semantically adjacent categories FDIL improves and \emph{which} easy/visually
+clear categories may be mildly affected by calibration.}
+
+\cresp{The threshold may dominate F1; add threshold-free metrics and statistical
+tests.}
+{Done for the threshold-free metric: we report \res{mAP} in the decomposition,
+where FDIL improves over the CLIP baseline by \res{$+3.57$} ($50.98\!\to\!54.55$)
+and over UTD-only by $+2.09$ -- direct evidence the gain is not a thresholding
+effect. Additional threshold-free curves (macro-/micro-AUC, PR-AUC) and paired
+significance tests (paired bootstrap / permutation) for FDIL vs.\ CLIP baseline,
+UTD-only, and SLR-C-only are \todo{E7/E13 -- add the AUC table and the
+bootstrap/permutation p-values}.}

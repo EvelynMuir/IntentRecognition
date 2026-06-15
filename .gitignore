@@ -158,3 +158,13 @@ configs/local/default.yaml
 .aim
 
 /output/
+# LaTeX build artifacts
+*.aux
+*.bbl
+*.blg
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.out
+*.spl
+*.toc

@@ -1,0 +1,30 @@
+% ================================
+% === Reviewer 3 (Associate Editor metareview) ===
+% ================================
+\reviewerblock{Reviewer~3 (Associate Editor)}{%
+We thank the Associate Editor for the focused, actionable points.}
+
+\cresp{The authors are encouraged to clearly state, in the Abstract, the
+quantitative improvements achieved by FDIL compared to existing approaches.}
+{Done. The Abstract now reports concrete numbers under the matched CLIP ViT-L/14
+backbone and identical validation-only thresholding protocol: \res{Avg-F1 $+3.4$}
+and \res{Hard-F1 $+4.9$} over the strong CLIP baseline (mean over 3 seeds),
+together with \res{$+3.6$ on threshold-free mAP}, with wording emphasizing that
+the gain reflects better intent discrimination rather than calibration alone.}
+
+\cresp{In Section~3.3.1 (Semantic Prior Construction), provide a more detailed
+justification for the selected scenarios, including their representativeness and
+the expected outcomes in conditions not covered by the presented scenarios.}
+{We expanded \S3.3.1 with the selection criteria, a coverage argument over the
+intent taxonomy, and the expected behavior -- and graceful degradation -- for
+conditions not covered by the predefined scenarios \todo{\S3.3.1 final text}.}
+
+\cresp{Table~2 shows FDIL ($81.01$) below HLEG ($81.49$) on the Easy subset, yet
+this is not discussed. Explain the possible reasons and discuss the key
+observations in the table.}
+{We added a discussion (E11, \todo{\S X}): the Easy subset is dominated by
+visually unambiguous categories where semantic-overlap modeling and
+uncertainty-guided distillation offer little headroom and class-wise calibration
+can be slightly conservative; FDIL's advantage concentrates on the Hard subset
+where both ambiguities are active. We added a per-subset attribution to support
+this explanation.}

@@ -1,0 +1,52 @@
+% ================================
+% === Reviewer 2 ===
+% ================================
+\reviewerblock{Reviewer~2}{%
+We thank the reviewer for acknowledging that the manuscript is well-written,
+technically sound, and empirically validated, and that distinguishing semantic
+from supervisory uncertainty is appealing. We take the novelty concern very
+seriously and have addressed it on three fronts so that the contribution is a
+\emph{principle}, not a combination of existing components.}
+
+\cresp{The major drawback is insufficient novelty: the idea of distinguishing
+semantic uncertainty from supervision uncertainty is appealing but does not
+constitute a new theoretical principle or algorithmic idea. The results appear to
+be based mainly on the correct combination of existing methods rather than the
+development of a novel approach.}
+{We address this on four fronts.
+
+\smallskip\noindent\textbf{(a) A formal decoupling principle (new theory, \S X).}
+We now formalize the two ambiguities as acting on \emph{different terms of the
+learning objective}: supervisory ambiguity is label-side conditional entropy /
+annotation noise, whereas semantic ambiguity is feature-side inter-class
+mutual-information aliasing. From an information-theoretic / feature-selection
+viewpoint, a single mechanism conflates two terms that should be treated
+orthogonally, which \emph{necessarily} motivates SLR-C (feature/decision side)
+and UTD (label/supervision side) as separate modules. This reframes the
+contribution as a principle with testable predictions, not an engineering
+combination.
+
+\smallskip\noindent\textbf{(b) Unified vs.\ decoupled, head to head (E3, new
+table).} We added a controlled comparison in which a single unified mechanism is
+given the same inputs and budget as decoupled FDIL. \todo{insert result showing
+decoupled $>$ unified, demonstrating the decoupling is not vacuous}.
+
+\smallskip\noindent\textbf{(c) Generalization on a second dataset (E4).}
+\todo{insert second-dataset result; if EMOTIC, frame it carefully as a
+generalization probe rather than a same-task large-scale benchmark, per the
+plan's risk note}.
+
+\smallskip\noindent\textbf{(d) The two modules contribute separately and
+additively (E2, threshold-free).} On mAP, UTD alone contributes \res{$+2.09$}
+over the CLIP baseline ($50.98\!\to\!53.07$) and adding SLR-C contributes a
+further \res{$+1.48$} ($53.07\!\to\!54.55$), for a total of \res{$+3.57$}.
+Because each decoupled module yields an independent, measurable increment on a
+threshold-free metric, the decoupling is empirically separable rather than a
+single re-labeled mechanism.}
+
+\cresp{The VLM / text prior may be mere external-knowledge stacking.}
+{We added negative-control experiments (E14, new \todo{Table~X}): shuffled
+rationales, random scenario priors, label-only text, caption-only text, an
+ungated teacher, and a corrupted agreement gate. \todo{insert results showing
+these controls do not reproduce the gains -- i.e.\ it is not ``any VLM text +
+class-wise threshold'' that helps, but the structured, uncertainty-gated prior}.}
