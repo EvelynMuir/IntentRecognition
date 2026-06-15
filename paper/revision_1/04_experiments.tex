@@ -13,7 +13,7 @@ To better understand the effectiveness of our method, we further conduct experim
 \begin{table}[H]
 \centering
 \small
-\caption{Comparison with state-of-the-art methods on the Intentonomy test split. We report Macro F1, Micro F1, Samples F1, and Avg. (the mean of the three F1 scores). All numbers are percentages. For our in-house models (CLIP ViT-L/14 baseline, FDIL (UTD only), and FDIL) we report mean$\pm$std over 3 random seeds; external methods are quoted from their original papers under their reported backbones, which are generally weaker than CLIP ViT-L/14. Cross-method comparison should therefore be read together with the matched-backbone, matched-thresholding decomposition in Table~\ref{tab:thresholding_test}.}
+\caption{Comparison with state-of-the-art methods on the Intentonomy test split. We report Macro F1, Micro F1, Samples F1, and Avg. (the mean of the three F1 scores). All numbers are percentages. \revised{For our in-house models (CLIP ViT-L/14 baseline, FDIL (UTD only), and FDIL) we report mean$\pm$std over 3 random seeds; external methods are quoted from their original papers under their reported backbones, which are generally weaker than CLIP ViT-L/14. Cross-method comparison should therefore be read together with the matched-backbone, matched-thresholding decomposition in Table~\ref{tab:thresholding_test}.}}
 \label{tab:main_results}
 \begingroup
 \setlength{\tabcolsep}{4pt}
@@ -50,9 +50,9 @@ IntCLIP \cite{leonardis_synergy_2025} & ECCV 2024 & 40.15 & 53.54 & 51.01 & 48.2
 % GPT-4o & - & 39.48 & 40.57 & 41.45 & 40.50 \\
 IntentMLM \cite{wang_unlocking_2026} & PR 2026 & 43.05 & 54.77 & 56.75 & 51.52 \\
 \hline
-CLIP ViT-L/14 \cite{radford_learning_2021} & ICML 2021 & $47.07_{\pm0.83}$ & $56.41_{\pm0.53}$ & $56.63_{\pm0.85}$ & $53.37_{\pm0.72}$ \\
-FDIL (UTD only) & Ours & $50.20_{\pm0.44}$ & $58.03_{\pm0.11}$ & $58.79_{\pm0.78}$ & $55.68_{\pm0.44}$ \\
-FDIL & Ours & $\mathbf{51.14}_{\pm0.39}$ & $\mathbf{59.35}_{\pm0.35}$ & $\mathbf{59.70}_{\pm0.65}$ & $\mathbf{56.73}_{\pm0.27}$ \\
+CLIP ViT-L/14 \cite{radford_learning_2021} & ICML 2021 & \revised{$47.07_{\pm0.83}$} & \revised{$56.41_{\pm0.53}$} & \revised{$56.63_{\pm0.85}$} & \revised{$53.37_{\pm0.72}$} \\
+FDIL (UTD only) & Ours & \revised{$50.20_{\pm0.44}$} & \revised{$58.03_{\pm0.11}$} & \revised{$58.79_{\pm0.78}$} & \revised{$55.68_{\pm0.44}$} \\
+FDIL & Ours & \revised{$\mathbf{51.14}_{\pm0.39}$} & \revised{$\mathbf{59.35}_{\pm0.35}$} & \revised{$\mathbf{59.70}_{\pm0.65}$} & \revised{$\mathbf{56.73}_{\pm0.27}$} \\
 \hline
 \end{tabular}
 \endgroup
@@ -68,7 +68,7 @@ Our default visual backbone is frozen CLIP ViT-L/14 \cite{radford_learning_2021}
 
 Table~\ref{tab:main_results} summarizes the main comparison on the testing set.
 % More results on the validation set can be found in \ref{app:validation_results_main}.
-The strong CLIP baseline already surpasses the previously reported best result by a clear margin. Because the external methods are quoted under their original, generally weaker backbones, this margin primarily reflects backbone strength rather than algorithmic superiority, and we therefore do not interpret it as evidence for FDIL itself; the controlled, matched-backbone comparison that isolates the contribution of our mechanisms is reported in Table~\ref{tab:thresholding_test}. The more relevant observation here is that, once the backbone is sufficiently strong, the remaining challenge is how to map rich visual semantics into abstract and subjective intent labels. Building on the same CLIP features, \textit{UTD only} improves the average F1 over the CLIP baseline (from $53.37_{\pm0.72}$ to $55.68_{\pm0.44}$) while introducing zero extra inference cost, and the complete FDIL framework with lexical-canonical-scenario priors and residual refinement further improves all four reported metrics (average F1 $56.73_{\pm0.27}$). All three in-house rows are averaged over three seeds, so these gains are consistent rather than single-run effects. This pattern is consistent with our motivation: fixed semantic priors provide structured candidate semantics, while uncertainty-aware text supervision and image-aware refinement improve the final intent prediction.
+\revised{The strong CLIP baseline already surpasses the previously reported best result by a clear margin. Because the external methods are quoted under their original, generally weaker backbones, this margin primarily reflects backbone strength rather than algorithmic superiority, and we therefore do not interpret it as evidence for FDIL itself; the controlled, matched-backbone comparison that isolates the contribution of our mechanisms is reported in Table~\ref{tab:thresholding_test}. The more relevant observation here is that, once the backbone is sufficiently strong, the remaining challenge is how to map rich visual semantics into abstract and subjective intent labels. Building on the same CLIP features, \textit{UTD only} improves the average F1 over the CLIP baseline (from $53.37_{\pm0.72}$ to $55.68_{\pm0.44}$) while introducing zero extra inference cost, and the complete FDIL framework with lexical-canonical-scenario priors and residual refinement further improves all four reported metrics (average F1 $56.73_{\pm0.27}$). All three in-house rows are averaged over three seeds, so these gains are consistent rather than single-run effects. This pattern is consistent with our motivation: fixed semantic priors provide structured candidate semantics, while uncertainty-aware text supervision and image-aware refinement improve the final intent prediction.}
 
 \subsubsection{Performance on Subsets with Different Difficulty Levels}
 
@@ -132,7 +132,7 @@ More results on the validation set can be found in \ref{app:validation_results_s
 
 \subsection{Ablation Studies}
 
-Unless otherwise noted, the ablation tables below report a single representative seed so that the relative effect of each component is easy to read. The multi-seed mean$\pm$std for the three core configurations (CLIP baseline, UTD only, and full FDIL) is reported in Table~\ref{tab:main_results}, and the seed-level variance of the method-vs-calibration decomposition is reported in Table~\ref{tab:thresholding_test}.
+\revised{Unless otherwise noted, the ablation tables below report a single representative seed so that the relative effect of each component is easy to read. The multi-seed mean$\pm$std for the three core configurations (CLIP baseline, UTD only, and full FDIL) is reported in Table~\ref{tab:main_results}, and the seed-level variance of the method-vs-calibration decomposition is reported in Table~\ref{tab:thresholding_test}.}
 
 \subsubsection{Effectiveness of SLR-C and Residual Refinement}
 
@@ -198,31 +198,31 @@ Top-$K$ & Macro & Micro & Samples & Avg. & Hard \\
 \begin{table}[t]
 \centering
 \small
-\caption{Controlled method-vs-calibration decomposition on the Intentonomy test split ($K=5$): the CLIP baseline and FDIL under matched global and class-wise thresholding, with both thresholds searched on the validation split. All entries are mean$\pm$std over 3 seeds (percentages). mAP is threshold-free and is therefore identical across the two thresholding rows of each method.}
+\caption{\revised{Controlled method-vs-calibration decomposition on the Intentonomy test split ($K=5$): the CLIP baseline and FDIL under matched global and class-wise thresholding, with both thresholds searched on the validation split. All entries are mean$\pm$std over 3 seeds (percentages). mAP is threshold-free and is therefore identical across the two thresholding rows of each method.}}
 \label{tab:thresholding_test}
 \setlength{\tabcolsep}{3pt}
 \begin{tabular}{llcccccc}
 \hline
-Method & Threshold & Macro & Micro & Samples & Avg. & mAP & Hard \\
+\revised{Method} & \revised{Threshold} & \revised{Macro} & \revised{Micro} & \revised{Samples} & \revised{Avg.} & \revised{mAP} & \revised{Hard} \\
 \hline
-CLIP baseline & Global & $43.84_{\pm1.74}$ & $54.73_{\pm0.58}$ & $54.67_{\pm0.54}$ & $51.08_{\pm0.63}$ & $50.98_{\pm0.49}$ & $22.28_{\pm3.93}$ \\
-CLIP baseline & Class-wise & $47.07_{\pm0.83}$ & $56.41_{\pm0.53}$ & $56.63_{\pm0.85}$ & $53.37_{\pm0.72}$ & $50.98_{\pm0.49}$ & $27.19_{\pm1.14}$ \\
+\revised{CLIP baseline} & \revised{Global} & \revised{$43.84_{\pm1.74}$} & \revised{$54.73_{\pm0.58}$} & \revised{$54.67_{\pm0.54}$} & \revised{$51.08_{\pm0.63}$} & \revised{$50.98_{\pm0.49}$} & \revised{$22.28_{\pm3.93}$} \\
+\revised{CLIP baseline} & \revised{Class-wise} & \revised{$47.07_{\pm0.83}$} & \revised{$56.41_{\pm0.53}$} & \revised{$56.63_{\pm0.85}$} & \revised{$53.37_{\pm0.72}$} & \revised{$50.98_{\pm0.49}$} & \revised{$27.19_{\pm1.14}$} \\
 \hline
-FDIL & Global & $47.89_{\pm1.57}$ & $56.87_{\pm0.67}$ & $56.96_{\pm0.69}$ & $53.91_{\pm0.91}$ & $\mathbf{54.55}_{\pm0.61}$ & $30.73_{\pm3.07}$ \\
-FDIL & Class-wise & $\mathbf{51.14}_{\pm0.39}$ & $\mathbf{59.35}_{\pm0.35}$ & $\mathbf{59.70}_{\pm0.65}$ & $\mathbf{56.73}_{\pm0.27}$ & $\mathbf{54.55}_{\pm0.61}$ & $\mathbf{32.12}_{\pm1.26}$ \\
+\revised{FDIL} & \revised{Global} & \revised{$47.89_{\pm1.57}$} & \revised{$56.87_{\pm0.67}$} & \revised{$56.96_{\pm0.69}$} & \revised{$53.91_{\pm0.91}$} & \revised{$\mathbf{54.55}_{\pm0.61}$} & \revised{$30.73_{\pm3.07}$} \\
+\revised{FDIL} & \revised{Class-wise} & \revised{$\mathbf{51.14}_{\pm0.39}$} & \revised{$\mathbf{59.35}_{\pm0.35}$} & \revised{$\mathbf{59.70}_{\pm0.65}$} & \revised{$\mathbf{56.73}_{\pm0.27}$} & \revised{$\mathbf{54.55}_{\pm0.61}$} & \revised{$\mathbf{32.12}_{\pm1.26}$} \\
 \hline
 \end{tabular}
 \end{table}
 
-\subsubsection{Method vs. Calibration: A Controlled Decomposition}
+\subsubsection{\revised{Method vs. Calibration: A Controlled Decomposition}}
 
-To separate the contribution of FDIL's mechanisms from the contribution of class-wise calibration, we evaluate both the CLIP baseline and FDIL under matched global and class-wise thresholding, with all thresholds searched on the validation split and all numbers averaged over 3 seeds (Table~\ref{tab:thresholding_test}). Three observations follow.
+\revised{To separate the contribution of FDIL's mechanisms from the contribution of class-wise calibration, we evaluate both the CLIP baseline and FDIL under matched global and class-wise thresholding, with all thresholds searched on the validation split and all numbers averaged over 3 seeds (Table~\ref{tab:thresholding_test}). Three observations follow.}
 
-First, \emph{FDIL improves over the CLIP baseline under both thresholding protocols}. Under class-wise thresholding the average-F1 gain is $+3.36$ ($53.37\!\rightarrow\!56.73$) with a $+4.93$ gain on the hard subset, and under global thresholding the gain is $+2.83$ in average F1 and $+8.45$ on the hard subset. The improvement is therefore not an artifact of a particular decision rule.
+\revised{First, \emph{FDIL improves over the CLIP baseline under both thresholding protocols}. Under class-wise thresholding the average-F1 gain is $+3.36$ ($53.37\!\rightarrow\!56.73$) with a $+4.93$ gain on the hard subset, and under global thresholding the gain is $+2.83$ in average F1 and $+8.45$ on the hard subset. The improvement is therefore not an artifact of a particular decision rule.}
 
-Second, \emph{class-wise thresholding benefits the baseline and FDIL by comparable amounts} ($+2.29$ vs.\ $+2.82$ average F1), so calibration is a shared, method-agnostic post-processing gain rather than something that FDIL uniquely exploits. This directly addresses the concern that the reported improvements might be driven mainly by per-class thresholding: the calibration effect is present for the baseline as well, while FDIL's advantage sits on top of it.
+\revised{Second, \emph{class-wise thresholding benefits the baseline and FDIL by comparable amounts} ($+2.29$ vs.\ $+2.82$ average F1), so calibration is a shared, method-agnostic post-processing gain rather than something that FDIL uniquely exploits. This directly addresses the concern that the reported improvements might be driven mainly by per-class thresholding: the calibration effect is present for the baseline as well, while FDIL's advantage sits on top of it.}
 
-Third, and most decisively, the \emph{threshold-free} mAP confirms the same conclusion: FDIL improves mAP from $50.98_{\pm0.49}$ to $54.55_{\pm0.61}$ ($+3.57$), a metric that is invariant to the thresholding choice by construction. We note that the global-threshold F1 metrics carry large seed variance (e.g., hard-subset std up to $\pm3.9$), because a single shared threshold is a brittle operating point; we therefore treat class-wise F1 and mAP as the primary metrics. For completeness, the average-F1 value of $53.37$ for the CLIP baseline corresponds to class-wise thresholding (Avg.\ = mean of Macro/Micro/Samples F1), not mAP. Overall, per-class calibration is an integral part of the final FDIL decision rule, but it is not the source of FDIL's advantage over the baseline.
+\revised{Third, and most decisively, the \emph{threshold-free} mAP confirms the same conclusion: FDIL improves mAP from $50.98_{\pm0.49}$ to $54.55_{\pm0.61}$ ($+3.57$), a metric that is invariant to the thresholding choice by construction. We note that the global-threshold F1 metrics carry large seed variance (e.g., hard-subset std up to $\pm3.9$), because a single shared threshold is a brittle operating point; we therefore treat class-wise F1 and mAP as the primary metrics. For completeness, the average-F1 value of $53.37$ for the CLIP baseline corresponds to class-wise thresholding (Avg.\ = mean of Macro/Micro/Samples F1), not mAP. Overall, per-class calibration is an integral part of the final FDIL decision rule, but it is not the source of FDIL's advantage over the baseline.}
 
 \subsubsection{The Effectiveness of Rationale}
 
