@@ -25,8 +25,8 @@
 ### Reviewer #1（偏正面，最有建设性）
 | 意见 | 行动 | 实验/写作 | 状态 |
 |------|------|-----------|------|
-| 同 backbone + 同阈值的受控基线 | 公平对比网格 + 重跑 SOTA on CLIP 特征 | E1 | ☐ |
-| class-wise 阈值效应过强 | 四宫格隔离阈值贡献 vs 方法贡献 | E1 | ☐ |
+| 同 backbone + 同阈值的受控基线 | 公平对比网格 + 重跑 SOTA on CLIP 特征 | E1 | ◐ E1a 已完成，E1b 待外部方法复现 |
+| class-wise 阈值效应过强 | 四宫格隔离阈值贡献 vs 方法贡献 | E1 | ☑ |
 | 报告多次运行方差 | ≥3 seed，mean±std | E2 | ☐ |
 | validation-only 模型选择需澄清 | 写明协议 | W12 | ☐ |
 | 释放/记录生成 artifact（rationale、prior） | 复现性声明 + 释放方案 | W12 | ☐ |
@@ -83,9 +83,11 @@
 ## 3. 实验清单
 
 ### P0 — 决定成败
-- ☐ **E1 公平对比网格**: `{CLIP baseline, FDIL} × {global, class-wise threshold}` 四宫格；明确 baseline 53.41 用的哪种阈值。
-  - **E1a 必做**: 所有 in-house controllable baselines 在同一 CLIP ViT-L/14 特征、同一 train/val/test、同一 validation-only threshold search 下比较。
-  - **E1b 尽力做**: 重跑/复现代表性 SOTA（HLEG/LabCR/PIP-Net/IntCLIP）于 CLIP ViT-L/14 特征 + class-wise 阈值；若外部方法无法无痛换 backbone，需要在 response 中说明协议限制，并用 E1a 作为公平性主证据。
+- ◐ **E1 公平对比网格**: `{CLIP baseline, FDIL} × {global, class-wise threshold}` 四宫格；明确 baseline 53.41 用的哪种阈值。
+  - **输出**: `logs/analysis/e1_fair_comparison_20260615/REPORT.md`, `e1_core_four_grid.csv`, `e1_inhouse_controlled_baselines.csv`, `e1_threshold_decomposition.csv`
+  - **结论**: `baseline 53.41` 是 CLIP baseline 在 class-wise threshold 下的 `AvgF1=(Macro+Micro+Samples)/3`，不是 mAP；同 class-wise 协议下 final FDIL 相对 CLIP baseline 为 Macro `+3.80`、AvgF1 `+3.68`、Hard `+5.03`；同 global 阈值下 final FDIL 的 Macro/Hard 几乎不变，主要提升 AvgF1 `+0.84`，因此修稿需明确区分方法贡献与 calibration 贡献。
+  - **E1a 必做**: ☑ 所有 in-house controllable baselines 在同一 CLIP ViT-L/14 特征、同一 train/val/test、同一 validation-only threshold search 下比较。
+  - **E1b 尽力做**: ☐ 重跑/复现代表性 SOTA（HLEG/LabCR/PIP-Net/IntCLIP）于 CLIP ViT-L/14 特征 + class-wise 阈值；若外部方法无法无痛换 backbone，需要在 response 中说明协议限制，并用 E1a 作为公平性主证据。
   - 基础: `scripts/analyze_calibrated_decision_rule.py`, `scripts/run_clip_feature_baseline.py`
 - ☐ **E2 多种子方差**: FDIL + 关键基线各 ≥3 seed，主表/消融加 mean±std。
   - 基础: `scripts/run_multiseed_slr_calibration.sh` + `scripts/aggregate_multirun_stability.py`（现成）
