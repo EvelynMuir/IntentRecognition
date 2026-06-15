@@ -10,18 +10,6 @@ We use Macro F1, Micro F1, Samples F1 as the evaluation metrics. To be consisten
 
 To better understand the effectiveness of our method, we further conduct experiments on subsets of the intent classes. We follow the work of Jia et al. \cite{jia_intentonomy_2021} and break down intent classes according to content difficulty and dependency. Difficulty classes are measured by how much a standard ResNet-50 model outperforms the random results. Content classes are divided into object-dependent ({\itshape Object}-classes), context-dependent ({\itshape Context}-classes), and {\itshape Others}, which depend on both foreground and background information. We emphasize the \textit{Hard} score throughout the analysis because it specifically measures performance on ambiguity-prone intent categories, where semantic overlap and subjective disagreement are most severe. Improvements on the hard subset therefore, provide stronger evidence that a method is resolving the core difficulty of intention understanding rather than merely exploiting easy classes.
 
-\subsubsection{Implementation Details}
-
-Our default visual backbone is frozen CLIP ViT-L/14 \cite{radford_learning_2021}. The visual student is implemented as a lightweight residual MLP trained on top of a fixed SLR-C prior. In SLR-C, priors are constructed from three sources, namely lexical intent phrases, canonical intent descriptions, and Gemini 3.1 Pro-generated scenario descriptions \cite{team_gemini_2025} with frozen CLIP text encoder \cite{radford_learning_2021}; their normalized logits are averaged before local reranking within Top-5 visual candidates. The scenario-prompt template is also provided in \ref{app:scenario_prompt}. For UTD, rationale text is generated offline by Qwen2.5-VL-7B-Instruct \cite{bai_qwen25-vl_2025} and then encoded by a frozen bge-large-en-v1.5 text encoder \cite{xiao_c-pack_2024}. The rationale-generation prompt template is provided in \ref{app:rationale_prompt}. The teacher consumes only the resulting text embeddings and is optimized with Asymmetric Loss (ASL) \cite{ridnik_asymmetric_2021} using $\gamma_{-}=2$, $\gamma_{+}=0$, and clipping value 0.05. The student is optimized with AdamW \cite{loshchilov_decoupled_2018}, learning rate $5\times10^{-4}$, weight decay $10^{-4}$, batch size 256, and dropout 0.1. The teacher's hidden dimension is 1,024, and the student's hidden dimension is 768. The distillation temperature is set to 2.0. During inference, class-wise thresholds are searched on the validation set and then fixed for test evaluation. Notably, UTD introduces \emph{zero extra inference cost}, since the text teacher is only used during training and is discarded at test time.
-
-
-\subsection{Comparative Experiments}
-
-\subsubsection{Comparison with state-of-the-art methods}
-Table~\ref{tab:main_results} summarizes the main comparison on the testing set.
-More results on the validation set can be found in \ref{app:validation_results_main}.
-The strong CLIP baseline already surpasses the previously reported best result by a clear margin, confirming that visual representation is no longer the primary bottleneck for this task. Once the backbone is sufficiently strong, the remaining challenge is how to map rich visual semantics into abstract and subjective intent labels. More importantly, \textit{UTD only} already improves over IntentMLM by a large margin while introducing zero extra inference cost, showing that robust semantic supervision under subjective ambiguity is by itself sufficient to outperform recent multimodal large-model pipelines. Building on this, the complete FDIL framework with lexical-canonical-scenario priors and residual refinement further improves all four reported metrics on the testing split, reaching the strongest overall average score under this final configuration. This pattern is consistent with our motivation: fixed semantic priors provide structured candidate semantics, while uncertainty-aware text supervision and image-aware refinement improve the final intent prediction.
-
 \begin{table}[H]
 \centering
 \small
@@ -70,9 +58,22 @@ FDIL & Ours & \textbf{51.21} & \textbf{59.64} & \textbf{60.43} & \textbf{57.09} 
 \endgroup
 \end{table}
 
+\subsubsection{Implementation Details}
+
+Our default visual backbone is frozen CLIP ViT-L/14 \cite{radford_learning_2021}. The visual student is implemented as a lightweight residual MLP trained on top of a fixed SLR-C prior. In SLR-C, priors are constructed from three sources, namely lexical intent phrases, canonical intent descriptions, and Gemini 3.1 Pro-generated scenario descriptions \cite{team_gemini_2025} with frozen CLIP text encoder \cite{radford_learning_2021}; their normalized logits are averaged before local reranking within Top-5 visual candidates. The scenario-prompt template is also provided in \ref{app:scenario_prompt}. For UTD, rationale text is generated offline by Qwen2.5-VL-7B-Instruct \cite{bai_qwen25-vl_2025} and then encoded by a frozen bge-large-en-v1.5 text encoder \cite{xiao_c-pack_2024}. The rationale-generation prompt template is provided in \ref{app:rationale_prompt}. The teacher consumes only the resulting text embeddings and is optimized with Asymmetric Loss (ASL) \cite{ridnik_asymmetric_2021} using $\gamma_{-}=2$, $\gamma_{+}=0$, and clipping value 0.05. The student is optimized with AdamW \cite{loshchilov_decoupled_2018}, learning rate $5\times10^{-4}$, weight decay $10^{-4}$, batch size 256, and dropout 0.1. The teacher's hidden dimension is 1,024, and the student's hidden dimension is 768. The distillation temperature is set to 2.0. During inference, class-wise thresholds are searched on the validation set and then fixed for test evaluation. Notably, UTD introduces \emph{zero extra inference cost}, since the text teacher is only used during training and is discarded at test time.
+
+\subsection{Comparative Experiments}
+
+\subsubsection{Comparison with state-of-the-art methods}
+
+Table~\ref{tab:main_results} summarizes the main comparison on the testing set.
+% More results on the validation set can be found in \ref{app:validation_results_main}.
+The strong CLIP baseline already surpasses the previously reported best result by a clear margin, confirming that visual representation is no longer the primary bottleneck for this task. Once the backbone is sufficiently strong, the remaining challenge is how to map rich visual semantics into abstract and subjective intent labels. More importantly, \textit{UTD only} already improves over IntentMLM by a large margin while introducing zero extra inference cost, showing that robust semantic supervision under subjective ambiguity is by itself sufficient to outperform recent multimodal large-model pipelines. Building on this, the complete FDIL framework with lexical-canonical-scenario priors and residual refinement further improves all four reported metrics on the testing split, reaching the strongest overall average score under this final configuration. This pattern is consistent with our motivation: fixed semantic priors provide structured candidate semantics, while uncertainty-aware text supervision and image-aware refinement improve the final intent prediction.
+
 \subsubsection{Performance on Subsets with Different Difficulty Levels}
 
-To better understand the effectiveness of our method, we further evaluate performance on intent subsets with different difficulty levels. For previously published methods, we directly adopt the reported values from the difficulty-wise comparison figure provided in the original papers. For our models, the numbers are computed from the corresponding evaluation logs. More results on the validation set can be found in \ref{app:validation_results_subsets}.
+To better understand the effectiveness of our method, we further evaluate performance on intent subsets with different difficulty levels. For previously published methods, we directly adopt the reported values from the difficulty-wise comparison figure provided in the original papers. For our models, the numbers are computed from the corresponding evaluation logs.
+More results on the validation set can be found in \ref{app:validation_results_subsets}.
 
 \begin{table}[t]
 \centering
@@ -126,7 +127,8 @@ The difficulty-wise results provide two additional insights. First, our baseline
 % Table~\ref{tab:content_results} reports results on content-dependent subsets. Following the protocol in prior work\cite{jia_intentonomy_2021}, intent classes are divided into \textit{Object-dependent}, \textit{Context-dependent}, and \textit{Others}.The first group mainly depends on salient foreground entities, the second relies more strongly on scene or environmental context, and the third requires combined reasoning over both foreground and background cues.
 
 Table~\ref{tab:content_results} reports results on content-dependent subsets.
-It again shows that the strong CLIP baseline is already highly effective on object- and context-dependent intents. The major gain of FDIL appears in the \textit{Others} subset, where intent recognition requires more holistic reasoning over multiple weak cues rather than direct reliance on a single object or scene pattern. More results on the validation set can be found in \ref{app:validation_results_subsets}.
+It again shows that the strong CLIP baseline is already highly effective on object- and context-dependent intents. The major gain of FDIL appears in the \textit{Others} subset, where intent recognition requires more holistic reasoning over multiple weak cues rather than direct reliance on a single object or scene pattern.
+More results on the validation set can be found in \ref{app:validation_results_subsets}.
 
 \subsection{Ablation Studies}
 
@@ -191,10 +193,6 @@ Top-$K$ & Macro & Micro & Samples & Avg. & Hard \\
 \end{tabular}
 \end{table}
 
-\subsubsection{Class-wise Thresholding}
-
-We then isolate the effect of thresholding under the best-performing candidate setting ($K=5$). Table~\ref{tab:thresholding_test} compares global and class-wise thresholding on the test split, with both thresholds searched on the validation split. The difference is substantial: global thresholding yields a more permissive decision rule and is weaker overall, whereas class-wise thresholding improves all reported metrics, including a large gain on the hard subset. This confirms that per-class calibration is a core part of the final FDIL decision rule rather than a cosmetic post-processing step.
-
 \begin{table}[t]
 \centering
 \caption{Effect of thresholding strategy on the Intentonomy test split with $K=5$. Thresholds are searched on the validation split. Avg. denotes the mean of Macro, Micro, and Samples F1. All numbers are percentages.}
@@ -208,6 +206,10 @@ Class-wise & \textbf{51.21} & \textbf{59.64} & \textbf{60.43} & \textbf{57.09} &
 \hline
 \end{tabular}
 \end{table}
+
+\subsubsection{Class-wise Thresholding}
+
+We then isolate the effect of thresholding under the best-performing candidate setting ($K=5$). Table~\ref{tab:thresholding_test} compares global and class-wise thresholding on the test split, with both thresholds searched on the validation split. The difference is substantial: global thresholding yields a more permissive decision rule and is weaker overall, whereas class-wise thresholding improves all reported metrics, including a large gain on the hard subset. This confirms that per-class calibration is a core part of the final FDIL decision rule rather than a cosmetic post-processing step.
 
 \subsubsection{The Effectiveness of Rationale}
 
@@ -323,7 +325,7 @@ Figure~\ref{fig:case_study} provides a qualitative comparison between the CLIP b
 
 \begin{figure*}[t]
 \centering
-\includegraphics[width=\textwidth]{srcs/cases.pdf}
+\includegraphics[width=\textwidth]{3_cases.pdf}
 \caption{Qualitative case study of baseline and FDIL on representative Intentonomy samples. In the first row, the baseline predicts an incorrect semantic alternative, whereas FDIL removes that distractor by leveraging counterfactual evidence in the rationale and yields the correct intent decision. In the second row, FDIL makes an error, but the annotated soft label itself has only 0.33 agreement, indicating substantial ambiguity; under such weak supervision, the alternative prediction made by FDIL remains semantically plausible rather than arbitrarily wrong.}
 \label{fig:case_study}
 \end{figure*}

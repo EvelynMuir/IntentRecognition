@@ -21,17 +21,19 @@ The second is supervisory ambiguity.
 Since intention recognition is intrinsically subjective, different audiences may infer different yet plausible intentions from the same image. 
 As a result, the supervisory signal itself may become unstable, especially for difficult samples with severe disagreement. 
 Under such circumstances, directly optimizing against hard labels can force the model to fit oversimplified or unreliable targets, thereby harming the robustness of the learned decision boundaries.
+Recent studies have increasingly argued that such disagreement should not be treated as mere annotation noise, but as meaningful uncertainty that reflects the structure of subjective interpretation itself \cite{peterson_human_2019, mostafazadeh_davani_dealing_2022}.
+
 
 \begin{figure}[t]
 \centering
 \begin{subfigure}[t]{0.51\linewidth}
 \centering
-\includegraphics[width=\linewidth]{srcs/teaser_a.pdf}
+\includegraphics[width=\linewidth]{1_teaser_a.pdf}
 \end{subfigure}
 \hfill
 \begin{subfigure}[t]{0.43\linewidth}
 \centering
-\includegraphics[width=\linewidth]{srcs/teaser_b.pdf}
+\includegraphics[width=\linewidth]{1_teaser_b.pdf}
 \end{subfigure}
 \caption{\textbf{Functionally decoupled ambiguity modeling in FDIL.} \textbf{(a) The dual ambiguity challenge:} subjective visual intent recognition is fundamentally bottlenecked by \textit{semantic ambiguity} (highly overlapping conceptual boundaries) and \textit{supervisory ambiguity} (annotator disagreement and unstable training targets). \textbf{(b) Functionally decoupled pipeline:} FDIL separates ambiguity-aware semantic refinement from ambiguity-aware semantic supervision. Semantic Local Reranking and Calibration (SLR-C) builds a semantic prior from textual cues to provide structured candidate semantics, while Uncertainty-guided Text Distillation (UTD) stabilizes learning under disagreement through rationale-guided text distillation and supports image-aware prediction on top of the semantic prior.}
 \label{fig:teaser}

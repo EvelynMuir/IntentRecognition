@@ -1,4 +1,5 @@
 \appendix
+\setcounter{table}{0}
 
 % \section{Validation Results for Additional Experiments}
 
@@ -211,7 +212,7 @@ What visual style typically characterizes web images of this intent? (e.g., high
 First, output a 50-80 word [Comprehensive Summary]. This summary should seamlessly integrate the visual elements above into a natural, cohesive, and highly visual paragraph. This will serve as my core Query.
 Second, provide a concise list breaking down the keywords/phrases for the 5 dimensions mentioned above.
 
-\textbf{Crucial Note:} While generating, actively consider the core visual differences between this intent and other highly similar intents (e.g., distinguishing "Enjoying life" from "Having an easy and comfortable life"), and heavily emphasize those unique visual discriminators in your description.
+% \textbf{Crucial Note:} While generating, actively consider the core visual differences between this intent and other highly similar intents (e.g., distinguishing "Enjoying life" from "Having an easy and comfortable life"), and heavily emphasize those unique visual discriminators in your description.
 \end{quote}
 
 \subsection{Rationale Generation Prompt}
@@ -221,7 +222,7 @@ We use an instruction template to generate the three-stage rationale for each tr
 In this template, ${y_{true}}$ denotes the ground-truth intent set of the current sample, and ${y_{confuse}}$ denotes a semantically neighboring intent used for counterfactual disambiguation.
 
 \begin{quote}
-\textbf{System Instruction:} You are an expert human behavioral analyst and computer vision specialist. Your task is to analyze an image and provide a highly logical, structured reasoning chain that explains the underlying human intent. Strictly follow the requested format and avoid conversational filler.
+% \textbf{System Instruction:} You are an expert human behavioral analyst and computer vision specialist. Your task is to analyze an image and provide a highly logical, structured reasoning chain that explains the underlying human intent. Strictly follow the requested format and avoid conversational filler.
 
 \textbf{User Prompt:} Given this image, the ground-truth human intents are strictly defined as the concurrent occurrence of: ${y_{true}}$.
 
@@ -242,24 +243,24 @@ In a purely visual context, a machine learning model might easily misclassify th
 For the rationale ablation in Section~\ref{sec:experiments}, we additionally use the following lightweight caption prompt as a weaker semantic supervision source.
 
 \begin{quote}
-    \textbf{System Instruction:} You are an expert human behavioral analyst and computer vision specialist. Your task is to analyze an image and provide a highly logical, structured reasoning chain that explains the underlying human intent. Strictly follow the requested format and avoid conversational filler.
+    % \textbf{System Instruction:} You are an expert human behavioral analyst and computer vision specialist. Your task is to analyze an image and provide a highly logical, structured reasoning chain that explains the underlying human intent. Strictly follow the requested format and avoid conversational filler.
 
     \textbf{User Prompt:} Describe this image for visual intent recognition in 2-3 concise sentences. Focus on visible actions, salient objects, and scene context. Avoid speculation beyond what is visually grounded.
 \end{quote}
 
-\section{Validation Results}
-\subsection{Validation Results for Main Comparison}
-\label{app:validation_results_main}
+% \section{Validation Results}
+% \subsection{Validation Results for Main Comparison}
+% \label{app:validation_results_main}
 
-This section reports the validation set counterpart of the main comparison in Section~\ref{tab:main_results_val}. We keep the same model groups, metric definitions, and reporting metrics as the test set table in the main text.
+% This section reports the validation set counterpart of the main comparison in Section~\ref{tab:main_results_val}. We keep the same model groups, metric definitions, and reporting metrics as the test set table in the main text.
 
-% The validation trend is consistent with the test set findings: the strong CLIP baseline already establishes a high starting point, UTD-only training brings a clear additional gain, and the full FDIR configuration achieves the strongest overall performance.
+% % The validation trend is consistent with the test set findings: the strong CLIP baseline already establishes a high starting point, UTD-only training brings a clear additional gain, and the full FDIR configuration achieves the strongest overall performance.
 
-\subsection{Validation Results for Subset Evaluation}
+\section{Validation Results for Subset Evaluation}
 \label{app:validation_results_subsets}
 
 We provide validation set counterparts for additional subset evaluation analyses in Tables~\ref{tab:difficulty_results_val} and \ref{tab:content_results_val}.
-% verify that the gains remain stable under both difficulty-based and content-dependent partitions.
+The result verify that the gains remain stable under both difficulty-based and content-dependent partitions.
 
 \begin{table}[H]
 \centering
@@ -289,46 +290,46 @@ FDIR & \textbf{63.13} & \textbf{68.33} & \textbf{56.99} & \textbf{62.82} \\
 \end{tabular}
 \end{table}
 
-\begin{table}[H]
-\centering
-\small
-\caption{Validation set results corresponding to Table~\ref{tab:main_results}. We report Macro F1, Micro F1, Samples F1, and their average (Avg.). All numbers are percentages.}
-\label{tab:main_results_val}
-\begingroup
-\renewcommand{\arraystretch}{1.0}
-\setlength{\tabcolsep}{4pt}
-\begin{tabular}{llcccc}
-\hline
-Method & Publication & Macro F1 & Micro F1 & Samples F1 & Avg. \\
-\hline
-Random & - & 6.94 & 7.18 & 7.10 & 7.07 \\
-Visual \cite{he_deep_2016} & CVPR 2016 & 23.03 & 31.36 & 29.91 & 28.10 \\
-\hline
-\multicolumn{6}{l}{\textbf{Multi-label classification methods}} \\
-HiMulConE \cite{zhang_use_2022} & CVPR 2022 & 28.14 & 41.30 & 42.50 & 37.31 \\
-MultiGuard \cite{jia_multiguard_2022} & NeurIPS 2022 & 27.74 & 41.03 & 41.58 & 36.78 \\
-SST \cite{chen_structured_2022} & AAAI 2022 & 28.78 & 41.03 & 41.75 & 37.19 \\
-Query2Label \cite{liu_query2label_2021} & - & 32.77 & 44.60 & 45.40 & 40.92 \\
-DualCoOp \cite{sun_dualcoop_2022} & NeurIPS 2022 & 32.67 & 46.29 & 42.97 & 40.64 \\
-\hline
-\multicolumn{6}{l}{\textbf{Label noise methods}} \\
-Cleannet \cite{lee_cleannet_2018} & CVPR 2018 & 26.78 & 42.31 & 41.57 & 36.89 \\
-LS \cite{lukasik_does_2020} & ICML 2020 & 24.68 & 42.97 & 44.23 & 37.29 \\
-Dividemix \cite{li_dividemix_2019} & ICLR 2020 & 31.01 & 41.67 & 41.89 & 38.19 \\
-\hline
-\multicolumn{6}{l}{\textbf{Intent perception methods}} \\
-Jia \cite{jia_intentonomy_2021} & CVPR 2021 & 25.07 & 32.94 & 33.61 & 30.54 \\
-CPAD \cite{ye_cross-modality_2023} & TIP 2023 & 27.37 & 41.77 & 42.68 & 37.27 \\
-HLEG \cite{shi_learnable_2023} & TAC 2023 & 35.35 & 46.34 & 47.40 & 43.03 \\
-PIP-Net \cite{wang_prototype-based_2023} & TMM 2023 & 30.71 & 44.84 & 45.48 & 40.34 \\
-LabCR \cite{shi_label-aware_2024} & TIP 2024 & 37.10 & 49.04 & 49.71 & 45.28 \\
-IntCLIP \cite{leonardis_synergy_2025} & ECCV 2024 & 41.55 & 52.61 & 49.75 & 47.97 \\
-IntentMLM \cite{wang_unlocking_2026} & PR 2026 & 43.06 & 54.77 & 56.93 & 51.59 \\
-\hline
-CLIP ViT-L/14 \cite{radford_learning_2021} & ICML 2021 & 55.80 & 59.62 & 60.10 & 58.51 \\
-FDIR (UTD only) & Ours & 57.86 & 62.16 & 63.88 & 61.30 \\
-FDIR & Ours & \textbf{59.34} & \textbf{63.06} & \textbf{63.51} & \textbf{61.97} \\
-\hline
-\end{tabular}
-\endgroup
-\end{table}
+% \begin{table}[H]
+% \centering
+% \small
+% \caption{Validation set results corresponding to Table~\ref{tab:main_results}. We report Macro F1, Micro F1, Samples F1, and their average (Avg.). All numbers are percentages.}
+% \label{tab:main_results_val}
+% \begingroup
+% \renewcommand{\arraystretch}{1.0}
+% \setlength{\tabcolsep}{4pt}
+% \begin{tabular}{llcccc}
+% \hline
+% Method & Publication & Macro F1 & Micro F1 & Samples F1 & Avg. \\
+% \hline
+% Random & - & 6.94 & 7.18 & 7.10 & 7.07 \\
+% Visual \cite{he_deep_2016} & CVPR 2016 & 23.03 & 31.36 & 29.91 & 28.10 \\
+% \hline
+% \multicolumn{6}{l}{\textbf{Multi-label classification methods}} \\
+% HiMulConE \cite{zhang_use_2022} & CVPR 2022 & 28.14 & 41.30 & 42.50 & 37.31 \\
+% MultiGuard \cite{jia_multiguard_2022} & NeurIPS 2022 & 27.74 & 41.03 & 41.58 & 36.78 \\
+% SST \cite{chen_structured_2022} & AAAI 2022 & 28.78 & 41.03 & 41.75 & 37.19 \\
+% Query2Label \cite{liu_query2label_2021} & - & 32.77 & 44.60 & 45.40 & 40.92 \\
+% DualCoOp \cite{sun_dualcoop_2022} & NeurIPS 2022 & 32.67 & 46.29 & 42.97 & 40.64 \\
+% \hline
+% \multicolumn{6}{l}{\textbf{Label noise methods}} \\
+% Cleannet \cite{lee_cleannet_2018} & CVPR 2018 & 26.78 & 42.31 & 41.57 & 36.89 \\
+% LS \cite{lukasik_does_2020} & ICML 2020 & 24.68 & 42.97 & 44.23 & 37.29 \\
+% Dividemix \cite{li_dividemix_2019} & ICLR 2020 & 31.01 & 41.67 & 41.89 & 38.19 \\
+% \hline
+% \multicolumn{6}{l}{\textbf{Intent perception methods}} \\
+% Jia \cite{jia_intentonomy_2021} & CVPR 2021 & 25.07 & 32.94 & 33.61 & 30.54 \\
+% CPAD \cite{ye_cross-modality_2023} & TIP 2023 & 27.37 & 41.77 & 42.68 & 37.27 \\
+% HLEG \cite{shi_learnable_2023} & TAC 2023 & 35.35 & 46.34 & 47.40 & 43.03 \\
+% PIP-Net \cite{wang_prototype-based_2023} & TMM 2023 & 30.71 & 44.84 & 45.48 & 40.34 \\
+% LabCR \cite{shi_label-aware_2024} & TIP 2024 & 37.10 & 49.04 & 49.71 & 45.28 \\
+% IntCLIP \cite{leonardis_synergy_2025} & ECCV 2024 & 41.55 & 52.61 & 49.75 & 47.97 \\
+% IntentMLM \cite{wang_unlocking_2026} & PR 2026 & 43.06 & 54.77 & 56.93 & 51.59 \\
+% \hline
+% CLIP ViT-L/14 \cite{radford_learning_2021} & ICML 2021 & 55.80 & 59.62 & 60.10 & 58.51 \\
+% FDIR (UTD only) & Ours & 57.86 & 62.16 & 63.88 & 61.30 \\
+% FDIR & Ours & \textbf{59.34} & \textbf{63.06} & \textbf{63.51} & \textbf{61.97} \\
+% \hline
+% \end{tabular}
+% \endgroup
+% \end{table}

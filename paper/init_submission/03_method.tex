@@ -1,6 +1,6 @@
 \begin{figure}[th]
 \centering
-\includegraphics[width=\linewidth]{srcs/framework.pdf}
+\includegraphics[width=\linewidth]{2_framework.pdf}
 \caption{Overview of the FDIL framework. The framework functionally decouples ambiguity handling into \textbf{semantic refinement} and \textbf{semantic supervision}. \textbf{(Bottom) SLR-C module:} heterogeneous lexical, canonical, and scenario priors define a semantic prior through Top-$K$ reranking, after which a lightweight residual student adapts the final prediction to image evidence before class-wise thresholding. \textbf{(Top) UTD module:} a VLM-derived text teacher provides rationale-based semantic supervision, and its contribution is adaptively gated by the annotator agreement score $\omega$ to stabilize learning under supervisory ambiguity.}
 \label{fig:fdil_framework}
 \end{figure}
@@ -117,7 +117,7 @@ In the final full model, this residual module is not trained in isolation: it ca
 
 \subsubsection{Class-wise Calibration}
 
-To account for class imbalance and varying score distributions, we adopt class-wise thresholds:
+Motivated by Guo et al. \cite{guo_calibration_2017}, to account for class imbalance and varying score distributions, we adopt class-wise thresholds:
 \begin{equation}
 \hat{y}_c = \mathbb{I}[\sigma(s^{\text{full}}_c) > t_c],
 \end{equation}

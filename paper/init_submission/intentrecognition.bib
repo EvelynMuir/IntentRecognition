@@ -1,17 +1,93 @@
 
-@misc{team_gemini_2025,
+@inproceedings{guo_calibration_2017,
+	title = {On {Calibration} of {Modern} {Neural} {Networks}},
+	issn = {2640-3498},
+	url = {https://proceedings.mlr.press/v70/guo17a.html},
+	abstract = {Confidence calibration – the problem of predicting probability estimates representative of the true correctness likelihood – is important for classification models in many applications. We discover that modern neural networks, unlike those from a decade ago, are poorly calibrated. Through extensive experiments, we observe that depth, width, weight decay, and Batch Normalization are important factors influencing calibration. We evaluate the performance of various post-processing calibration methods on state-of-the-art architectures with image and document classification datasets. Our analysis and experiments not only offer insights into neural network learning, but also provide a simple and straightforward recipe for practical settings: on most datasets, temperature scaling – a single-parameter variant of Platt Scaling – is surprisingly effective at calibrating predictions.},
+	language = {en},
+	urldate = {2026-03-31},
+	booktitle = {Proceedings of the 34th {International} {Conference} on {Machine} {Learning}},
+	publisher = {PMLR},
+	author = {Guo, Chuan and Pleiss, Geoff and Sun, Yu and Weinberger, Kilian Q.},
+	month = jul,
+	year = {2017},
+	pages = {1321--1330},
+}
+
+@inproceedings{weerasooriya_disagreement_2023,
+	address = {Toronto, Canada},
+	title = {Disagreement {Matters}: {Preserving} {Label} {Diversity} by {Jointly} {Modeling} {Item} and {Annotator} {Label} {Distributions} with {DisCo}},
+	shorttitle = {Disagreement {Matters}},
+	url = {https://aclanthology.org/2023.findings-acl.287/},
+	doi = {10.18653/v1/2023.findings-acl.287},
+	abstract = {Annotator disagreement is common whenever human judgment is needed for supervised learning. It is conventional to assume that one label per item represents ground truth. However, this obscures minority opinions, if present. We regard “ground truth” as the distribution of all labels that a population of annotators could produce, if asked (and of which we only have a small sample). We next introduce DisCo (Distribution from Context), a simple neural model that learns to predict this distribution. The model takes annotator-item pairs, rather than items alone, as input, and performs inference by aggregating over all annotators. Despite its simplicity, our experiments show that, on six benchmark datasets, our model is competitive with, and frequently outperforms, other, more complex models that either do not model specific annotators or were not designed for label distribution learning.},
+	urldate = {2026-03-31},
+	booktitle = {Findings of the {Association} for {Computational} {Linguistics}: {ACL} 2023},
+	publisher = {Association for Computational Linguistics},
+	author = {Weerasooriya, Tharindu Cyril and Ororbia, Alexander and Bhensadadia, Raj and KhudaBukhsh, Ashiqur and Homan, Christopher},
+	editor = {Rogers, Anna and Boyd-Graber, Jordan and Okazaki, Naoaki},
+	month = jul,
+	year = {2023},
+	pages = {4679--4695},
+}
+
+@inproceedings{weerasooriya_subjective_2023,
+	address = {Toronto, Canada},
+	title = {Subjective {Crowd} {Disagreements} for {Subjective} {Data}: {Uncovering} {Meaningful} {CrowdOpinion} with {Population}-level {Learning}},
+	shorttitle = {Subjective {Crowd} {Disagreements} for {Subjective} {Data}},
+	url = {https://aclanthology.org/2023.acl-long.54/},
+	doi = {10.18653/v1/2023.acl-long.54},
+	abstract = {Human-annotated data plays a critical role in the fairness of AI systems, including those that deal with life-altering decisions or moderating human-created web/social media content. Conventionally, annotator disagreements are resolved before any learning takes place. However, researchers are increasingly identifying annotator disagreement as pervasive and meaningful. They also question the performance of a system when annotators disagree. Particularly when minority views are disregarded, especially among groups that may already be underrepresented in the annotator population. In this paper, we introduce CrowdOpinion, an unsupervised learning based approach that uses language features and label distributions to pool similar items into larger samples of label distributions. We experiment with four generative and one density-based clustering method, applied to five linear combinations of label distributions and features. We use five publicly available benchmark datasets (with varying levels of annotator disagreements) from social media (Twitter, Gab, and Reddit). We also experiment in the wild using a dataset from Facebook, where annotations come from the platform itself by users reacting to posts. We evaluate CrowdOpinion as a label distribution prediction task using KL-divergence and a single-label problem using accuracy measures.},
+	urldate = {2026-03-31},
+	booktitle = {Proceedings of the 61st {Annual} {Meeting} of the {Association} for {Computational} {Linguistics} ({Volume} 1: {Long} {Papers})},
+	publisher = {Association for Computational Linguistics},
+	author = {Weerasooriya, Tharindu Cyril and Luger, Sarah and Poddar, Saloni and KhudaBukhsh, Ashiqur and Homan, Christopher},
+	editor = {Rogers, Anna and Boyd-Graber, Jordan and Okazaki, Naoaki},
+	month = jul,
+	year = {2023},
+	pages = {950--966},
+}
+
+@article{mostafazadeh_davani_dealing_2022,
+	address = {Cambridge, MA},
+	title = {Dealing with {Disagreements}: {Looking} {Beyond} the {Majority} {Vote} in {Subjective} {Annotations}},
+	volume = {10},
+	shorttitle = {Dealing with {Disagreements}},
+	url = {https://aclanthology.org/2022.tacl-1.6/},
+	doi = {10.1162/tacl_a_00449},
+	abstract = {Majority voting and averaging are common approaches used to resolve annotator disagreements and derive single ground truth labels from multiple annotations. However, annotators may systematically disagree with one another, often reflecting their individual biases and values, especially in the case of subjective tasks such as detecting affect, aggression, and hate speech. Annotator disagreements may capture important nuances in such tasks that are often ignored while aggregating annotations to a single ground truth. In order to address this, we investigate the efficacy of multi-annotator models. In particular, our multi-task based approach treats predicting each annotators' judgements as separate subtasks, while sharing a common learned representation of the task. We show that this approach yields same or better performance than aggregating labels in the data prior to training across seven different binary classification tasks. Our approach also provides a way to estimate uncertainty in predictions, which we demonstrate better correlate with annotation disagreements than traditional methods. Being able to model uncertainty is especially useful in deployment scenarios where knowing when not to make a prediction is important.},
+	urldate = {2026-03-31},
+	journal = {Transactions of the Association for Computational Linguistics},
+	publisher = {MIT Press},
+	author = {Mostafazadeh Davani, Aida and Díaz, Mark and Prabhakaran, Vinodkumar},
+	editor = {Roark, Brian and Nenkova, Ani},
+	year = {2022},
+	pages = {92--110},
+}
+
+@inproceedings{peterson_human_2019,
+author = { Peterson, Joshua and Battleday, Ruairidh and Griffiths, Thomas and Russakovsky, Olga },
+	title = {Human {Uncertainty} {Makes} {Classification} {More} {Robust}},
+booktitle = { 2019 IEEE/CVF International Conference on Computer Vision (ICCV) },
+year = {2019},
+volume = {},
+ISSN = {},
+pages = {9616-9625},
+abstract = { The classification performance of deep neural networks has begun to asymptote at near-perfect levels. However, their ability to generalize outside the training set and their robustness to adversarial attacks have not. In this paper, we make progress on this problem by training with full label distributions that reflect human perceptual uncertainty. We first present a new benchmark dataset which we call CIFAR10H, containing a full distribution of human labels for each image of the CIFAR10 test set. We then show that, while contemporary classifiers fail to exhibit human-like uncertainty on their own, explicit training on our dataset closes this gap, supports improved generalization to increasingly out-of-training-distribution test datasets, and confers robustness to adversarial attacks. },
+keywords = {Training;Robustness;Uncertainty;Benchmark testing;Standards;Task analysis;Dogs},
+doi = {10.1109/ICCV.2019.00971},
+url = {https://doi.ieeecomputersociety.org/10.1109/ICCV.2019.00971},
+publisher = {IEEE Computer Society},
+address = {Los Alamitos, CA, USA},
+month =Nov}
+
+
+@article{team_gemini_2025,
 	title = {Gemini: {A} {Family} of {Highly} {Capable} {Multimodal} {Models}},
-	shorttitle = {Gemini},
-	url = {http://arxiv.org/abs/2312.11805},
-	doi = {10.48550/arXiv.2312.11805},
-	abstract = {This report introduces a new family of multimodal models, Gemini, that exhibit remarkable capabilities across image, audio, video, and text understanding. The Gemini family consists of Ultra, Pro, and Nano sizes, suitable for applications ranging from complex reasoning tasks to on-device memory-constrained use-cases. Evaluation on a broad range of benchmarks shows that our most-capable Gemini Ultra model advances the state of the art in 30 of 32 of these benchmarks - notably being the first model to achieve human-expert performance on the well-studied exam benchmark MMLU, and improving the state of the art in every one of the 20 multimodal benchmarks we examined. We believe that the new capabilities of the Gemini family in cross-modal reasoning and language understanding will enable a wide variety of use cases. We discuss our approach toward post-training and deploying Gemini models responsibly to users through services including Gemini, Gemini Advanced, Google AI Studio, and Cloud Vertex AI.},
-	urldate = {2026-03-25},
-	publisher = {arXiv},
 	author = {Team, Gemini},
 	month = may,
 	year = {2025},
-	note = {arXiv:2312.11805 [cs]},
-	keywords = {Computer Science - Artificial Intelligence, Computer Science - Computation and Language, Computer Science - Computer Vision and Pattern Recognition},
+	journal = {arXiv preprint arXiv:2312.11805},
 }
 
 @inproceedings{loshchilov_decoupled_2018,
@@ -22,7 +98,8 @@
 	urldate = {2026-03-25},
 	author = {Loshchilov, Ilya and Hutter, Frank},
 	month = sep,
-	year = {2018},
+	booktitle={International Conference on Learning Representations (ICLR)},
+  year={2019}
 }
 
 @inproceedings{xiao_c-pack_2024,
@@ -42,7 +119,7 @@
 	pages = {641--649},
 }
 
-@misc{bai_qwen25-vl_2025,
+@article{bai_qwen25-vl_2025,
 	title = {Qwen2.5-{VL} {Technical} {Report}},
 	url = {http://arxiv.org/abs/2502.13923},
 	doi = {10.48550/arXiv.2502.13923},
@@ -53,7 +130,7 @@
 	author = {Bai, Shuai and Chen, Keqin and Liu, Xuejing and Wang, Jialin and Ge, Wenbin and Song, Sibo and Dang, Kai and Wang, Peng and Wang, Shijie and Tang, Jun and Zhong, Humen and Zhu, Yuanzhi and Yang, Mingkun and Li, Zhaohai and Wan, Jianqiang and Wang, Pengfei and Ding, Wei and Fu, Zheren and Xu, Yiheng and Ye, Jiabo and Zhang, Xi and Xie, Tianbao and Cheng, Zesen and Zhang, Hang and Yang, Zhibo and Xu, Haiyang and Lin, Junyang},
 	month = feb,
 	year = {2025},
-	note = {arXiv:2502.13923 [cs]},
+	journal = {arXiv preprint arXiv:2502.13923},
 	keywords = {Computer Science - Computation and Language, Computer Science - Computer Vision and Pattern Recognition},
 }
 
@@ -66,7 +143,8 @@
 	urldate = {2026-03-25},
 	author = {Li, Junnan and Socher, Richard and Hoi, Steven C. H.},
 	month = sep,
-	year = {2019},
+	booktitle={International Conference on Learning Representations (ICLR)},
+  year={2020}
 }
 
 @article{chen_structured_2022,
@@ -118,7 +196,7 @@
 	pages = {5447--5456},
 }
 
-@misc{wang_qwen2-vl_2024,
+@article{wang_qwen2-vl_2024,
 	title = {Qwen2-{VL}: {Enhancing} {Vision}-{Language} {Model}'s {Perception} of the {World} at {Any} {Resolution}},
 	shorttitle = {Qwen2-{VL}},
 	url = {http://arxiv.org/abs/2409.12191},
@@ -129,7 +207,7 @@
 	author = {Wang, Peng and Bai, Shuai and Tan, Sinan and Wang, Shijie and Fan, Zhihao and Bai, Jinze and Chen, Keqin and Liu, Xuejing and Wang, Jialin and Ge, Wenbin and Fan, Yang and Dang, Kai and Du, Mengfei and Ren, Xuancheng and Men, Rui and Liu, Dayiheng and Zhou, Chang and Zhou, Jingren and Lin, Junyang},
 	month = oct,
 	year = {2024},
-	note = {arXiv:2409.12191 [cs]},
+	journal = {arXiv preprint arXiv:2409.12191},
 	keywords = {Computer Science - Artificial Intelligence, Computer Science - Computation and Language, Computer Science - Computer Vision and Pattern Recognition},
 }
 
@@ -155,6 +233,7 @@
 	author = {He, Kaiming and Zhang, Xiangyu and Ren, Shaoqing and Sun, Jian},
 	year = {2016},
 	pages = {770--778},
+    booktitle={Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)}
 }
 
 @inproceedings{sun_dualcoop_2022,
@@ -172,7 +251,7 @@
 	pages = {30569--30582},
 }
 
-@misc{liu_query2label_2021,
+@article{liu_query2label_2021,
 	title = {{Query2Label}: {A} {Simple} {Transformer} {Way} to {Multi}-{Label} {Classification}},
 	shorttitle = {{Query2Label}},
 	url = {http://arxiv.org/abs/2107.10834},
@@ -183,7 +262,7 @@
 	author = {Liu, Shilong and Zhang, Lei and Yang, Xiao and Su, Hang and Zhu, Jun},
 	month = jul,
 	year = {2021},
-	note = {arXiv:2107.10834 [cs]},
+	journal = {arXiv preprint arXiv:2107.10834},
 	keywords = {Computer Science - Computer Vision and Pattern Recognition},
 }
 
@@ -270,18 +349,14 @@
 
 @inproceedings{ridnik_asymmetric_2021,
 	title = {Asymmetric {Loss} {For} {Multi}-{Label} {Classification}},
-	isbn = {978-1-6654-2812-5},
-	url = {https://www.computer.org/csdl/proceedings-article/iccv/2021/281200a082/1BmJyFqpsZi},
-	doi = {10.1109/ICCV48922.2021.00015},
-	abstract = {In a typical multi-label setting, a picture contains on average few positive labels, and many negative ones. This positive-negative imbalance dominates the optimization process, and can lead to under-emphasizing gradients from positive labels during training, resulting in poor accuracy. In this paper, we introduce a novel asymmetric loss ("ASL"), which operates differently on positive and negative samples. The loss enables to dynamically down-weights and hard-thresholds easy negative samples, while also discarding possibly mislabeled samples. We demonstrate how ASL can balance the probabilities of different samples, and how this balancing is translated to better mAP scores. With ASL, we reach state-of-the-art results on multiple popular multi-label datasets: MS-COCO, Pascal-VOC, NUS-WIDE and Open Images. We also demonstrate ASL applicability for other tasks, such as single-label classification and object detection. ASL is effective, easy to implement, and does not increase the training time or complexity. Implementation is available at: https://github.com/Alibaba-MIIL/ASL.},
-	language = {English},
-	urldate = {2026-03-24},
-	publisher = {IEEE Computer Society},
-	author = {Ridnik, Tal and Ben-Baruch, Emanuel and Zamir, Nadav and Noy, Asaf and Friedman, Itamar and Protter, Matan and Zelnik-Manor, Lihi},
-	month = oct,
-	year = {2021},
-	pages = {82--91},
-}
+  author={Ridnik, Tal and Ben-Baruch, Emanuel and Zamir, Nadav and Noy, Asaf and Friedman, Itamar and Protter, Matan and Zelnik-Manor, Lihi},
+  booktitle={2021 IEEE/CVF International Conference on Computer Vision (ICCV)}, 
+  year={2021},
+  volume={},
+  number={},
+  pages={82-91},
+  keywords={Training;Computer vision;Adaptive systems;Object detection;Benchmark testing;Complexity theory;Task analysis;Recognition and classification;Efficient training and inference methods;Machine learning architectures and formulations;Optimization and learning methods;Scene analysis and understanding},
+  doi={10.1109/ICCV48922.2021.00015}}
 
 @inproceedings{zhang_use_2022,
 	title = {Use {All} {The} {Labels}: {A} {Hierarchical} {Multi}-{Label} {Contrastive} {Learning} {Framework}},
@@ -482,7 +557,6 @@
 	journal = {IEEE Transactions on Image Processing},
 	author = {Shi, QingHongYa and Ye, Mang and Huang, Wenke and Ruan, Weijian and Du, Bo},
 	year = {2024},
-	note = {Conference Name: IEEE Transactions on Image Processing},
 	keywords = {Calibration, Computer vision, Correlation, Data augmentation, Image classification, Task analysis, Visual intention understanding, Visualization, distribution calibration, intention relation},
 	pages = {2627--2638},
 }
