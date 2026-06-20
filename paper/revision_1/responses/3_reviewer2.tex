@@ -15,21 +15,44 @@ be based mainly on the correct combination of existing methods rather than the
 development of a novel approach.}
 {We address this on four fronts.
 
-\smallskip\noindent\textbf{(a) A formal decoupling principle (new theory, \S X).}
-We now formalize the two ambiguities as acting on \emph{different terms of the
-learning objective}: supervisory ambiguity is label-side conditional entropy /
-annotation noise, whereas semantic ambiguity is feature-side inter-class
-mutual-information aliasing. From an information-theoretic / feature-selection
-viewpoint, a single mechanism conflates two terms that should be treated
-orthogonally, which \emph{necessarily} motivates SLR-C (feature/decision side)
-and UTD (label/supervision side) as separate modules. This reframes the
-contribution as a principle with testable predictions, not an engineering
-combination.
+\smallskip\noindent\textbf{(a) A formal decoupling principle (new theory,
+\S\ref{sec:decoupling_principle}).} We now formalize the two ambiguities as
+acting on \emph{different terms of the learning objective} (Eq.~\eqref{eq:risk_decomp}):
+supervisory ambiguity is a label-side conditional-entropy term that depends only
+on $\Pr(Y\mid X)$ and is irreducible by any function of the features, whereas
+semantic ambiguity is a feature-side inter-class mutual-information aliasing term
+(Eq.~\eqref{eq:aliasing}) that depends only on the representation $\phi$. Because
+the two are functionals of different objects, we show their corrections have
+non-interfering first-order effects: a reliability gate that is a function of the
+agreement $\omega$ alone (UTD, label side) and a reranking/residual that is a
+function of $(\phi,\text{class text})$ alone (SLR-C, feature side) act on disjoint
+factors of the risk, so a single scalar-weighted mechanism that mixes both signals
+must trade one ambiguity against the other while a decoupled realization need not.
+This reframes the contribution as a principle with three testable predictions
+(separable additive threshold-free increments; content-dependence of the teacher;
+non-uniqueness of the realization), each verified in Section~\ref{sec:experiments}.
+We are careful not to overclaim necessity: as prediction~(P3) and the head-to-head
+comparison in~(b) show, a unified control built on a single ambiguity signal comes
+within about one average-F1 point of the decoupled model, while naively fusing both
+signals into one target underperforms it, so we frame decoupling as the more
+interpretable, separately measurable, and independently deployable realization of the
+principle -- and a modestly more accurate one -- rather than the only route to a
+competitive accuracy.
 
 \smallskip\noindent\textbf{(b) Unified vs.\ decoupled, head to head (E3, new
 table).} We added a controlled comparison in which a single unified mechanism is
-given the same inputs and budget as decoupled FDIL. \todo{insert result showing
-decoupled $>$ unified, demonstrating the decoupling is not vacuous}.
+given the same inputs and budget as decoupled FDIL. A unified control that mixes
+SLR-C probabilities and rationale-teacher probabilities into one joint
+distillation target -- removing residual decomposition and agreement-aware
+gating -- reaches only $55.66$ average F1 (3-seed mean), \emph{below} decoupled
+FDIL ($57.49$; Macro $50.69\!\to\!52.13$, Hard $32.41\!\to\!35.02$, mAP
+$54.60\!\to\!55.10$) and at the level of the weaker single signal. The strongest
+single-signal control (SLR-C only) is closer, $0.62$ average F1 behind FDIL
+($56.87$ vs.\ $57.49$) and marginally higher on mAP. We therefore state the claim
+as follows: naively fusing the two ambiguity signals into one supervision target
+is suboptimal, and decoupling yields a modest but consistent aggregate-accuracy
+benefit on top of its primary advantages -- interpretability, separate
+measurability, and independent deployability.
 
 \smallskip\noindent\textbf{(c) Generalization on a second dataset (E4).}
 \todo{insert second-dataset result; if EMOTIC, frame it carefully as a
@@ -39,14 +62,24 @@ plan's risk note}.
 \smallskip\noindent\textbf{(d) The two modules contribute separately and
 additively (E2, threshold-free).} On mAP, UTD alone contributes \res{$+2.09$}
 over the CLIP baseline ($50.98\!\to\!53.07$) and adding SLR-C contributes a
-further \res{$+1.48$} ($53.07\!\to\!54.55$), for a total of \res{$+3.57$}.
+further \res{$+2.03$} ($53.07\!\to\!55.10$), for a total of \res{$+4.12$}.
 Because each decoupled module yields an independent, measurable increment on a
 threshold-free metric, the decoupling is empirically separable rather than a
 single re-labeled mechanism.}
 
 \cresp{The VLM / text prior may be mere external-knowledge stacking.}
-{We added negative-control experiments (E14, new \todo{Table~X}): shuffled
-rationales, random scenario priors, label-only text, caption-only text, an
-ungated teacher, and a corrupted agreement gate. \todo{insert results showing
-these controls do not reproduce the gains -- i.e.\ it is not ``any VLM text +
-class-wise threshold'' that helps, but the structured, uncertainty-gated prior}.}
+{We added negative-control retrains (E14, new Table~\ref{tab:negative_controls})
+that corrupt one ingredient of the full pipeline at a time. The decisive control
+is the \emph{shuffled rationale}, where each image keeps a teacher rationale but
+it belongs to a \emph{different} image. This is the single most damaging change
+we tried -- it costs \res{$7.8$ Macro F1} and \res{$7.6$ Hard F1}, i.e.\
+\emph{worse than removing the teacher altogether} (w/o UTD) -- because a
+mismatched rationale actively contradicts the image rather than merely
+withholding information. This directly rules out the ``any external text''
+explanation: the gain depends on the per-image \emph{content} of the rationale,
+not on the mere presence of additional text or a calibration effect. Removing
+the uncertainty gate (ungated) or flattening it to a constant (uniform gate)
+costs a smaller, more mixed amount, so the agreement gate is a modest refinement
+rather than the main source of value. These controls focus on the
+uncertainty-aware rationale teacher because it is the load-bearing component of
+UTD, which is precisely the part R2 worried might be generic external knowledge.}

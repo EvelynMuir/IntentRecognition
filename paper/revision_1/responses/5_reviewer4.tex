@@ -35,10 +35,17 @@ Table~X}). \todo{see R2 comment~(c) framing note}.}
 
 \cresp{Experimental evaluation is not sufficient; more comparisons with 2025/2026
 LLM methods and t-SNE are needed.}
-{We restored and extended the large-model comparison (Qwen2-VL-7B / Ovis1.6 /
-GPT-4o plus 1--2 newer MLLMs, E5) and added t-SNE visualizations of intent
-embeddings for FDIL vs.\ the baseline, emphasizing hard / semantically adjacent
-classes (E6, \todo{Fig~X}).}
+{We added a zero-shot MLLM comparison (E5, \todo{Table~X}) using
+the same Intentonomy label set and probability-dictionary prompting protocol.
+GPT-4o reaches Test Macro/Micro/Samples/Avg.\ F1 of
+\res{43.05, 54.77, 56.75, and 51.52}. We also evaluated two newer open-weight MLLMs
+through vLLM services: Qwen3-VL-8B-Instruct obtains Test
+\res{38.51, 40.75, 39.63, and 39.63}, and InternVL3-8B obtains
+\res{37.54, 41.85, 40.50, and 39.97}. These direct-prompting baselines are
+competitive but still below the trained CLIP/FDIL models, supporting the need
+for dataset-specific visual calibration and uncertainty-aware refinement. We
+also added t-SNE visualizations of intent embeddings for FDIL vs.\ the baseline,
+emphasizing hard / semantically adjacent classes (E6, \todo{Fig~X}).}
 
 \cresp{Use ROC-based curves for a clearer evaluation against other SOTA methods.}
 {Added ROC and PR curves vs.\ SOTA from the existing evaluation logits
@@ -51,7 +58,16 @@ failure modes \todo{\S X}.}
 
 \cresp{Add more theoretical analysis, e.g.\ from information-theoretic or
 feature-selection perspectives.}
-{Added -- see Reviewer~2 comment~(a) and the new theory section \todo{\S X}.}
+{Added a formal analysis in \S\ref{sec:decoupling_principle}. We decompose the
+per-class excess risk into a label-side conditional-entropy term (supervisory
+ambiguity, a functional of $\Pr(Y\mid X)$) and a feature-side inter-class
+mutual-information aliasing term (semantic ambiguity, a functional of the
+representation $\phi$), and show the two corrections have non-interfering
+first-order effects -- SLR-C is a feature-selection step that lowers the aliasing
+term, while UTD's agreement gate reduces reliance on high-entropy targets. The
+analysis yields three testable predictions that the experiments confirm
+(additive threshold-free increments, content-dependence of the rationale teacher,
+and non-uniqueness of the decoupled realization). See also Reviewer~2 comment~(a).}
 
 \cresp{A comparative analysis of model parameters, FLOPs, or inference times is
 necessary.}

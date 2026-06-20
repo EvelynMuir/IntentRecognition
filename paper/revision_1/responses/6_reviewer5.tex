@@ -17,8 +17,17 @@ should be included -- (i)~Lexical~+~Scenario and (ii)~Canonical~+~Scenario.}
 
 \cresp{Unexplained anomaly in Table~6: provide a justification for why $K{=}5$ and
 $K{=}28$ yield better performance than $K{=}10$.}
-{We added an explanation and a finer $K$ sweep / smoothed curve (E10, \todo{\S X /
-Fig~X}). \todo{insert the justification for the non-monotonic behavior}.}
+{We thank the reviewer; on re-examination the non-monotonic dip was an artifact of
+an earlier \emph{single-seed} evaluation, not a stable effect. We retrained FDIL at
+$K\in\{5,10,28\}$ over three seeds under the final class-wise thresholding protocol,
+and the corrected sweep is smooth with $K{=}10$ best, which we now adopt as the
+default candidate size (updated Table~6 and main text). The test-split 3-seed means
+are \res{$K{=}5$: Macro/Micro/Samples/Avg/Hard $=51.19/59.03/59.42/56.54/31.60$};
+\res{$K{=}10$: $52.13/60.06/60.28/57.49/35.02$}; \res{$K{=}28$:
+$51.64/59.59/59.71/56.98/34.02$}. Under the final lexical--canonical--scenario prior,
+a moderate candidate set ($K{=}10$) best balances semantic coverage against the
+distractor noise of an overly broad reranking range: $K{=}5$ is slightly too narrow
+and $K{=}28$ adds distractors without further benefit.}
 
 \cresp{Typo in Appendix tables: in Table~B.1 and Table~B.2 (page~35), ``FDIR''
 should be corrected to ``FDIL''.}

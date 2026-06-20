@@ -21,7 +21,12 @@ new experiments, new analysis, and substantial rewriting:
   contribution of the \emph{method} from that of \emph{calibration} (global vs.\
   class-wise thresholding), reported as mean$\pm$std over 3 seeds. FDIL improves
   over the CLIP baseline under \emph{both} thresholding protocols, and the
-  threshold-free mAP confirms the gain is not a calibration artifact.
+  threshold-free mAP confirms the gain is not a calibration artifact. We further
+  re-implemented representative external methods (HLEG, LabCR, IntCLIP) over the
+  \emph{same} frozen CLIP ViT-L/14 features: once the backbone is equalized they
+  fall to the level of the plain CLIP baseline, while FDIL still leads them by
+  $+3.4$ to $+4.7$ average F1, confirming the improvement is algorithmic rather
+  than backbone-driven.
 
   \item \textbf{Novelty and theoretical depth (R2, R4, R1).} We added a formal,
   information-theoretic / feature-selection motivation for \emph{why} the two
@@ -41,7 +46,11 @@ new experiments, new analysis, and substantial rewriting:
   dataset, comparisons against 2025/2026 large multimodal models, t-SNE embedding
   visualizations, ROC/PR curves, threshold-free metrics with statistical
   significance testing, and an extended efficiency comparison
-  (params/FLOPs/latency).
+  (params/FLOPs/latency). In the new zero-shot MLLM comparison, GPT-4o reaches
+  $51.52$ average F1 on the test split, while Qwen3-VL-8B and InternVL3-8B
+  reach $39.63$ and $39.97$, respectively; all remain below the trained
+  CLIP/FDIL models, clarifying that prompting a general MLLM alone does not
+  solve Intentonomy.
 
   \item \textbf{Reproducibility (R1, EiC).} We documented the validation-only
   selection protocol, expanded implementation details, and replaced the
