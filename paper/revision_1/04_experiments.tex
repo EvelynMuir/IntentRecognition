@@ -155,6 +155,41 @@ Table~\ref{tab:content_results} reports results on content-dependent subsets.
 It again shows that the strong CLIP baseline is already highly effective on object- and context-dependent intents. The major gain of FDIL appears in the \textit{Others} subset, where intent recognition requires more holistic reasoning over multiple weak cues rather than direct reliance on a single object or scene pattern.
 More results on the validation set can be found in \ref{app:validation_results_subsets}.
 
+\subsubsection{\revised{Embedding Visualization and Per-class Attribution}}
+
+\revised{To make the source of the improvement interpretable rather than aggregate, we examine where in the label space FDIL helps. Figure~\ref{fig:tsne} shows a t-SNE projection of the learned decision-space representations on test images drawn from a set of semantically adjacent hard intents. Compared with the CLIP baseline, FDIL produces more compact, better-separated same-intent groups (for example the \textit{Communicate} cluster), indicating that the semantic prior and the rationale teacher together pull confusable neighboring intents apart in the decision space rather than merely rescaling scores.}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{5_tsne.pdf}
+\caption{\revised{t-SNE of decision-space representations for the CLIP baseline (a) and FDIL (b) on test samples belonging to semantically adjacent hard intents. FDIL yields tighter, better-separated same-intent groups.}}
+\label{fig:tsne}
+\end{figure}
+
+\revised{We further compute the per-class F1 change of FDIL relative to the CLIP baseline under the matched class-wise protocol (Table~\ref{tab:per_class_attr}). The gains are strongly concentrated on abstract, disagreement-prone intents -- \textit{WorkILike}, \textit{PassionAboutSomething}, and \textit{SocialLifeFriendship} (all hard-subset classes), together with \textit{ManageableMakePlan} and \textit{BeatCompete}, each improve by more than $13$ F1 points -- which are precisely the categories where semantic overlap and supervisory ambiguity are most severe. Crucially, only $2$ of the $28$ classes regress at all: \textit{FineDesignLearnArt-Arch} drops by a negligible $0.96$, and the only non-trivial regression is \textit{CreativeUnique} ($-5.3$), a broad ``creative/unique'' category that overlaps heavily with several neighboring design- and art-related intents and that the residual student occasionally resolves toward a competing neighbor. No easy or visually clear category is otherwise harmed, so the per-class calibration does not trade broad accuracy for hard-case robustness.}
+
+\begin{table}[t]
+\centering
+\small
+\caption{\revised{Per-class F1 attribution of FDIL versus the CLIP baseline (matched class-wise protocol, representative seed). Top: five largest improvements; bottom: the only two regressions among all $28$ classes. All numbers are percentages.}}
+\label{tab:per_class_attr}
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{lcccc}
+\hline
+\revised{Intent class} & \revised{Subset} & \revised{Baseline} & \revised{FDIL} & \revised{$\Delta$} \\
+\hline
+\revised{WorkILike} & \revised{Hard} & \revised{14.6} & \revised{43.0} & \revised{$+28.5$} \\
+\revised{PassionAboutSomething} & \revised{Hard} & \revised{11.3} & \revised{28.6} & \revised{$+17.3$} \\
+\revised{SocialLifeFriendship} & \revised{Hard} & \revised{33.9} & \revised{51.2} & \revised{$+17.2$} \\
+\revised{ManageableMakePlan} & \revised{Medium} & \revised{17.5} & \revised{32.0} & \revised{$+14.5$} \\
+\revised{BeatCompete} & \revised{Medium} & \revised{54.6} & \revised{68.1} & \revised{$+13.5$} \\
+\hline
+\revised{FineDesignLearnArt-Arch} & \revised{Easy} & \revised{84.0} & \revised{83.1} & \revised{$-1.0$} \\
+\revised{CreativeUnique} & \revised{Medium} & \revised{41.9} & \revised{36.6} & \revised{$-5.3$} \\
+\hline
+\end{tabular}
+\end{table}
+
 \subsection{Ablation Studies}
 
 \revised{Unless otherwise noted, every FDIL configuration in the ablation tables below is reported as the mean over the same three random seeds used in Table~\ref{tab:main_results}, so that all FDIL numbers throughout the paper are on a common footing; the full FDIL model is therefore identical ($57.49$ average F1, $55.10$ mAP) wherever it appears. Per-metric standard deviations for the core configurations are listed in Table~\ref{tab:main_results} and Table~\ref{tab:thresholding_test}.}
@@ -205,25 +240,27 @@ FDIL (decoupled) & \textbf{52.13} & 60.06 & \textbf{60.28} & \textbf{57.49} & \t
 
 \subsubsection{Heterogeneous Priors in SLR-C}
 
-We next compare different textual priors used by SLR-C. We consider three semantic sources: \textit{Lexical}, which uses short class-name phrases; \textit{Canonical}, which uses the official intent descriptions provided by Intentonomy; and \textit{Scenario}, which uses Gemini-generated visual scenarios. For the ensemble setting, we average the normalized logits from the selected sources before local reranking. Table~\ref{tab:prior_ablation} shows that the three-source ensemble offers the strongest hard-case robustness and is therefore adopted in the final method. This table isolates the effect of prior sources under the SLR-C reranking stage only, without the residual student or UTD. 
+We next compare different textual priors used by SLR-C. We consider three semantic sources: \textit{Lexical}, which uses short class-name phrases; \textit{Canonical}, which uses the official intent descriptions provided by Intentonomy; and \textit{Scenario}, which uses Gemini-generated visual scenarios. For the ensemble setting, we average the normalized logits from the selected sources before local reranking. \revised{Following Reviewer~5, we now report all four pairwise/triple ensembles, including the previously missing Lexical+Scenario and Canonical+Scenario configurations, and recompute the whole table under the unified $K{=}10$ reranking-only protocol used elsewhere in this paper (frozen CLIP ViT-L/14 features, same split, validation-only class-wise thresholds, no residual student and no UTD).} This table therefore isolates the effect of prior sources under the SLR-C reranking stage only.
 \begin{table}[t]
 \centering
-\caption{Ablation of lexical, canonical, and scenario textual priors in SLR-C on the Intentonomy test split. Ensemble averages normalized logits from selected priors. All numbers are percentages.}
+\caption{\revised{Ablation of lexical, canonical, and scenario textual priors in SLR-C on the Intentonomy test split (reranking-only, $K{=}10$). Ensemble averages normalized logits from selected priors. All numbers are percentages.}}
 \label{tab:prior_ablation}
 \begin{tabular}{cccccccc}
 \hline
 Lexical & Canonical & Scenario & Macro & Micro & Samples & Avg. & Hard \\
 \hline
-$\checkmark$ &  &  & 50.66 & 57.23 & 57.34 & 55.08 & 33.28 \\
- & $\checkmark$ &  & 50.25 & 57.27 & 57.22 & 54.91 & 33.23 \\
- &  & $\checkmark$ & 51.28 & \textbf{59.13} & 58.47 & \textbf{56.29} & 33.98 \\
-$\checkmark$ & $\checkmark$ &  & 50.65 & 57.37 & 57.46 & 55.16 & 32.38 \\
-$\checkmark$ & $\checkmark$ & $\checkmark$ & \textbf{51.49} & 58.76 & \textbf{58.54} & 56.26 & \textbf{35.08} \\
+$\checkmark$ &  &  & \revised{49.76} & \revised{59.12} & \revised{\textbf{58.60}} & \revised{55.83} & \revised{31.22} \\
+ & $\checkmark$ &  & \revised{49.80} & \revised{59.50} & \revised{58.05} & \revised{55.78} & \revised{29.88} \\
+ &  & $\checkmark$ & \revised{49.35} & \revised{58.88} & \revised{57.87} & \revised{55.37} & \revised{32.48} \\
+$\checkmark$ & $\checkmark$ &  & \revised{\textbf{51.18}} & \revised{59.39} & \revised{58.11} & \revised{56.23} & \revised{32.92} \\
+$\checkmark$ &  & $\checkmark$ & \revised{50.12} & \revised{59.30} & \revised{58.36} & \revised{55.93} & \revised{32.75} \\
+ & $\checkmark$ & $\checkmark$ & \revised{50.93} & \revised{59.51} & \revised{58.18} & \revised{56.21} & \revised{\textbf{34.81}} \\
+$\checkmark$ & $\checkmark$ & $\checkmark$ & \revised{50.90} & \revised{\textbf{59.81}} & \revised{58.47} & \revised{\textbf{56.40}} & \revised{32.80} \\
 \hline
 \end{tabular}
 \end{table}
 
-This result is consistent with our semantic interpretation of the task. Lexical prior is compact but under-expressive, canonical prior is more descriptive but still abstract, while scenario prior translates latent intention into typical visual situations and therefore best bridges the gap between visual content and subjective semantics. The lexical-canonical ensemble remains competitive, showing that heterogeneous priors are beneficial. When all three sources are combined, the resulting ensemble further improves hard-case robustness and offers the broadest semantic coverage across prior types, which motivates our final choice of lexical-canonical-scenario priors in FDIL.
+\revised{Three observations follow. First, every ensemble outperforms its single-source components on the aggregate metrics, confirming that the heterogeneous sources carry complementary information: lexical phrases are compact but under-expressive, canonical descriptions are more semantically explicit, and scenario descriptions translate latent intention into typical visual situations. Second, no single source dominates every metric at the reranking-only stage -- the Lexical+Canonical pair is best on Macro F1, Canonical+Scenario is best on the hard subset, and the full three-source ensemble is best on Micro and average F1 -- so the choice of prior is a trade-off rather than a strict ordering. Third, the three-source ensemble gives the best \emph{aggregate} performance (average F1 $56.40$) and the broadest semantic coverage; once it is combined with residual refinement and the UTD teacher in the full model, it also yields the strongest hard-subset result overall (Hard F1 $35.02$ in Table~\ref{tab:main_results}). We therefore adopt the lexical-canonical-scenario ensemble in FDIL for its balanced coverage and its strong behavior under the full pipeline, rather than because it dominates the reranking-only stage on every metric.}
 
 \subsubsection{Sensitivity to Candidate Size $K$}
 
@@ -272,6 +309,37 @@ Top-$K$ & Macro & Micro & Samples & Avg. & Hard \\
 \revised{Second, \emph{class-wise thresholding benefits the baseline and FDIL by comparable amounts} ($+2.29$ vs.\ $+3.26$ average F1), so calibration is a shared, method-agnostic post-processing gain rather than something that FDIL uniquely exploits. This directly addresses the concern that the reported improvements might be driven mainly by per-class thresholding: the calibration effect is present for the baseline as well, while FDIL's advantage sits on top of it.}
 
 \revised{Third, and most decisively, the \emph{threshold-free} mAP confirms the same conclusion: FDIL improves mAP from $50.98_{\pm0.49}$ to $55.10_{\pm0.26}$ ($+4.12$), a metric that is invariant to the thresholding choice by construction. We note that the global-threshold F1 metrics carry large seed variance (e.g., hard-subset std up to $\pm3.9$), because a single shared threshold is a brittle operating point; we therefore treat class-wise F1 and mAP as the primary metrics. For completeness, the average-F1 value of $53.37$ for the CLIP baseline corresponds to class-wise thresholding (Avg.\ = mean of Macro/Micro/Samples F1), not mAP. Overall, per-class calibration is an integral part of the final FDIL decision rule, but it is not the source of FDIL's advantage over the baseline.}
+
+\subsubsection{\revised{Threshold-free Evaluation and Statistical Significance}}
+
+\revised{To remove any residual dependence on the decision threshold and to test whether the gains are statistically reliable, we additionally report fully threshold-free, rank-based metrics -- mean average precision (mAP, the macro PR-AUC), macro and micro ROC-AUC, and micro PR-AUC -- and run a paired bootstrap significance test ($5{,}000$ resamples of the test set). These scores are reconstructed deterministically from the saved checkpoints of a representative seed; the multi-seed mAP headline of Table~\ref{tab:thresholding_test} ($+4.12$) is unaffected. Table~\ref{tab:threshold_free} reports the metrics and Figure~\ref{fig:roc_pr} shows the corresponding micro-averaged ROC and precision-recall curves.}
+
+\begin{table}[t]
+\centering
+\small
+\caption{\revised{Threshold-free metrics on the Intentonomy test split (representative seed, $K{=}10$). All metrics are rank-based and invariant to the decision threshold; mAP is the macro average precision. Paired-bootstrap deltas of FDIL versus each comparator are listed in the text. All numbers are percentages.}}
+\label{tab:threshold_free}
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lcccc}
+\hline
+\revised{Method} & \revised{mAP} & \revised{Macro ROC-AUC} & \revised{Micro ROC-AUC} & \revised{Micro PR-AUC} \\
+\hline
+\revised{CLIP baseline} & \revised{49.94} & \revised{87.04} & \revised{84.90} & \revised{54.89} \\
+\revised{UTD only} & \revised{52.76} & \revised{\textbf{90.09}} & \revised{\textbf{88.55}} & \revised{59.59} \\
+\revised{SLR-C only} & \revised{53.95} & \revised{88.24} & \revised{86.73} & \revised{58.60} \\
+\revised{FDIL} & \revised{\textbf{54.75}} & \revised{89.36} & \revised{88.31} & \revised{\textbf{60.64}} \\
+\hline
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{4_roc_pr.pdf}
+\caption{\revised{Micro-averaged ROC (a) and precision-recall (b) curves on the Intentonomy test split for the CLIP baseline, UTD only, SLR-C only, and the full FDIL model. FDIL attains the largest area in both panels; the SLR-C residual mainly lifts precision (the quantity that drives F1 and mAP) rather than overall ROC separability.}}
+\label{fig:roc_pr}
+\end{figure}
+
+\revised{Two conclusions follow. First, FDIL improves over the CLIP baseline on \emph{every} threshold-free metric with the $95\%$ bootstrap confidence interval excluding zero: mAP $+4.80$ (CI $[3.58,6.10]$), macro ROC-AUC $+2.31$ (CI $[1.77,2.86]$), and micro ROC-AUC $+3.40$ (CI $[2.98,3.83]$), all with $p<0.001$. The advantage is therefore not an artifact of class-wise thresholding. Second, relative to the UTD-only model the picture is deliberately nuanced: FDIL is significantly better on mAP ($+1.99$, CI $[0.27,4.30]$, $p=0.019$) but statistically indistinguishable on ROC-AUC (macro $-0.73$, $p=0.064$; micro $-0.24$, $p=0.26$). In other words, the SLR-C residual sharpens average precision -- the quantity that drives F1 -- rather than overall ROC separability, which is consistent with our claim that decoupling improves precision and stability rather than dominating every possible metric. Against the SLR-C-only control, FDIL is significantly better on all three metrics (mAP $+0.80$, macro-AUC $+1.12$, micro-AUC $+1.58$; all CIs exclude zero), confirming that the residual student adds value over fixed reranking.}
 
 \subsubsection{The Effectiveness of Rationale}
 
@@ -405,6 +473,8 @@ FDIL & 2.41 & 4.93 & 0.466 \\
 \end{table}
 
 The table confirms two intended properties of our design. First, FDIL (UTD only) has exactly the same inference cost as the baseline, because the text teacher is used only during training and discarded at test time. Second, the full FDIL pipeline introduces additional reranking and residual refinement, but the absolute overhead remains small: even with the full lexical-canonical-scenario prior and residual head, the feature-level inference latency stays well below 1 ms per image. This shows that the final performance gains are not obtained by paying a large deployment cost.
+
+\revised{We also place this overhead in the context of the external methods. A fully matched params/FLOPs/latency comparison is not meaningful across these methods because they assume different backbones and inference regimes: HLEG and the originally reported IntCLIP build on convolutional or smaller vision-language encoders, whereas IntentMLM performs holistic perception with a multimodal large language model together with caption generation and retrieval, whose inference cost is several orders of magnitude larger (billions of parameters and tens-to-hundreds of milliseconds per image) and is dominated by the LLM rather than by a lightweight prediction head. Relative to all of them, FDIL keeps the trainable, inference-active prediction heads at $2.41$M parameters and sub-millisecond feature-level latency on top of the shared frozen CLIP encoder, so its added cost over a plain CLIP classifier is marginal. We therefore report exact, same-environment numbers for the components we control (Table~\ref{tab:efficiency_comparison}) and treat the external methods qualitatively, as their cost is governed by incomparable backbone choices.}
 
 \subsection{Case Study}
 

@@ -20,6 +20,10 @@
 \usepackage{enumitem}
 \usepackage[colorlinks,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
 \usepackage{titlesec}
+% Import manuscript labels so \ref{...} to main.tex resolve to the manuscript's
+% section/table/figure numbers. Requires main.aux to be built first.
+\usepackage{xr}
+\externaldocument{main}
 
 % red markup, matching the manuscript's \revised macro
 \newcommand{\revised}[1]{\textcolor{red}{#1}}
@@ -45,12 +49,11 @@
 
 \hrule
 \vspace{0.3em}
-{\small\itshape Note to co-authors (remove before submission): items marked
-\todo{\ldots} depend on experiments/writing not yet finalized. Confirmed results
-from experiments E1 (single-seed grid) and E2 (3-seed stability) are filled in;
-all reported FDIL/baseline numbers use the E2 mean$\pm$std and supersede the
-earlier single-seed values. Re-check all page/line/Table references against the
-revised manuscript in the final cross-reference pass.}
+{\small\itshape Note to co-authors (remove before submission): all reported
+FDIL/baseline F1 numbers use the E2 3-seed mean$\pm$std (and supersede earlier
+single-seed values); threshold-free ROC/PR-AUC and paired-significance figures are
+reconstructed from a representative seed and are labeled as such. Please re-verify
+all page/line references against the final typeset manuscript before submission.}
 \vspace{0.3em}
 \hrule
 \vspace{0.5em}

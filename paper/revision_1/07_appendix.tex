@@ -1,6 +1,49 @@
 \appendix
 \setcounter{table}{0}
 
+\revised{\section{Notation}}
+\label{app:notation}
+\revised{Table~\ref{tab:notation} summarizes the notation used throughout the paper.}
+
+\begin{table}[H]
+\centering
+\small
+\caption{\revised{Summary of notation.}}
+\label{tab:notation}
+\setlength{\tabcolsep}{6pt}
+\revised{
+\begin{tabular}{ll}
+\hline
+Symbol & Meaning \\
+\hline
+$x$ & input image \\
+$\mathcal{Y},\,C$ & intent label space and number of intent classes \\
+$Y\in\{0,1\}^C$ & latent multi-label intent \\
+$\mathbf{y}^{\text{soft}}$ & soft annotation vector in $\{0,0.33,0.66,1\}^C$ \\
+$\mathbf{y}^{\text{hard}}$ & binarized hard labels \\
+$\omega\in(0,1]$ & sample-level annotator agreement score \\
+$\phi=f_{\text{img}}(x)$ & frozen visual (CLIP) image feature \\
+$\mathbf{e}_c,\,\mathbf{e}_{\text{text}}$ & class-text / rationale text embedding \\
+$\gamma$ & CLIP logit scale \\
+$\tilde{s}^{\text{prior}}_c$ & normalized heterogeneous semantic prior for class $c$ \\
+$\mathbf{s}^{b},\,\mathbf{s}^{v}$ & base / visual-student logits \\
+$\mathcal{C}_K(x),\,K$ & Top-$K$ candidate set and its size \\
+$\alpha$ & semantic-reranking strength \\
+$h_{\text{res}}(\cdot)$ & residual student head \\
+$s^{\text{full}}_c$ & final refined score for class $c$ \\
+$t_c$ & class-wise decision threshold (validation-only) \\
+$\mathbf{p}^{\text{tea}},\,\tau$ & text-teacher distribution and temperature \\
+$g=1-\omega$ & teacher-branch gate weight \\
+$\lambda$ & distillation loss weight \\
+$\mathcal{L}_{\text{vis}},\mathcal{L}_{\text{distill}},\mathcal{L}_{\text{total}}$ & visual, distillation, and total losses \\
+$\eta_c(x)$ & Bayes intent posterior $\Pr(Y_c{=}1\mid X{=}x)$ \\
+$\mathcal{H}(\cdot)$ & binary entropy \\
+$\text{aliasing}_c(\phi)$ & inter-class mutual-information overlap (semantic ambiguity) \\
+\hline
+\end{tabular}
+}
+\end{table}
+
 % \section{Validation Results for Additional Experiments}
 
 % To complement the main-table comparison above, we provide validation-split counterparts for all additional analyses in Section~\ref{sec:experiments}, including subset evaluation, rationale design, distillation variants, teacher modality choices, component ablations, backbone sensitivity, and prior-source ablations.
@@ -14,7 +57,7 @@
 % Method & Easy & Medium & Hard & Avg. \\
 % \hline
 % CLIP ViT-L/14 \cite{radford_learning_2021} & 78.82 & 59.89 & 42.77 & 60.49 \\
-% SADIR & \textbf{79.66} & \textbf{61.73} & \textbf{49.65} & \textbf{63.68} \\
+% FDIL & \textbf{79.66} & \textbf{61.73} & \textbf{49.65} & \textbf{63.68} \\
 % \hline
 % \end{tabular}
 % \end{table}
@@ -30,7 +73,7 @@
 % Method & Object & Context & Others & Avg. \\
 % \hline
 % CLIP ViT-L/14 \cite{radford_learning_2021} & 62.67 & 61.53 & 52.67 & 58.96 \\
-% SADIR & \textbf{63.13} & \textbf{68.33} & \textbf{56.99} & \textbf{62.82} \\
+% FDIL & \textbf{63.13} & \textbf{68.33} & \textbf{56.99} & \textbf{62.82} \\
 % \hline
 % \end{tabular}
 % \end{table}
@@ -97,7 +140,7 @@
 % \hline
 % w/o UTD & 57.22 & 60.04 & 60.71 & 59.32 & 46.15 \\
 % w/o Gated & \textbf{59.81} & 62.75 & \textbf{64.02} & \textbf{62.20} & \textbf{49.80} \\
-% SADIR (full) & 59.34 & \textbf{63.06} & 63.51 & 61.97 & 49.65 \\
+% FDIL (full) & 59.34 & \textbf{63.06} & 63.51 & 61.97 & 49.65 \\
 % \hline
 % \end{tabular}
 % \end{table}
@@ -113,10 +156,10 @@
 % Backbone & Method & Macro & Micro & Samples & Avg. & Hard \\
 % \hline
 % ResNet101 & Baseline & 42.13 & 45.37 & 46.44 & 44.65 & 29.01 \\
-% ResNet101 & SADIR (full) & 46.15 & 49.29 & 50.98 & 48.81 & 31.67 \\
+% ResNet101 & FDIL (full) & 46.15 & 49.29 & 50.98 & 48.81 & 31.67 \\
 % \hline
 % CLIP ViT-L/14 & Baseline & 55.80 & 59.62 & 60.10 & 58.51 & 40.48 \\
-% CLIP ViT-L/14 & SADIR (full) & \textbf{59.34} & \textbf{63.06} & \textbf{63.51} & \textbf{61.97} & \textbf{49.65} \\
+% CLIP ViT-L/14 & FDIL (full) & \textbf{59.34} & \textbf{63.06} & \textbf{63.51} & \textbf{61.97} & \textbf{49.65} \\
 % \hline
 % \end{tabular}
 % \end{table}
@@ -167,7 +210,7 @@
 % \end{tabular}
 % \end{table}
 
-% Overall, these validation results support the same conclusion as the test split: SADIR improves robustness and discriminability in a consistent manner, rather than relying on split-specific effects.
+% Overall, these validation results support the same conclusion as the test split: FDIL improves robustness and discriminability in a consistent manner, rather than relying on split-specific effects.
 
 \section{Prompt Templates}
 
@@ -254,7 +297,7 @@ For the rationale ablation in Section~\ref{sec:experiments}, we additionally use
 
 % This section reports the validation set counterpart of the main comparison in Section~\ref{tab:main_results_val}. We keep the same model groups, metric definitions, and reporting metrics as the test set table in the main text.
 
-% % The validation trend is consistent with the test set findings: the strong CLIP baseline already establishes a high starting point, UTD-only training brings a clear additional gain, and the full FDIR configuration achieves the strongest overall performance.
+% % The validation trend is consistent with the test set findings: the strong CLIP baseline already establishes a high starting point, UTD-only training brings a clear additional gain, and the full FDIL configuration achieves the strongest overall performance.
 
 \section{Validation Results for Subset Evaluation}
 \label{app:validation_results_subsets}
@@ -327,8 +370,8 @@ CLIP ViT-L/14 \cite{radford_learning_2021} & \revised{62.08} & \revised{64.17} &
 % IntentMLM \cite{wang_unlocking_2026} & PR 2026 & 43.06 & 54.77 & 56.93 & 51.59 \\
 % \hline
 % CLIP ViT-L/14 \cite{radford_learning_2021} & ICML 2021 & 55.80 & 59.62 & 60.10 & 58.51 \\
-% FDIR (UTD only) & Ours & 57.86 & 62.16 & 63.88 & 61.30 \\
-% FDIR & Ours & \textbf{59.34} & \textbf{63.06} & \textbf{63.51} & \textbf{61.97} \\
+% FDIL (UTD only) & Ours & 57.86 & 62.16 & 63.88 & 61.30 \\
+% FDIL & Ours & \textbf{59.34} & \textbf{63.06} & \textbf{63.51} & \textbf{61.97} \\
 % \hline
 % \end{tabular}
 % \endgroup

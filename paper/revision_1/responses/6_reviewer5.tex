@@ -8,12 +8,20 @@ and the module design, and for the precise minor corrections.}
 \cresp{Figure~2 caption inconsistency: the caption refers to ``(Top)~UTD'' and
 ``(Bottom)~SLR-C'', but the figure shows ``A'' as the top and ``B'' as the
 bottom. Please revise the caption or the figure for consistency.}
-{Fixed -- the caption and figure panel labels are now consistent
-(\texttt{03\_method.tex}). \todo{confirm final caption wording matches panels}.}
+{Fixed -- the caption now refers to the figure's actual panel labels,
+``(A,~top) SLR-C module'' and ``(B,~bottom) UTD module'', matching the ``A''/``B''
+markers in Figure~\ref{fig:fdil_framework}.}
 
 \cresp{Missing experimental settings in Table~5: two additional configurations
 should be included -- (i)~Lexical~+~Scenario and (ii)~Canonical~+~Scenario.}
-{Added both configurations to Table~5 (E9). \todo{insert the two rows + values}.}
+{Added both configurations to the prior-source ablation
+(Table~\ref{tab:prior_ablation}, E9). Recomputed under the unified $K{=}10$
+reranking-only protocol, the test-split results are
+\res{Lexical+Scenario: Macro/Micro/Samples/Avg/Hard $=50.12/59.30/58.36/55.93/32.75$}
+and \res{Canonical+Scenario: $50.93/59.51/58.18/56.21/34.81$}. Both ensembles
+improve over their single-source components; Canonical+Scenario is in fact the
+strongest pair on the hard subset, while the full three-source ensemble remains
+the best on aggregate average F1, which is why it is adopted in the full model.}
 
 \cresp{Unexplained anomaly in Table~6: provide a justification for why $K{=}5$ and
 $K{=}28$ yield better performance than $K{=}10$.}

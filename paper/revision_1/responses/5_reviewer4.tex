@@ -7,14 +7,17 @@ point.}
 
 \cresp{The manuscript requires careful proofreading, such as [7] IEEE Trans.\
 Affect.\ Comput., and so on.}
-{Done -- a full proofread and bibliography format pass. \todo{confirm reference
-[7] and all journal abbreviations corrected}.}
+{Done -- we proofread the manuscript and standardized the bibliography, including
+the journal-name/abbreviation formatting flagged by the reviewer (e.g.\ the
+\emph{IEEE Transactions on Affective Computing} entry) and consistent venue names
+across entries.}
 
 \cresp{Give more analysis of the disadvantages of existing visual-intention
 understanding methods on the two forms of ambiguity.}
-{We rewrote the Introduction with an explicit critical analysis of how prior
-visual-intent methods handle (or conflate) supervisory and semantic ambiguity
-\todo{\S1 final}.}
+{We rewrote the Introduction (Section~\ref{sec:intro}) with an explicit critical
+analysis of how prior visual-intent methods handle (or conflate) supervisory and
+semantic ambiguity, arguing that most existing methods treat one perspective of
+ambiguity as dominant rather than separating the two failure modes.}
 
 \cresp{The clear purpose of the proposed work is lacking in the Introduction.}
 {Done -- the Introduction now states the purpose and objectives explicitly.}
@@ -22,20 +25,27 @@ visual-intent methods handle (or conflate) supervisory and semantic ambiguity
 \cresp{The Introduction should be re-discussed and extended; more LLM-based
 visual-intention understanding methods should be mentioned, as the latest
 development is hard for readers to follow.}
-{We expanded the survey of LLM/MLLM-based visual-intent understanding, including
-recent work. \todo{add 2024--2026 references; ensure peer-reviewed versions per
-EiC-a}.}
+{We expanded the survey of LLM/MLLM-based visual-intent understanding in the
+Introduction (Section~\ref{sec:intro}), including the recent peer-reviewed
+IntCLIP (ECCV~2024) and IntentMLM (Pattern Recognition~2026), and added a new
+paragraph situating these within the broader shift toward MLLMs as sources of
+external semantic knowledge, with a forward pointer to our zero-shot MLLM
+experiment (Table~\ref{tab:main_results}, ``Zero-shot VLM'' group).}
 
 \cresp{Consider including a table of notations.}
-{Added \todo{Table~X}.}
+{Added a notation table (Table~\ref{tab:notation},~\ref{app:notation}).}
 
 \cresp{There should be larger-scale datasets to better evaluate the method.}
-{We added a second / larger-scale evaluation (E4, \todo{dataset name +
-Table~X}). \todo{see R2 comment~(c) framing note}.}
+{We added an exploratory generalization probe on the EMOTIC affect dataset.
+As detailed in our response to Reviewer~2 comment~(c), we report it transparently
+as a probe and a limitation (Section~\ref{sec:discussion}) rather than a
+same-task large-scale benchmark, because EMOTIC targets affect rather than intent
+and the ambiguity decomposition does not transfer automatically there.}
 
 \cresp{Experimental evaluation is not sufficient; more comparisons with 2025/2026
 LLM methods and t-SNE are needed.}
-{We added a zero-shot MLLM comparison (E5, \todo{Table~X}) using
+{We added a zero-shot MLLM comparison (E5, Table~\ref{tab:main_results},
+``Zero-shot VLM'' group) using
 the same Intentonomy label set and probability-dictionary prompting protocol.
 GPT-4o reaches Test Macro/Micro/Samples/Avg.\ F1 of
 \res{43.05, 54.77, 56.75, and 51.52}. We also evaluated two newer open-weight MLLMs
@@ -45,16 +55,21 @@ through vLLM services: Qwen3-VL-8B-Instruct obtains Test
 competitive but still below the trained CLIP/FDIL models, supporting the need
 for dataset-specific visual calibration and uncertainty-aware refinement. We
 also added t-SNE visualizations of intent embeddings for FDIL vs.\ the baseline,
-emphasizing hard / semantically adjacent classes (E6, \todo{Fig~X}).}
+emphasizing hard / semantically adjacent classes (E6, Figure~\ref{fig:tsne}).}
 
 \cresp{Use ROC-based curves for a clearer evaluation against other SOTA methods.}
-{Added ROC and PR curves vs.\ SOTA from the existing evaluation logits
-(E7, \todo{Fig~X}).}
+{Added micro-averaged ROC and precision-recall curves (E7, Figure~\ref{fig:roc_pr})
+together with a threshold-free metrics table (Table~\ref{tab:threshold_free}) and
+paired significance tests, comparing FDIL against the CLIP baseline, UTD-only, and
+SLR-C-only reconstructed from the saved evaluation checkpoints.}
 
 \cresp{A ``Discussion'' section could be added covering main findings, advantages,
 and disadvantages.}
-{Added / expanded a Discussion section covering main findings, advantages, and
-failure modes \todo{\S X}.}
+{Added / expanded the Discussion (Section~\ref{sec:discussion}) with a ``Main
+Findings and Advantages'' subsection and an extended Limitations subsection
+covering main findings, advantages, and failure modes (including the
+\textit{CreativeUnique} confusion-pair regression and the cross-task EMOTIC
+caveat).}
 
 \cresp{Add more theoretical analysis, e.g.\ from information-theoretic or
 feature-selection perspectives.}
@@ -71,6 +86,14 @@ and non-uniqueness of the decoupled realization). See also Reviewer~2 comment~(a
 
 \cresp{A comparative analysis of model parameters, FLOPs, or inference times is
 necessary.}
-{We extended the efficiency table (E8, \todo{Table~8}) to include IntentMLM /
-IntCLIP / HLEG params, FLOPs, and latency, highlighting FDIL's low inference
-overhead.}
+{We report exact, same-environment params/FLOPs/latency for the components we
+control (Table~\ref{tab:efficiency_comparison}) and added a paragraph placing
+FDIL's overhead against the external methods (E8, Section~\ref{sec:experiments},
+Efficiency Comparison). A fully matched table across these methods is not
+meaningful because they assume incomparable backbones and inference regimes --
+HLEG/IntCLIP use convolutional or smaller encoders, while IntentMLM runs a
+multimodal LLM with caption generation and retrieval (billions of parameters,
+tens-to-hundreds of milliseconds per image). Relative to all of them, FDIL adds
+only $2.41$M inference-active parameters and sub-millisecond feature-level latency
+on top of the shared frozen CLIP encoder, which we state explicitly rather than
+fabricate matched FLOPs for incomparable pipelines.}

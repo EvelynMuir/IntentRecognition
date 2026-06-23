@@ -30,10 +30,10 @@ new experiments, new analysis, and substantial rewriting:
 
   \item \textbf{Novelty and theoretical depth (R2, R4, R1).} We added a formal,
   information-theoretic / feature-selection motivation for \emph{why} the two
-  ambiguities must be handled by orthogonal components, a head-to-head
+  ambiguities are most naturally handled by orthogonal components, a head-to-head
   unified-vs-decoupled comparison, negative-control experiments showing that
-  arbitrary VLM text priors do \emph{not} reproduce the gains, and a second
-  dataset to probe generalization.
+  arbitrary VLM text priors do \emph{not} reproduce the gains, and an exploratory
+  generalization probe on a second (affect) dataset, reported as a limitation.
 
   \item \textbf{Presentation and clarity (R4, R5, R3).} We rewrote the
   Introduction (clear purpose, critical analysis of how existing methods fail on
@@ -42,8 +42,9 @@ new experiments, new analysis, and substantial rewriting:
   the ``FDIR''$\rightarrow$``FDIL'' typos, and proofread the manuscript and
   bibliography.
 
-  \item \textbf{Stronger and larger-scale evaluation (R4, R3).} We added a second
-  dataset, comparisons against 2025/2026 large multimodal models, t-SNE embedding
+  \item \textbf{Stronger and larger-scale evaluation (R4, R3).} We added an
+  exploratory generalization probe on a second (affect) dataset, comparisons
+  against 2025/2026 large multimodal models, t-SNE embedding
   visualizations, ROC/PR curves, threshold-free metrics with statistical
   significance testing, and an extended efficiency comparison
   (params/FLOPs/latency). In the new zero-shot MLLM comparison, GPT-4o reaches
@@ -59,7 +60,4 @@ new experiments, new analysis, and substantial rewriting:
 
 Below we provide point-by-point responses to each reviewer. Newly added or
 revised content is referenced by section, table, or figure. In the revised
-manuscript, all changes are highlighted in \revised{red}. Items still marked
-\todo{\ldots} depend on experiments or writing that are not yet finalized and
-will be replaced with the final numbers, table/figure pointers, and page
-references before submission.
+manuscript, all changes are highlighted in \revised{red}.

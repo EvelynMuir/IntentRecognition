@@ -54,10 +54,21 @@ is suboptimal, and decoupling yields a modest but consistent aggregate-accuracy
 benefit on top of its primary advantages -- interpretability, separate
 measurability, and independent deployability.
 
-\smallskip\noindent\textbf{(c) Generalization on a second dataset (E4).}
-\todo{insert second-dataset result; if EMOTIC, frame it carefully as a
-generalization probe rather than a same-task large-scale benchmark, per the
-plan's risk note}.
+\smallskip\noindent\textbf{(c) Generalization probe on a second dataset (E4).}
+As a probe of generalization beyond Intentonomy, we adapted the pipeline to the
+EMOTIC affect dataset. We report this transparently as an exploratory probe
+rather than a same-task large-scale benchmark, and we have added it as a
+limitation rather than a headline result: on EMOTIC the CLIP baseline is already
+strong (test Macro/Micro/Samples/mAP $\approx 39.9/53.7/53.9/38.7$) and the
+ambiguity decomposition (UTD, SLR-C, and the full model) does \emph{not} produce a
+stable improvement (all within roughly $\pm1$ point of the baseline). We read this
+as informative rather than negative: EMOTIC targets \emph{affect/emotion}, where
+supervisory and semantic ambiguity manifest differently than in \emph{intent}, so
+the decomposition does not transfer automatically to every subjective multi-label
+task. We therefore base the novelty argument on the formal principle in~(a), the
+controlled matched-backbone gains, the unified-vs-decoupled comparison in~(b), and
+the negative controls below, and we state the cross-task caveat explicitly in the
+Limitations (Section~\ref{sec:discussion}).
 
 \smallskip\noindent\textbf{(d) The two modules contribute separately and
 additively (E2, threshold-free).} On mAP, UTD alone contributes \res{$+2.09$}
