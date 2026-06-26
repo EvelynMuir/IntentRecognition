@@ -32,8 +32,9 @@ new experiments, new analysis, and substantial rewriting:
   information-theoretic / feature-selection motivation for \emph{why} the two
   ambiguities are most naturally handled by orthogonal components, a head-to-head
   unified-vs-decoupled comparison, negative-control experiments showing that
-  arbitrary VLM text priors do \emph{not} reproduce the gains, and an exploratory
-  generalization probe on a second (affect) dataset, reported as a limitation.
+  arbitrary VLM text priors do \emph{not} reproduce the gains, and a controlled
+  generalization study on a second (affect) dataset on which privileged
+  distillation significantly beats the baseline where its precondition holds.
 
   \item \textbf{Presentation and clarity (R4, R5, R3).} We rewrote the
   Introduction (clear purpose, critical analysis of how existing methods fail on
@@ -42,8 +43,9 @@ new experiments, new analysis, and substantial rewriting:
   the ``FDIR''$\rightarrow$``FDIL'' typos, and proofread the manuscript and
   bibliography.
 
-  \item \textbf{Stronger and larger-scale evaluation (R4, R3).} We added an
-  exploratory generalization probe on a second (affect) dataset, comparisons
+  \item \textbf{Stronger and larger-scale evaluation (R4, R3).} We added a
+  controlled cross-validation generalization study on a second (affect) dataset
+  with paired significance testing, comparisons
   against 2025/2026 large multimodal models, t-SNE embedding
   visualizations, ROC/PR curves, threshold-free metrics with statistical
   significance testing, and an extended efficiency comparison

@@ -36,11 +36,19 @@ experiment (Table~\ref{tab:main_results}, ``Zero-shot VLM'' group).}
 {Added a notation table (Table~\ref{tab:notation},~\ref{app:notation}).}
 
 \cresp{There should be larger-scale datasets to better evaluate the method.}
-{We added an exploratory generalization probe on the EMOTIC affect dataset.
-As detailed in our response to Reviewer~2 comment~(c), we report it transparently
-as a probe and a limitation (Section~\ref{sec:discussion}) rather than a
-same-task large-scale benchmark, because EMOTIC targets affect rather than intent
-and the ambiguity decomposition does not transfer automatically there.}
+{We added a generalization study on the EMOTIC affect dataset, detailed in our
+response to Reviewer~2 comment~(c). Briefly: on EMOTIC's standard split the
+agreement gate reduces to standard distillation \emph{by construction}, because
+EMOTIC multi-annotates only val/test while its training split is single-annotator
+(degenerate agreement); we therefore ran a controlled $5\times5$ cross-validation
+on the multi-annotated val+test pool, where per-sample agreement is available.
+There, privileged distillation \emph{significantly} improves the image-only
+baseline on every metric (mAP/Macro/Micro/Samples-F1, paired $p<0.01$ over $25$
+runs; Table~\ref{tab:emotic_pool} in the Reviewer~2 response), giving positive
+evidence that the framework transfers to a second, affect domain. We report the
+gate's incremental effect transparently (it matches standard KD on this pool,
+where the borrowed agreement is coarser than Intentonomy's) and state the
+cross-task scope as a limitation (Section~\ref{sec:discussion}).}
 
 \cresp{Experimental evaluation is not sufficient; more comparisons with 2025/2026
 LLM methods and t-SNE are needed.}

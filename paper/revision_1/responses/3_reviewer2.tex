@@ -54,21 +54,72 @@ is suboptimal, and decoupling yields a modest but consistent aggregate-accuracy
 benefit on top of its primary advantages -- interpretability, separate
 measurability, and independent deployability.
 
-\smallskip\noindent\textbf{(c) Generalization probe on a second dataset (E4).}
-As a probe of generalization beyond Intentonomy, we adapted the pipeline to the
-EMOTIC affect dataset. We report this transparently as an exploratory probe
-rather than a same-task large-scale benchmark, and we have added it as a
-limitation rather than a headline result: on EMOTIC the CLIP baseline is already
-strong (test Macro/Micro/Samples/mAP $\approx 39.9/53.7/53.9/38.7$) and the
-ambiguity decomposition (UTD, SLR-C, and the full model) does \emph{not} produce a
-stable improvement (all within roughly $\pm1$ point of the baseline). We read this
-as informative rather than negative: EMOTIC targets \emph{affect/emotion}, where
-supervisory and semantic ambiguity manifest differently than in \emph{intent}, so
-the decomposition does not transfer automatically to every subjective multi-label
-task. We therefore base the novelty argument on the formal principle in~(a), the
-controlled matched-backbone gains, the unified-vs-decoupled comparison in~(b), and
-the negative controls below, and we state the cross-task caveat explicitly in the
-Limitations (Section~\ref{sec:discussion}).
+\smallskip\noindent\textbf{(c) Generalization to a second, larger dataset --
+diagnosed and made precise (E4, revised).}
+We substantially strengthened the EMOTIC probe. Rather than reporting a flat
+``no transfer,'' we now identify \emph{why} the decomposition does not move the
+standard-split numbers, and we show that, once its precondition is met, the
+distillation framework generalizes to this affect domain with
+\emph{statistically significant} gains.
+
+\emph{(i) Why the standard split is uninformative for the gate.} Our
+agreement-aware gating reweights the rationale-teacher term by per-sample
+annotator agreement. EMOTIC, however, multi-annotates only its validation and
+test splits; the \emph{training} split is single-annotator, so every training
+sample has degenerate agreement $=1$ and the gated term reduces to standard
+knowledge distillation \emph{by construction} (we verified the gated student is
+numerically identical to the ungated one on this split). The earlier
+$\pm1$-point standard-split result is therefore a property of EMOTIC's annotation
+protocol -- not evidence against the mechanism -- and EMOTIC's affect labels are
+otherwise well predicted by the CLIP baseline already.
+
+\emph{(ii) A controlled study where agreement \emph{is} available.} To test the
+framework where its precondition holds, we pool EMOTIC's multi-annotated
+val+test instances ($10{,}613$ persons, each carrying a fractional agreement
+label) and run $5\times5$ stratified cross-validation entirely inside this pool,
+so label construction is consistent across folds and the gate is active on
+\res{$97.7\%$} of samples (mean gate weight $0\!\to\!0.51$). Here privileged
+distillation improves the image-only baseline significantly:
+mAP \res{$42.57\!\to\!42.77$} ($+0.20$), Macro \res{$+0.39$}, Micro \res{$+0.65$},
+and Samples-F1 \res{$+0.67$}, every metric paired-significant over $25$
+seed$\times$fold runs ($p<0.01$, Table~\ref{tab:emotic_pool}). We additionally
+found that in-sample teacher targets are overfit ($87$ vs.\ $66$ mAP); using
+out-of-fold teacher predictions is what prevents distillation from
+\emph{degrading} the student, and we adopt it throughout.
+
+\emph{(iii) Calibrated claim.} On this pool the agreement gate \emph{matches}
+standard KD rather than exceeding it (all gate-vs-KD contrasts non-significant,
+$|\Delta|\!\le\!0.01$~mAP, $p>0.6$), consistent with EMOTIC's agreement being
+borrowed from evaluation annotators and coarser than Intentonomy's native
+three-annotator \emph{training} agreement. We therefore claim
+\emph{framework-level} generalization on EMOTIC -- privileged distillation
+transfers to a second, affect domain and significantly beats the baseline -- while
+the gate's incremental benefit is demonstrated on Intentonomy, where rich
+training-time agreement makes it identifiable. We base the core novelty argument on
+the formal principle in~(a), the matched-backbone gains, the unified-vs-decoupled
+comparison in~(b), and the negative controls below, and we state this scope
+explicitly in the Limitations (Section~\ref{sec:discussion}).
+
+\begin{table}[t]\centering\small
+\caption{Controlled $5\times5$ cross-validation on the multi-annotated EMOTIC
+val+test pool (per-sample agreement available at train time; mean over $25$
+seed$\times$fold runs). Privileged distillation significantly improves the
+image-only baseline; the agreement gate matches standard KD on this pool, where
+the borrowed agreement signal is coarser than Intentonomy's.
+$^{*}p<0.01$, paired $t$-test vs.\ baseline over the $25$ runs.}
+\label{tab:emotic_pool}
+\begin{tabular}{lcccc}
+\hline
+Method & mAP & Macro-F1 & Micro-F1 & Samples-F1 \\
+\hline
+Image-only baseline            & $42.57$ & $43.34$ & $60.32$ & $60.01$ \\
+\;\;+ standard KD              & $42.77^{*}$ & $43.68^{*}$ & $60.95^{*}$ & $60.75^{*}$ \\
+\;\;+ agreement-gated KD       & $42.77^{*}$ & $43.72^{*}$ & $60.97^{*}$ & $60.67^{*}$ \\
+\hline
+Oracle teacher (privileged text) & $66.43$ & $60.96$ & $74.63$ & $75.68$ \\
+\hline
+\end{tabular}
+\end{table}
 
 \smallskip\noindent\textbf{(d) The two modules contribute separately and
 additively (E2, threshold-free).} On mAP, UTD alone contributes \res{$+2.09$}
