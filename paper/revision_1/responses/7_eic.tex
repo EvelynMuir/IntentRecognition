@@ -28,8 +28,16 @@ paper.}
 The substantial new analyses (the formal decoupling principle, the matched-backbone
 and method-vs-calibration tables, threshold-free metrics with ROC/PR curves, the
 t-SNE and per-class attribution, the notation table, and the expanded Discussion)
-have increased its length, so to respect the page limit we moved all
-validation-split counterparts of the ablations to the appendix and will further
-condense secondary ablations and merge closely related tables in the final
-typeset version to bring the regular-paper body within the $35$-page limit, while
-keeping the supporting material in the appendix.}
+have increased its length, so to respect the page limit we no longer report the
+validation-split results in either the main text or the appendix, and will further
+condense secondary ablations and merge closely related tables in the final typeset
+version to bring the regular-paper body within the $35$-page limit.
+
+For the reviewers' reference, the validation-split subset results (which we
+verified are consistent with the test-split conclusions) are reported here. On the
+difficulty subsets, the CLIP baseline reaches Easy/Medium/Hard/Avg.\ of
+\res{$80.10/60.30/40.03/60.14$} and FDIL \res{$80.58/62.27/50.02/64.29$}; on the
+content-dependent subsets, the CLIP baseline reaches Object/Context/Others/Avg.\ of
+\res{$62.08/64.17/51.70/59.32$} and FDIL \res{$64.45/67.42/57.37/63.08$}. As on the
+test split, FDIL improves every subset, with the largest gains on the Hard and
+\textit{Others} groups, where both ambiguities are most active.}

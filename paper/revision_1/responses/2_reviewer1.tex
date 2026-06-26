@@ -15,19 +15,20 @@ table}) in which every in-house controllable baseline and FDIL are evaluated on
 identical CLIP ViT-L/14 features, the identical train/val/test split, and an
 identical validation-only threshold search, isolating the contribution of FDIL's
 mechanisms from backbone strength.
-\emph{Result (E2, 3-seed mean$\pm$std):} under the matched class-wise protocol,
-FDIL improves over the CLIP baseline by \res{Macro-F1 $+5.06$} ($47.07\!\to\!52.13$),
-\res{Avg-F1 $+4.12$} ($53.37\!\to\!57.49$), and \res{Hard-F1 $+7.83$}
-($27.19\!\to\!35.02$), with the gains stable across seeds (FDIL Avg-F1 std $=0.49$).
+\emph{Result (FDIL is a 3-seed mean$\pm$std; the CLIP baseline is a single
+representative seed):} under the matched class-wise protocol,
+FDIL improves over the CLIP baseline by \res{Macro-F1 $+4.73$} ($47.40\!\to\!52.13$),
+\res{Avg-F1 $+4.08$} ($53.41\!\to\!57.49$), and \res{Hard-F1 $+6.57$}
+($28.45\!\to\!35.02$), with the FDIL gains stable across seeds (FDIL Avg-F1 std $=0.49$).
 \emph{Result (E1b, completed; new \textbf{Matched-backbone comparison table}):}
 we re-implemented the core mechanisms of representative external methods over the
 \emph{same} frozen CLIP ViT-L/14 features, the same split, and the same
 validation-only class-wise threshold search. Once the backbone is equalized,
 HLEG, LabCR, and IntCLIP reach Avg-F1 \res{$54.09$ / $53.94$ / $52.77$} --
-essentially the level of the plain CLIP baseline ($53.37$) -- confirming that
+essentially the level of the plain CLIP baseline ($53.41$) -- confirming that
 their originally reported gaps over our setting were driven largely by backbone
-strength. \res{FDIL still leads all of them by $+2.5$ to $+3.8$ Avg-F1, $+3.2$
-to $+5.1$ mAP, and $+2.3$ to $+5.2$ Hard-F1.} (PIP-Net's prototype mechanism
+strength. \res{FDIL still leads all of them by $+3.4$ to $+4.7$ Avg-F1, $+3.4$
+to $+5.3$ mAP, and $+5.7$ to $+8.6$ Hard-F1.} (PIP-Net's prototype mechanism
 degenerates on frozen CLIP features and is reported only for completeness.)
 As a complementary robustness check we also swapped CLIP ViT-L/14 into the
 external methods' \emph{original} training pipelines; this underperforms the
@@ -40,22 +41,18 @@ comparison as the fair matched-backbone protocol.}
 {We now isolate it over 3 seeds in a four-cell decomposition
 $\{\text{CLIP baseline, FDIL}\}\times\{\text{global, class-wise threshold}\}$.
 The decomposition shows three things. (i)~FDIL beats the CLIP baseline under
-\emph{both} protocols -- class-wise (Avg-F1 $+4.12$, Hard $+7.83$) and global
-(Avg-F1 $+3.15$, Hard $+7.72$) -- so the advantage is not produced by a
-particular decision rule. (ii)~Class-wise thresholding lifts the baseline and
-FDIL by \emph{comparable} amounts (Avg-F1 $+2.29$ vs.\ $+3.26$), i.e.\
-calibration is a shared, method-agnostic post-processing gain. (iii)~The
+\emph{both} protocols -- class-wise (Avg-F1 $+4.08$, Hard $+6.57$) and global
+(Avg-F1 $+2.31$, Hard $+3.16$) -- so the advantage is not produced by a
+particular decision rule. (ii)~Class-wise thresholding lifts both the baseline and
+FDIL (Avg-F1 $+1.49$ vs.\ $+3.26$), i.e.\ calibration is a shared post-processing
+gain available to any method, and the threshold-free mAP below confirms FDIL's
+advantage survives once calibration is removed entirely. (iii)~The
 \res{threshold-free mAP} confirms the same conclusion (FDIL $55.10$ vs.\ baseline
-$50.98$, \res{$+4.12$}). The global-threshold F1 metrics carry large seed
-variance (hard-subset std up to $\pm3.9$), so we treat class-wise F1 and mAP as
+$50.67$, \res{$+4.43$}). The global-threshold F1 metrics carry large seed
+variance (FDIL hard-subset std $\pm3.5$), so we treat class-wise F1 and mAP as
 the primary metrics. We clarify that the reported baseline Avg-F1 of
-$53.37\!\pm\!0.72$ is the class-wise value (mean of Macro/Micro/Samples F1),
-\emph{not} mAP.
-
-\emph{Correction note (internal):} an earlier single-seed grid (E1a) had
-suggested the global-threshold gain was near-zero ($+0.84$ Avg-F1); the 3-seed
-E2 result shows this was a single-seed artifact, and all ``gain is mostly
-calibration'' wording has been removed.}
+$53.41$ is the class-wise value (mean of Macro/Micro/Samples F1),
+\emph{not} mAP.}
 
 \cresp{Report variance over runs.}
 {Done. We now report mean$\pm$std over \res{3 seeds} for the CLIP baseline,
@@ -104,7 +101,7 @@ experiments (the four-cell decomposition, threshold-free mAP, and the
 unified-vs-decoupled comparison in R2) support it. Absolute-SOTA language has
 been removed in favor of controlled, seed-averaged gains, and the matched-backbone
 comparison (E1b) now shows that under equalized CLIP ViT-L/14 features FDIL still
-leads HLEG, LabCR, and IntCLIP by $+2.6$ to $+4.0$ Avg-F1.}
+leads HLEG, LabCR, and IntCLIP by $+3.4$ to $+4.7$ Avg-F1.}
 
 \cresp{Comparison interpretability / attribution is insufficient.}
 {We added a t-SNE embedding visualization (Figure~\ref{fig:tsne}) and a per-class
@@ -120,8 +117,8 @@ tests.}
 {Done. We report several threshold-free metrics and paired significance tests in
 a new threshold-free metrics table (Table~\ref{tab:threshold_free}) with the
 corresponding ROC and precision-recall curves (Figure~\ref{fig:roc_pr}), E13. On
-mAP, FDIL improves over the CLIP baseline by \res{$+4.12$}
-($50.98\!\to\!55.10$, E2 multi-seed) and over UTD-only by $+2.03$. We additionally
+mAP, FDIL improves over the CLIP baseline by \res{$+4.43$}
+($50.67\!\to\!55.10$) and over UTD-only by $+2.03$. We additionally
 report macro/micro ROC-AUC and micro PR-AUC, and run a paired bootstrap test
 ($5{,}000$ resamples of the test set) on a representative seed. FDIL improves over
 the CLIP baseline on \emph{every} threshold-free metric with the 95\% CI excluding

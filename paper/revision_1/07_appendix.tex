@@ -299,39 +299,9 @@ For the rationale ablation in Section~\ref{sec:experiments}, we additionally use
 
 % % The validation trend is consistent with the test set findings: the strong CLIP baseline already establishes a high starting point, UTD-only training brings a clear additional gain, and the full FDIL configuration achieves the strongest overall performance.
 
-\section{Validation Results for Subset Evaluation}
-\label{app:validation_results_subsets}
-
-We provide validation set counterparts for additional subset evaluation analyses in Tables~\ref{tab:difficulty_results_val} and \ref{tab:content_results_val}.
-The result verify that the gains remain stable under both difficulty-based and content-dependent partitions.
-
-\begin{table}[H]
-\centering
-\caption{Validation-split difficulty subset results corresponding to Table~\ref{tab:difficulty_results}. All numbers are percentages.}
-\label{tab:difficulty_results_val}
-\begin{tabular}{lcccc}
-\hline
-Method & Easy & Medium & Hard & Avg. \\
-\hline
-CLIP ViT-L/14 \cite{radford_learning_2021} & \revised{80.10} & \revised{60.30} & \revised{40.03} & \revised{60.14} \\
-\revised{FDIL} & \revised{\textbf{80.58}} & \revised{\textbf{62.27}} & \revised{\textbf{50.02}} & \revised{\textbf{64.29}} \\
-\hline
-\end{tabular}
-\end{table}
-
-\begin{table}[H]
-\centering
-\caption{Validation-split content subset results corresponding to Table~\ref{tab:content_results}. All numbers are percentages.}
-\label{tab:content_results_val}
-\begin{tabular}{lcccc}
-\hline
-Method & Object & Context & Others & Avg. \\
-\hline
-CLIP ViT-L/14 \cite{radford_learning_2021} & \revised{62.08} & \revised{64.17} & \revised{51.70} & \revised{59.32} \\
-\revised{FDIL} & \revised{\textbf{64.45}} & \revised{\textbf{67.42}} & \revised{\textbf{57.37}} & \revised{\textbf{63.08}} \\
-\hline
-\end{tabular}
-\end{table}
+% \revised{To respect the regular-paper page limit, validation-split results are
+% not reported in the main text or appendix; the validation-split difficulty and
+% content-subset numbers are instead provided in the response letter.}
 
 % \begin{table}[H]
 % \centering
