@@ -1,4 +1,4 @@
-\begin{figure}[th]
+\begin{figure}[tb]
 \centering
 \includegraphics[width=\linewidth]{2_framework.pdf}
 \caption{Overview of the FDIL framework. The framework functionally decouples ambiguity handling into \textbf{semantic refinement} (panel~A) and \textbf{semantic supervision} (panel~B). \revised{\textbf{(A, top) SLR-C module:}} heterogeneous lexical, canonical, and scenario priors define a semantic prior through Top-$K$ reranking, after which a lightweight residual student adapts the final prediction to image evidence before class-wise thresholding. \revised{\textbf{(B, bottom) UTD module:}} a VLM-derived text teacher provides rationale-based semantic supervision, and its contribution is adaptively gated by the annotator agreement score $\omega$ to stabilize learning under supervisory ambiguity.}
@@ -19,6 +19,34 @@ FDIL consists of two key components, as shown in Figure~\ref{fig:fdil_framework}
 \end{itemize}
 
 Given an input image, the model first produces visual intent scores using a strong visual backbone. SLR-C then provides structured candidate semantics by locally reranking intent candidates and forming a semantic prior. UTD supplies uncertainty-aware semantic supervision through a rationale-based text teacher and can be reused to regularize both the visual student and the residual refinement module built on top of the semantic prior.
+
+\begin{table}[tb]
+\centering
+\small
+\caption{\revised{Key notation used in the method.}}
+\label{tab:notation}
+\setlength{\tabcolsep}{6pt}
+\revised{
+\begin{tabular}{ll}
+\hline
+Symbol & Meaning \\
+\hline
+$x$ & input image \\
+$\mathcal{Y},\,C$ & intent label space and number of classes \\
+$\mathbf{y}^{\text{soft}},\,\mathbf{y}^{\text{hard}}$ & soft annotation / binarized hard labels \\
+$\omega\in(0,1]$ & sample-level annotator agreement score \\
+$\phi=f_{\text{img}}(x)$ & frozen visual (CLIP) image feature \\
+$\tilde{s}^{\text{prior}}_c$ & normalized heterogeneous semantic prior \\
+$\mathcal{C}_K(x),\,K$ & Top-$K$ candidate set and its size \\
+$s^{\text{full}}_c$ & final refined score for class $c$ \\
+$t_c$ & class-wise decision threshold (validation-only) \\
+$\mathbf{p}^{\text{tea}},\,\tau$ & text-teacher distribution and temperature \\
+$g=1-\omega$ & teacher-branch gate weight \\
+$\mathcal{L}_{\text{total}}$ & total training loss \\
+\hline
+\end{tabular}
+}
+\end{table}
 
 \subsection{Problem Formulation}
 
@@ -52,7 +80,10 @@ Intent semantics are inherently multi-granular and abstract, making a single tex
 \paragraph{Example}
 For the intent \textit{SocialLifeFriendship}, the \revised{lexical} phrase is \textit{``Social Life and Friendship''}, and the canonical description is:
 \textit{``Being part of a social group. Having people to do things with. Having close friends, others to rely on. Making friends, drawing others near.''}
-This intent can be further expanded into multiple scenario archetypes with distinct visual realizations:
+This intent is further expanded into multiple scenario archetypes with distinct visual realizations; \revised{for \textit{SocialLifeFriendship}, scenarios include friends hiking together, close friends talking on a couch, a group dinner, or volunteers gardening together.}
+
+%% --- BEGIN condensed-out for 35-page limit (full scenario examples retained below) ---
+\iffalse
 \begin{quote}
 \small
 \textbf{Scenario 1}
@@ -67,6 +98,8 @@ This intent can be further expanded into multiple scenario archetypes with disti
 \textbf{Scenario 4:}
 \textit{``An image showing a group of cheerful volunteers working together in a lush community garden, planting flowers side-by-side with dirty hands and bright smiles.''}
 \end{quote}
+\fi
+%% --- END condensed-out for 35-page limit ---
 
 \revised{The scenarios are not hand-picked illustrations but the output of a fixed generation protocol applied uniformly to every intent class (the exact instruction template is released with our artifacts). For each intent we ask the vision-language model to enumerate visually distinct realizations along five complementary axes (subjects/objects, actions/interactions, settings/context, emotion/atmosphere, and photographic style), and we require at least three different settings per intent so that the scenarios span the typical intra-class appearance variation rather than a single canonical view. The criterion for inclusion is thus representativeness of the common visual modes of an intent rather than exhaustive coverage; under situations outside the generated scenarios the prior degrades gracefully toward the lexical and canonical sources, the base visual logits, and the residual student.}
 
@@ -183,11 +216,9 @@ This gated formulation allows the model to rely more on visual supervision when 
 
 \subsection{Functionally Decoupled Ambiguity Modeling}
 \label{sec:decoupling_principle}
-We interpret visual intention recognition as a functionally decoupled ambiguity problem: semantic ambiguity primarily distorts local candidate semantics, while supervisory ambiguity primarily destabilizes semantic supervision. \revised{Below we give a concise information-theoretic account of why the two are most naturally addressed by two separately parameterized functions.}
+We interpret visual intention recognition as a functionally decoupled ambiguity problem: semantic ambiguity primarily distorts local candidate semantics, while supervisory ambiguity primarily destabilizes semantic supervision. \revised{A concise information-theoretic account explains why two separately parameterized functions are preferable. Empirically on Intentonomy, a visual baseline almost always retrieves the ground-truth intent into its top few candidates and fails mainly by mis-ranking within this set, so the dominant difficulty is local ambiguity resolution rather than global retrieval, which motivates modeling semantic ambiguity as feature-side aliasing confined to a local candidate geometry.}
 
-\revised{This view is motivated by a characteristic failure pattern in visual intention recognition: a visual baseline typically retrieves the correct intent into a small local neighborhood, yet fails to rank or calibrate it within that neighborhood. Empirically on Intentonomy, the ground-truth intent almost always lies within the baseline's top few candidates, and the large majority of its false negatives are mis-rankings inside this set rather than genuine retrieval failures, so that an oracle restricted to the same local candidates would already approach the performance ceiling. The dominant difficulty is therefore local ambiguity resolution, ranking, calibrating, and separating the correct intent from adjacent distractors, rather than global retrieval. This motivates modeling semantic ambiguity as feature-side aliasing confined to a local candidate geometry.}
-
-\revised{Let $\phi=f_{\text{img}}(X)$ be the frozen image representation, $Y\in\{0,1\}^C$ the latent intent, and $\omega\in(0,1]$ the agreement score of Section~\ref{sec:method}. For class $c$, the per-sample excess risk decomposes into a label-side and a feature-side term:
+\revised{Let $\phi=f_{\text{img}}(X)$ be the frozen image representation, $Y\in\{0,1\}^C$ the latent intent, $\tilde{y}_c$ the noisy annotation, and $\eta_c(x)=\Pr(Y_c{=}1\mid X{=}x)$ the Bayes posterior. For class $c$, the per-sample excess risk decomposes into a label-side and a feature-side term:
 \begin{equation}
 \label{eq:risk_decomp}
 \underbrace{\mathbb{E}\!\left[\ell\big(g_c(\phi),\, \tilde{y}_c\big)\right]}_{\text{training risk}}
@@ -197,15 +228,11 @@ We interpret visual intention recognition as a functionally decoupled ambiguity 
 \underbrace{\mathbb{E}_X\!\big[\,\eta_c(X)\,\text{aliasing}_c(\phi)\,\big]}_{\text{(F) semantic}}
 \;+\;\text{est.},
 \end{equation}
-where $\tilde{y}_c$ is the noisy annotation, $\eta_c(x)=\Pr(Y_c{=}1\mid X{=}x)$ the Bayes posterior, $\mathcal{H}$ the binary entropy, and ``est.'' the estimation error. Term~(S) depends only on $\Pr(Y\mid X)$: it is large where annotators disagree and is irreducible by any function of $\phi$, since fitting harder against $\tilde{y}_c$ only inflates target noise. Term~(F) depends only on $\phi$ through the inter-class mutual-information overlap
+where $\mathcal{H}$ is the binary entropy and ``est.'' the estimation error. Term~(S) depends only on $\Pr(Y\mid X)$, is large where annotators disagree, and is irreducible by any function of $\phi$; term~(F) depends only on $\phi$ through the inter-class mutual-information overlap
 \begin{equation}
 \label{eq:aliasing}
 \text{aliasing}_c(\phi)\;\propto\;\max_{c'\neq c}\; I\big(\mathbf{1}[Y_c{=}1];\,\phi\big)\;-\;I\big(\mathbf{1}[Y_c{=}1];\,\phi \,\big|\, \mathbf{1}[Y_{c'}{=}1]\big),
 \end{equation}
-i.e.\ the part of the class-$c$ evidence in $\phi$ that is not separable from a neighbor $c'$ once that neighbor is known, and is reduced only by restructuring the feature-side geometry. Because the two terms are functionals of different objects, corrections acting on $\omega$ alone and on $(\phi,\text{class text})$ alone have non-interfering first-order effects, so a single mixed-target mechanism must trade one ambiguity against the other whereas a decoupled realization need not.}
+i.e.\ the class-$c$ evidence in $\phi$ that is inseparable from a neighbor $c'$, and is reduced only by restructuring the feature-side geometry. Because the two terms are functionals of different objects, a single mixed-target mechanism must trade one ambiguity against the other, whereas a decoupled realization need not.}
 
-\revised{The two FDIL modules instantiate exactly these corrections. SLR-C attacks term~(F): Top-$K$ reranking with the semantic prior contracts the candidate set to the locally confusable neighborhood and the residual $h_{\text{res}}(\phi)$ adds image-specific discriminative directions, lowering $\text{aliasing}_c(\phi)$ without touching the supervision target. UTD attacks term~(S): the agreement gate $g=1-\omega$ down-weights the direct loss where $\mathcal{H}(\eta_c(X))$ is high and substitutes a smoother rationale-teacher distribution, without altering the feature-side geometry.}
-
-FDIL thus addresses the two ambiguities through two different but compatible functions: SLR-C first provides structured candidate semantics through a semantic prior and residual refinement, while UTD supplies agreement-guided semantic supervision that stabilizes both the visual student and, in the full model, the residual refinement built on top of the prior.
-
-This functionally decoupled design enables effective handling of ambiguity without introducing heavy architectural complexity.
+\revised{The two FDIL modules instantiate exactly these corrections: SLR-C attacks term~(F) by contracting the candidate set with the semantic prior and adding image-specific residual directions $h_{\text{res}}(\phi)$, lowering $\text{aliasing}_c(\phi)$ without touching the supervision target, while UTD attacks term~(S) by down-weighting the direct loss through the agreement gate $g=1-\omega$ where $\mathcal{H}(\eta_c(X))$ is high and substituting a smoother rationale-teacher distribution.} This functionally decoupled design enables effective handling of ambiguity without introducing heavy architectural complexity.

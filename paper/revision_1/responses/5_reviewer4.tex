@@ -33,7 +33,7 @@ external semantic knowledge, with a forward pointer to our zero-shot MLLM
 experiment (Table~\ref{tab:main_results}, ``Zero-shot VLM'' group).}
 
 \cresp{Consider including a table of notations.}
-{Added a notation table (Table~\ref{tab:notation},~\ref{app:notation}).}
+{Added a notation table (Table~\ref{tab:notation}), now placed in the Method section.}
 
 \cresp{There should be larger-scale datasets to better evaluate the method.}
 {We added a generalization study on the EMOTIC affect dataset, detailed in our
@@ -66,10 +66,17 @@ also added t-SNE visualizations of intent embeddings for FDIL vs.\ the baseline,
 emphasizing hard / semantically adjacent classes (E6, Figure~\ref{fig:tsne}).}
 
 \cresp{Use ROC-based curves for a clearer evaluation against other SOTA methods.}
-{Added micro-averaged ROC and precision-recall curves (E7, Figure~\ref{fig:roc_pr})
-together with a threshold-free metrics table (Table~\ref{tab:threshold_free}) and
-paired significance tests, comparing FDIL against the CLIP baseline, UTD-only, and
-SLR-C-only reconstructed from the saved evaluation checkpoints.}
+{Done, and redrawn specifically as a method comparison. The micro-averaged ROC and
+precision-recall curves (E7, Figure~\ref{fig:roc_pr}) now compare FDIL against the
+CLIP baseline and three representative SOTA methods (HLEG, LabCR, IntCLIP)
+reproduced under the \emph{matched} CLIP ViT-L/14 features, split, and protocol of
+our E1b controlled comparison, rather than against FDIL's own ablations. Once the
+backbone is equalized the external methods cluster only slightly above the CLIP
+baseline (micro ROC-AUC $\approx 0.86$), while FDIL dominates all of them on both
+curves (micro ROC-AUC $0.88$, micro AP $0.61$). The accompanying threshold-free
+metrics table (Table~\ref{tab:threshold_free}) and paired significance tests
+quantify the gap, and the per-method test mAP is consistent with the E1b CSV
+(reproduced HLEG/LabCR/IntCLIP at $50.5$/$51.3$/$47.5$ vs.\ FDIL $54.8$).}
 
 \cresp{A ``Discussion'' section could be added covering main findings, advantages,
 and disadvantages.}

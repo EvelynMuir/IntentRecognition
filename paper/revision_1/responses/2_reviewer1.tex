@@ -90,7 +90,7 @@ seeds, VLM version, and SHA-256 checksums.}
 
 \cresp{Incomplete reproducibility details.}
 {We expanded the implementation details (Section~\ref{sec:experiments},
-Implementation Details, with the notation summary in~\ref{app:notation}),
+Implementation Details, with the notation summary in Table~\ref{tab:notation}),
 including feature extraction, threshold search, teacher generation, and the
 agreement gate. To respect the page limit, the exact scenario- and
 rationale-generation prompt templates are released with our artifacts rather than
@@ -116,7 +116,35 @@ abstract, disagreement-prone categories FDIL improves (e.g.\ \textit{WorkILike}
 $+28.5$, \textit{SocialLifeFriendship} $+17.2$) and the only two of twenty-eight
 categories that regress (\textit{CreativeUnique} $-5.3$ and \textit{FineDesignLearnArt-Arch}
 $-1.0$), an overlapping creative/design group where local reranking can resolve
-toward a competing neighbor.}
+toward a competing neighbor. To respect the 35-page limit, the main manuscript
+keeps a one-sentence summary of these per-class gains; the full attribution table
+is reproduced here as Table~\ref{tab:per_class_attr}.}
+
+\begin{table}[t]
+\centering
+\small
+\caption{Per-class F1 attribution of FDIL versus the CLIP baseline (matched
+class-wise protocol, representative seed). Top: five largest improvements;
+bottom: the only two regressions among all $28$ classes. All numbers are
+percentages. (Condensed out of the main text for the page limit; summarized there
+in one sentence.)}
+\label{tab:per_class_attr}
+\setlength{\tabcolsep}{5pt}
+\begin{tabular}{lcccc}
+\hline
+Intent class & Subset & Baseline & FDIL & $\Delta$ \\
+\hline
+WorkILike & Hard & 14.6 & 43.0 & $+28.5$ \\
+PassionAboutSomething & Hard & 11.3 & 28.6 & $+17.3$ \\
+SocialLifeFriendship & Hard & 33.9 & 51.2 & $+17.2$ \\
+ManageableMakePlan & Medium & 17.5 & 32.0 & $+14.5$ \\
+BeatCompete & Medium & 54.6 & 68.1 & $+13.5$ \\
+\hline
+FineDesignLearnArt-Arch & Easy & 84.0 & 83.1 & $-1.0$ \\
+CreativeUnique & Medium & 41.9 & 36.6 & $-5.3$ \\
+\hline
+\end{tabular}
+\end{table}
 
 \cresp{The threshold may dominate F1; add threshold-free metrics and statistical
 tests.}

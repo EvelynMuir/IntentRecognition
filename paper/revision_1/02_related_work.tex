@@ -1,6 +1,10 @@
 \section{Related Work}
 \label{sec:related_work}
 
+\revised{Early visual intent studies target specific domains such as persuasive or political imagery~\cite{joo_visual_2014,joo_automated_2015,huang_inferring_2016}, while the Intentonomy benchmark~\cite{jia_intentonomy_2021} enables general-purpose intent understanding in unconstrained social media. Recent Intentonomy methods address the task from complementary angles: PIP-Net~\cite{wang_prototype-based_2023} uses prototype-based representations for interpretable intent perception; CPAD~\cite{ye_cross-modality_2023} and HLEG~\cite{shi_learnable_2023} exploit cross-modality or hierarchical label structures; LabCR~\cite{shi_label-aware_2024} models label calibration and relation preservation; and IntCLIP~\cite{leonardis_synergy_2025} and IntentMLM~\cite{wang_unlocking_2026} introduce CLIP/MLLM-based semantic knowledge. Robust-loss methods such as Focal Loss~\cite{lin_focal_2020}, OHEM~\cite{shrivastava_training_2016}, collaborative refining~\cite{ye_collaborative_2022}, and ASL~\cite{ridnik_asymmetric_2021} reduce the effect of difficult, noisy, or imbalanced samples through reweighting or selective optimization; however, they treat ambiguity mainly as an optimization issue rather than as a subjective semantic signal. Disagreement-aware learning instead preserves label diversity: Peterson et al.~\cite{peterson_human_2019} train on human label distributions, Davani et al.~\cite{mostafazadeh_davani_dealing_2022} model annotator-specific labels, DisCo~\cite{weerasooriya_disagreement_2023} jointly models item- and annotator-level distributions, and CrowdOpinion~\cite{weerasooriya_subjective_2023} recovers minority opinions. In contrast, FDIL explicitly treats annotator disagreement as an uncertainty signal and adaptively regulates semantic guidance according to supervision ambiguity, yielding more robust learning under subjective supervision.}
+
+%% --- BEGIN condensed-out for 35-page limit (original detailed Related Work retained below) ---
+\iffalse
 \subsection{Image Intent Recognition}
 Intent recognition seeks to decode the underlying purposes of humans. 
 Early studies mainly focus on specific domains. \revised{Joo et al.~\cite{joo_visual_2014} infer communicative intent from persuasive images through facial and contextual cues, and subsequently relate facial-trait judgments to election outcomes~\cite{joo_automated_2015}; Huang and Kovashka~\cite{huang_inferring_2016} further infer visual persuasion by jointly modeling body language, scene setting, and deep features.}
@@ -19,3 +23,5 @@ Second, hierarchical or structure-aware methods exploit label relations or taxon
 Third, knowledge distillation and vision-language supervision inject semantic guidance from teacher models or pretrained language priors \cite{touvron_training_2021, radford_learning_2021}, transferring structured knowledge or using textual descriptions as semantic anchors; however, they assume this guidance is uniformly reliable across samples, which may not hold under inherent ambiguity.
 
 By contrast, our approach explicitly leverages annotator disagreement as an uncertainty signal and adaptively regulates semantic guidance according to supervision ambiguity, yielding more robust learning under subjective supervision.
+\fi
+%% --- END condensed-out for 35-page limit ---
