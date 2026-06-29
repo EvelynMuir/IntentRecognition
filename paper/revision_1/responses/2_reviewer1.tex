@@ -20,7 +20,8 @@ representative seed):} under the matched class-wise protocol,
 FDIL improves over the CLIP baseline by \res{Macro-F1 $+4.73$} ($47.40\!\to\!52.13$),
 \res{Avg-F1 $+4.08$} ($53.41\!\to\!57.49$), and \res{Hard-F1 $+6.57$}
 ($28.45\!\to\!35.02$), with the FDIL gains stable across seeds (FDIL Avg-F1 std $=0.49$).
-\emph{Result (E1b, completed; new \textbf{Matched-backbone comparison table}):}
+\emph{Result (E1b, completed; the backbone-matched ``(CLIP ViT-L/14)'' rows of
+Table~\ref{tab:main_results}):}
 we re-implemented the core mechanisms of representative external methods over the
 \emph{same} frozen CLIP ViT-L/14 features, the same split, and the same
 validation-only class-wise threshold search. Once the backbone is equalized,
@@ -28,8 +29,12 @@ HLEG, LabCR, and IntCLIP reach Avg-F1 \res{$54.09$ / $53.94$ / $52.77$} --
 essentially the level of the plain CLIP baseline ($53.41$) -- confirming that
 their originally reported gaps over our setting were driven largely by backbone
 strength. \res{FDIL still leads all of them by $+3.4$ to $+4.7$ Avg-F1, $+3.4$
-to $+5.3$ mAP, and $+5.7$ to $+8.6$ Hard-F1.} (PIP-Net's prototype mechanism
-degenerates on frozen CLIP features and is reported only for completeness.)
+to $+5.3$ mAP, and $+5.7$ to $+8.6$ Hard-F1.} For completeness, the
+backbone-matched threshold-free mAP / Hard-F1 are \res{$51.72/26.42$} (HLEG),
+\res{$51.72/29.33$} (LabCR), and \res{$49.84/26.78$} (IntCLIP), versus
+\res{$55.10/35.02$} for FDIL and \res{$50.67/28.45$} for the CLIP baseline.
+(PIP-Net's prototype mechanism degenerates on frozen CLIP features, average F1
+$14.72$, mAP $13.03$, and is reported only for completeness.)
 As a complementary robustness check we also swapped CLIP ViT-L/14 into the
 external methods' \emph{original} training pipelines; this underperforms the
 feature-level setting (e.g., HLEG $31.8$, IntCLIP $43.5$ Avg-F1; LabCR and
@@ -85,10 +90,11 @@ seeds, VLM version, and SHA-256 checksums.}
 
 \cresp{Incomplete reproducibility details.}
 {We expanded the implementation details (Section~\ref{sec:experiments},
-Implementation Details, with the full prompt templates in~\ref{app:scenario_prompt}
-and~\ref{app:rationale_prompt} and the notation summary in~\ref{app:notation}),
+Implementation Details, with the notation summary in~\ref{app:notation}),
 including feature extraction, threshold search, teacher generation, and the
-agreement gate.}
+agreement gate. To respect the page limit, the exact scenario- and
+rationale-generation prompt templates are released with our artifacts rather than
+printed in an appendix (see the Data and Artifact Availability statement).}
 
 \cresp{Tone down ``functional decoupling'' / ``SOTA'' claims unless the ablations
 isolate these factors more cleanly.}

@@ -81,16 +81,26 @@ caveat).}
 
 \cresp{Add more theoretical analysis, e.g.\ from information-theoretic or
 feature-selection perspectives.}
-{Added a formal analysis in \S\ref{sec:decoupling_principle}. We decompose the
-per-class excess risk into a label-side conditional-entropy term (supervisory
-ambiguity, a functional of $\Pr(Y\mid X)$) and a feature-side inter-class
-mutual-information aliasing term (semantic ambiguity, a functional of the
-representation $\phi$), and show the two corrections have non-interfering
-first-order effects -- SLR-C is a feature-selection step that lowers the aliasing
-term, while UTD's agreement gate reduces reliance on high-entropy targets. The
-analysis yields three testable predictions that the experiments confirm
-(additive threshold-free increments, content-dependence of the rationale teacher,
-and non-uniqueness of the decoupled realization). See also Reviewer~2 comment~(a).}
+{Added a formal analysis in \S\ref{sec:decoupling_principle}. We now motivate it
+with an empirical diagnostic showing why a feature-selection / local-aliasing
+view is appropriate: the visual baseline's Top-10 candidates already cover
+\res{$83.9\%$} of positive labels, \res{$95.1\%$} of test images contain at least
+one ground-truth intent inside that Top-10 set, and \res{$67.8\%$} of baseline
+false negatives are still recoverable from the same candidate set. An oracle
+restricted to this local neighborhood would reach \res{$87.4/91.3/89.7$}
+Macro/Micro/Samples F1. This indicates that the core semantic failure is often
+not global absence of the correct intent, but local ranking, calibration, and
+separation among already retrieved, semantically adjacent candidates. Based on
+this observation, we decompose the per-class excess risk into a label-side
+conditional-entropy term (supervisory ambiguity, a functional of $\Pr(Y\mid X)$)
+and a feature-side inter-class mutual-information aliasing term (semantic
+ambiguity, a functional of the representation $\phi$), and show the two
+corrections have non-interfering first-order effects -- SLR-C is a
+feature-selection step that lowers the aliasing term, while UTD's agreement gate
+reduces reliance on high-entropy targets. The analysis yields three testable
+predictions that the experiments confirm (additive threshold-free increments,
+content-dependence of the rationale teacher, and non-uniqueness of the decoupled
+realization). See also Reviewer~2 comment~(a).}
 
 \cresp{A comparative analysis of model parameters, FLOPs, or inference times is
 necessary.}

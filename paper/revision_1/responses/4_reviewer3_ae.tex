@@ -15,11 +15,22 @@ the gain reflects better intent discrimination rather than calibration alone.}
 \cresp{In Section~3.3.1 (Semantic Prior Construction), provide a more detailed
 justification for the selected scenarios, including their representativeness and
 the expected outcomes in conditions not covered by the presented scenarios.}
-{We expanded \S3.3.1 (Semantic Prior Construction, ``Scenario selection and
-coverage'') with the selection criteria, a coverage argument over the
-intent taxonomy, and the expected behavior -- graceful degradation toward the
-lexical/canonical sources, the base visual logits, and the residual student --
-for conditions not covered by the predefined scenarios.}
+{We expanded \S3.3.1 (Semantic Prior Construction) with the selection criteria and
+a representativeness argument, and we state the expected behavior under uncovered
+conditions there; the detailed argument is given here. The criterion for including
+a scenario is representativeness of the visual modes by which an intent is commonly
+expressed in social-media imagery, not exhaustive coverage of all possible
+situations. Two properties make the prior robust to incomplete coverage. First,
+the scenario source is only one of three prior sources and is combined by
+per-source normalization and averaging, so a class whose true scene is poorly
+covered still receives lexical and canonical evidence. Second, the prior is used
+only to rerank a Top-$K$ candidate set and is further corrected by the trainable
+residual student. Consequently, for a test image whose situation falls outside the
+generated scenarios, the expected behavior is graceful degradation rather than
+failure: the scenario term contributes little discriminative signal, the
+prediction falls back toward the base visual logits and the other two prior
+sources, and the residual student can still recover the correct intent from image
+evidence.}
 
 \cresp{Table~2 shows FDIL below HLEG on the Easy subset, yet
 this is not discussed. Explain the possible reasons and discuss the key

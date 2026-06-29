@@ -17,7 +17,17 @@ development of a novel approach.}
 
 \smallskip\noindent\textbf{(a) A formal decoupling principle (new theory,
 \S\ref{sec:decoupling_principle}).} We now formalize the two ambiguities as
-acting on \emph{different terms of the learning objective} (Eq.~\eqref{eq:risk_decomp}):
+acting on \emph{different terms of the learning objective} (Eq.~\eqref{eq:risk_decomp}).
+The starting point is an empirical diagnostic that the core failure is often
+ranking/calibration under local ambiguity, not global semantic retrieval: the
+visual baseline's Top-10 candidates already cover \res{$83.9\%$} of positive
+labels, \res{$95.1\%$} of test images contain at least one ground-truth intent in
+that Top-10 set, and \res{$67.8\%$} of baseline false negatives are still
+recoverable from this same candidate set. An oracle restricted to the Top-10
+neighborhood would reach \res{$87.4/91.3/89.7$} Macro/Micro/Samples F1, far above
+the realized baseline. This is why the new theory models semantic ambiguity as
+local feature-side aliasing among retrieved neighbors rather than as simple
+absence of the correct class. Formally,
 supervisory ambiguity is a label-side conditional-entropy term that depends only
 on $\Pr(Y\mid X)$ and is irreducible by any function of the features, whereas
 semantic ambiguity is a feature-side inter-class mutual-information aliasing term
