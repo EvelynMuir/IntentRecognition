@@ -104,14 +104,18 @@ realization). See also Reviewer~2 comment~(a).}
 
 \cresp{A comparative analysis of model parameters, FLOPs, or inference times is
 necessary.}
-{We report exact, same-environment params/FLOPs/latency for the components we
-control (Table~\ref{tab:efficiency_comparison}) and added a paragraph placing
-FDIL's overhead against the external methods (E8, Section~\ref{sec:experiments},
-Efficiency Comparison). A fully matched table across these methods is not
-meaningful because they assume incomparable backbones and inference regimes --
-HLEG/IntCLIP use convolutional or smaller encoders, while IntentMLM runs a
-multimodal LLM with caption generation and retrieval (billions of parameters,
-tens-to-hundreds of milliseconds per image). Relative to all of them, FDIL adds
-only $2.41$M inference-active parameters and sub-millisecond feature-level latency
-on top of the shared frozen CLIP encoder, which we state explicitly rather than
-fabricate matched FLOPs for incomparable pipelines.}
+{We now report exact, same-environment params/FLOPs/latency for all methods that
+admit a feature-level head, including the external baselines
+(Table~\ref{tab:efficiency_comparison}). Using their public source code, we
+profile HLEG and IntCLIP under the same shared frozen CLIP ViT-L/14 protocol as
+their ``(CLIP ViT-L/14)'' accuracy rows, counting each method's inference-active
+head on a single RTX 4090. The contrast is informative: HLEG's Query2Label
+transformer decoder alone costs $203.7$M params, $12.1$G FLOPs, and $2.73$ms per
+image, whereas IntCLIP/DualCoOp's learnable head is only $0.02$M prompt-context
+parameters ($22.0$M FLOPs, $0.11$ms) because its classifier weights are cached
+frozen-text-encoder embeddings. FDIL sits between them at $2.41$M params,
+$4.93$M FLOPs, and $0.47$ms. IntentMLM is the only method kept qualitative: it
+runs a multimodal LLM with caption generation and retrieval (billions of
+parameters, tens-to-hundreds of milliseconds per image), whose cost is dominated
+by the LLM rather than a feature-level head. See E8,
+Section~\ref{sec:experiments} (Efficiency Comparison).}

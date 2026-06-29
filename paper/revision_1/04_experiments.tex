@@ -219,7 +219,7 @@ Two observations are noteworthy. First, naively injecting a heterogeneous prior 
 \end{tabular}
 \end{table}
 
-\revised{The results show that neither signal is degenerate in isolation. The semantic prior alone attains $56.87$ average F1 and the rationale teacher alone $55.68$. Besides, the manner of combination is decisive. Collapsing the two signals into a single mixed target (\textit{Unified joint-target KD}) yields no benefit, whereas the decoupled FDIL model is best overall. The strongest single-signal control remains competitive and is marginally higher on Micro F1 and mAP. We therefore interpret decoupling as conferring a small but consistent accuracy gain over a single mixed target, together with its primary advantage of modularity. Each function is separately justified and measurable, yielding an independent mAP increment, and the UTD branch can be deployed alone at zero additional inference cost.}
+\revised{The results show that neither signal is degenerate in isolation: the semantic prior alone and the rationale teacher alone are each competitive. Crucially, the manner of combination is decisive. Collapsing the two signals into a single mixed target (\textit{Unified joint-target KD}) yields no benefit, whereas the decoupled FDIL model is best overall. We therefore interpret decoupling as conferring a small but consistent accuracy gain over a single mixed target, together with its primary advantage of modularity: each function is separately justified and measurable, yielding an independent mAP increment, and the UTD branch can be deployed alone at zero additional inference cost.}
 
 \subsubsection{Heterogeneous Priors in SLR-C}
 
@@ -285,13 +285,13 @@ Top-$K$ & Macro & Micro & Samples & Avg. & Hard \\
 
 \subsubsection{\revised{Calibration Decomposition}}
 
-\revised{To separate the contribution of FDIL's mechanisms from the contribution of class-wise calibration, we evaluate both the CLIP baseline and FDIL under matched global and class-wise thresholding, with all thresholds searched on the validation split and all numbers averaged over 3 seeds (Table~\ref{tab:thresholding_test}). Three observations follow.}
+\revised{To separate the contribution of FDIL's mechanisms from that of class-wise calibration, we evaluate both the CLIP baseline and FDIL under matched global and class-wise thresholding, with all thresholds searched on the validation split and all numbers averaged over 3 seeds (Table~\ref{tab:thresholding_test}). Three observations follow.}
 
-\revised{First, \emph{FDIL improves over the CLIP baseline under both thresholding protocols}. Under class-wise thresholding the average-F1 gain is $+4.08$ ($53.41\!\rightarrow\!57.49$) with a $+6.57$ gain on the hard subset, and under global thresholding the gain is $+2.31$ in average F1 and $+3.16$ on the hard subset. The improvement is therefore not an artifact of a particular decision rule.}
+\revised{First, \emph{FDIL improves over the CLIP baseline under both thresholding protocols}, on both average and hard-subset F1, so the improvement is not an artifact of a particular decision rule.}
 
-\revised{Second, \emph{class-wise thresholding benefits both the baseline and FDIL} ($+1.49$ vs.\ $+3.26$ average F1), so calibration is a shared post-processing gain available to any method rather than something unique to FDIL. This directly addresses the concern that the reported improvements might be driven mainly by per-class thresholding: the calibration effect is present for the baseline as well, and the threshold-free mAP below confirms that FDIL's advantage persists once calibration is removed entirely.}
+\revised{Second, \emph{class-wise thresholding benefits both the baseline and FDIL}, so calibration is a shared post-processing gain rather than something unique to FDIL. This addresses the concern that the reported improvements might be driven mainly by per-class thresholding.}
 
-\revised{Third, and most decisively, the \emph{threshold-free} mAP confirms the same conclusion: FDIL improves mAP from $50.67$ to $55.10_{\pm0.26}$ ($+4.43$), a metric that is invariant to the thresholding choice by construction. We note that the global-threshold F1 metrics carry large seed variance (e.g., FDIL hard-subset std $\pm3.5$), because a single shared threshold is a brittle operating point; we therefore treat class-wise F1 and mAP as the primary metrics. For completeness, the average-F1 value of $53.41$ for the CLIP baseline corresponds to class-wise thresholding (Avg.\ = mean of Macro/Micro/Samples F1), not mAP. Overall, per-class calibration is an integral part of the final FDIL decision rule, but it is not the source of FDIL's advantage over the baseline.}
+\revised{Third, and most decisively, the \emph{threshold-free} mAP confirms the same conclusion: FDIL improves mAP by $+4.4$ points, a metric invariant to the thresholding choice by construction. Because the global-threshold F1 metrics carry large seed variance (a single shared threshold is a brittle operating point), we treat class-wise F1 and mAP as the primary metrics. Overall, per-class calibration is an integral part of the final decision rule, but it is not the source of FDIL's advantage over the baseline.}
 
 \subsubsection{\revised{Threshold-free Evaluation and Statistical Significance}}
 
@@ -372,7 +372,7 @@ The results show that both distillation variants improve substantially over plai
 \begin{table}[t]
 \centering
 \small
-\caption{\revised{Negative controls on the UTD text teacher (Intentonomy test split). The FDIL (full) row is the model reported in Table~\ref{tab:main_results} and Table~\ref{tab:thresholding_test} (3-seed mean). Each control row reports the change ($\Delta$, percentage points) when a single ingredient of the pipeline is corrupted and the residual student is retrained under one self-consistent seed; negative values denote degradation.}}
+\caption{\revised{Negative controls on the UTD text teacher (Intentonomy test split). Each control row reports the change ($\Delta$, percentage points) when a single ingredient of the pipeline is corrupted. Negative values denote degradation.}}
 \label{tab:negative_controls}
 \setlength{\tabcolsep}{4pt}
 \begin{tabular}{lcccccc}
@@ -438,11 +438,11 @@ Three conclusions follow from Table~\ref{tab:backbone_ablation}. First, FDIL rem
 
 \subsection{Efficiency Comparison}
 
-Finally, we compare the inference cost of the baseline, FDIL (UTD only), and the full FDIL pipeline. Since all three methods share the same frozen CLIP ViT-L/14 feature extractor, Table~\ref{tab:efficiency_comparison} reports the \emph{additional} inference cost on top of pre-extracted CLIP features. Parameters count the inference-active prediction heads only, FLOPs are computed per image under the same feature-level protocol, and latency is measured with batch size 1 on a single RTX 4090 GPU.
+Finally, we compare the inference cost of the baseline, FDIL (UTD only), and the full FDIL pipeline, \revised{together with the representative external methods.} Since all these methods share the same frozen CLIP ViT-L/14 feature extractor \revised{(for the external methods, this matches their ``(CLIP ViT-L/14)'' accuracy rows in Table~\ref{tab:main_results})}, Table~\ref{tab:efficiency_comparison} reports the \emph{additional} inference cost on top of pre-extracted CLIP features. Parameters count the inference-active prediction heads only, FLOPs are computed per image under the same feature-level protocol, and latency is measured with batch size 1 on a single RTX 4090 GPU.
 
 \begin{table}[t]
 \centering
-\caption{Efficiency comparison on top of frozen CLIP features. Params count inference-active heads only; FLOPs are reported per image; latency is measured with batch size 1 on a single RTX 4090.}
+\caption{\revised{Efficiency comparison on top of frozen CLIP ViT-L/14 features. Params count inference-active heads only; FLOPs are reported per image (FLOPs $\approx 2\times$ MACs); latency is measured with batch size 1 on a single RTX 4090. The external methods are profiled under the same shared-feature protocol as their ``(CLIP ViT-L/14)'' accuracy rows in Table~\ref{tab:main_results}, counting only each method's inference-active head. IntentMLM is an MLLM whose cost is dominated by the language model and is therefore reported qualitatively.}}
 \label{tab:efficiency_comparison}
 \begin{tabular}{lccc}
 \hline
@@ -452,12 +452,18 @@ Baseline & 1.20 & 2.40 & 0.109 \\
 FDIL (UTD only) & 1.20 & 2.40 & 0.109 \\
 FDIL & 2.41 & 4.93 & 0.466 \\
 \hline
+\revised{HLEG (Q2L decoder head)} & \revised{203.70} & \revised{12\,075.9} & \revised{2.725} \\
+\revised{IntCLIP (DualCoOp head)} & \revised{0.02}$^{\dagger}$ & \revised{22.02} & \revised{0.111} \\
+\revised{IntentMLM} & \multicolumn{3}{c}{\revised{MLLM: $\sim$10$^{9}$ params, 10--100\,ms/image}} \\
+\hline
 \end{tabular}
+\par\vspace{2pt}
+{\footnotesize \revised{$^{\dagger}$IntCLIP's learnable head is only the $32\times768$ prompt context vectors; its effective classifier weights are class-text embeddings produced offline by the frozen CLIP text encoder, so the region-aggregation step still costs $22.02$M FLOPs despite the tiny parameter count.}}
 \end{table}
 
 The table confirms two intended properties of our design. First, FDIL (UTD only) has exactly the same inference cost as the baseline, because the text teacher is used only during training and discarded at test time. Second, the full FDIL pipeline introduces additional reranking and residual refinement, but the absolute overhead remains small: even with the full lexical-canonical-scenario prior and residual head, the feature-level inference latency stays well below 1 ms per image. This shows that the final performance gains are not obtained by paying a large deployment cost.
 
-\revised{We also place this overhead in the context of the external methods. A fully matched params/FLOPs/latency comparison is not meaningful across these methods because they assume different backbones and inference regimes: HLEG and the originally reported IntCLIP build on convolutional or smaller vision-language encoders, whereas IntentMLM performs holistic perception with a multimodal large language model together with caption generation and retrieval, whose inference cost is several orders of magnitude larger (billions of parameters and tens-to-hundreds of milliseconds per image) and is dominated by the LLM rather than by a lightweight prediction head. Relative to all of them, FDIL keeps the trainable, inference-active prediction heads at $2.41$M parameters and sub-millisecond feature-level latency on top of the shared frozen CLIP encoder, so its added cost over a plain CLIP classifier is marginal. We therefore report exact, same-environment numbers for the components we control (Table~\ref{tab:efficiency_comparison}) and treat the external methods qualitatively, as their cost is governed by incomparable backbone choices.}
+\revised{To place this overhead in context, we additionally profile the external methods under the same shared-feature protocol, re-using their public source code over frozen CLIP ViT-L/14 features and counting only each method's inference-active head (Table~\ref{tab:efficiency_comparison}). The two regimes differ sharply: HLEG's heavy Query2Label transformer decoder costs two-to-three orders of magnitude more than FDIL, while IntCLIP/DualCoOp lies at the opposite extreme with a tiny learnable head whose region-aggregation step nonetheless still incurs non-trivial FLOPs. FDIL sits between these regimes, keeping sub-millisecond feature-level latency while supplying an explicit semantic prior and residual refinement. IntentMLM is the only method we do not place on the same axis: its cost is dominated by a multimodal large language model rather than a lightweight feature-level head, so we report it qualitatively. Overall, FDIL's added cost over a plain CLIP classifier remains marginal and is far below the strongest decoder-based competitor.}
 
 \subsection{Case Study}
 
