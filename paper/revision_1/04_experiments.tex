@@ -13,7 +13,7 @@ To better understand the effectiveness of our method, we further conduct experim
 \begin{table}[htbp]
 \centering
 \small
-\caption{\revised{Main comparison on Intentonomy test split. Avg.\ is the mean of Macro/Micro/Samples F1.}}
+\caption{\revised{Main comparison on Intentonomy test split. Avg.\ is the mean of Macro/Micro/Samples F1. $^{\dagger}$Quoted from IntentMLM~\cite{wang_unlocking_2026}.}}
 \label{tab:main_results}
 \begingroup
 \setlength{\tabcolsep}{4pt}
@@ -56,7 +56,7 @@ IntentMLM \cite{wang_unlocking_2026} & PR 2026 & 43.05 & 54.77 & 56.75 & 51.52 \
 \multicolumn{6}{l}{\revised{\textbf{Zero-shot VLM}}} \\
 \revised{Qwen3-VL-8B-Instruct \cite{qwen_qwen3-vl_2025}} & \revised{-} & \revised{38.51} & \revised{40.75} & \revised{39.63} & \revised{39.63} \\
 \revised{InternVL3-8B \cite{zhu_internvl3_2025}} & \revised{-} & \revised{37.54} & \revised{41.85} & \revised{40.50} & \revised{39.97} \\
-\revised{GPT-4o \cite{hurst_gpt-4o_2024}} & \revised{-} & \revised{43.05} & \revised{54.77} & \revised{56.75} & \revised{51.52} \\
+\revised{GPT-4o \cite{hurst_gpt-4o_2024}$^{\dagger}$} & \revised{-} & \revised{39.48} & \revised{40.57} & \revised{41.45} & \revised{40.50} \\
 \hline
 CLIP ViT-L/14 \cite{radford_learning_2021} & ICML 2021 & \revised{$47.40$} & \revised{$56.42$} & \revised{$56.41$} & \revised{$53.41$} \\
 FDIL (UTD only) & Ours & \revised{$50.20_{\pm0.44}$} & \revised{$58.03_{\pm0.11}$} & \revised{$58.79_{\pm0.78}$} & \revised{$55.68_{\pm0.44}$} \\
@@ -78,7 +78,7 @@ Table~\ref{tab:main_results} summarizes the main comparison on the test split. \
 
 \subsubsection{Zero-shot Multimodal Large Model Comparison}
 
-\revised{To address the concern that recent multimodal large language models may already solve visual intent recognition through prompting alone, we evaluate zero-shot MLLM baselines on the same Intentonomy label set, prompting each model to return a probability over the candidate categories. As shown in the \textit{Zero-shot VLM} group of Table~\ref{tab:main_results}, direct zero-shot prediction is competitive but remains below the trained CLIP and FDIL models. Stronger general-purpose MLLMs therefore provide useful intent priors, but prompt-only recognition does not remove the need for dataset-specific calibration, uncertainty-aware supervision, and image-conditioned refinement.}
+\revised{To address the concern that recent multimodal large language models may already solve visual intent recognition through prompting alone, we evaluate two recent open-weight MLLMs zero-shot on the same Intentonomy label set, prompting each to return a probability over the candidate categories; the group additionally lists, for reference, the GPT-4o zero-shot result reported by IntentMLM~\cite{wang_unlocking_2026}. As shown in the \textit{Zero-shot VLM} group of Table~\ref{tab:main_results}, direct zero-shot prediction is competitive but remains below the trained CLIP and FDIL models. Stronger general-purpose MLLMs therefore provide useful intent priors, but prompt-only recognition does not remove the need for dataset-specific calibration, uncertainty-aware supervision, and image-conditioned refinement.}
 
 \subsubsection{\revised{Performance on Difficulty- and Content-Dependent Subsets}}
 

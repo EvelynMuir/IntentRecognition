@@ -4,42 +4,13 @@
 \reviewerblock{Editor-in-Chief Checklist}{%
 We confirm that the revision adheres to the editorial checklist below.}
 
-\cresp{Take a careful look at your bibliography and ensure it covers the state of the
-art. Avoid excessive arXiv citations; substitute peer-reviewed versions. Do not
-cite large groups of papers without individually commenting on them. The final
-bibliography should be between 35--55 items.}
-{We added recent 2024--2026 references (e.g.\ IntCLIP, ECCV~2024; IntentMLM,
-Pattern Recognition~2026) and recent multimodal large-model references, replaced
-arXiv preprints with their peer-reviewed versions wherever a published version
-exists, and discuss the cited works individually rather than as undifferentiated
-groups. The bibliography now contains \res{38} references, within the requested
-$35$--$55$ range.}
+\cresp{Take a careful look at your bibliography and ensure it covers the state of the art. Avoid excessive arXiv citations; substitute peer-reviewed versions. Do not cite large groups of papers without individually commenting on them. The final bibliography should be between 35--55 items.}
+{We added recent 2024--2026 references (e.g.\ IntCLIP, ECCV~2024; IntentMLM, Pattern Recognition~2026) and recent multimodal large-model references, replaced arXiv preprints with their peer-reviewed versions wherever a published version exists, and discuss the cited works individually rather than as undifferentiated groups. The bibliography now contains \res{38} references, within the requested $35$--$55$ range.}
 
-\cresp{Make sure the revised version is relevant to the readership of the Pattern
-Recognition field; cite recent work from the field of pattern recognition, not
-only the Pattern Recognition journal.}
-{Done -- we added recent pattern-recognition-community work relevant to the
-readership.}
+\cresp{Make sure the revised version is relevant to the readership of the Pattern Recognition field; cite recent work from the field of pattern recognition, not only the Pattern Recognition journal.}
+{We have added recent pattern-recognition-community work relevant to the readership, drawn from the broader field rather than the Pattern Recognition journal alone.}
 
-\cresp{The revision may extend the article but it cannot exceed the page limits or
-violate the format: double-spaced, single column, maximum 35 pages for a regular
-paper.}
-{The manuscript is prepared in the required double-spaced, single-column format.
-The substantial new analyses (the formal decoupling principle, the
-backbone-matched comparison rows and the method-vs-calibration table,
-threshold-free metrics with ROC/PR curves, the t-SNE and per-class attribution,
-the notation table, and the expanded Discussion) have increased its length, so to
-respect the page limit we no longer report the validation-split results in the main
-text or the appendix, we release the generation prompt templates with our artifacts
-rather than printing them, and the appendix now retains only the notation table.
-We will further condense secondary ablations and merge closely related tables in
-the final typeset version to keep the regular-paper body within the $35$-page limit.
+\cresp{The revision may extend the article but it cannot exceed the page limits or violate the format: double-spaced, single column, maximum 35 pages for a regular paper.}
+{The manuscript is prepared in the required double-spaced, single-column format. The substantial new analyses (the formal decoupling principle, the backbone-matched comparison rows and the method-vs-calibration table, threshold-free metrics with ROC/PR curves, the t-SNE and per-class attribution, the notation table, and the expanded Discussion) have increased its length, so to respect the page limit we no longer report the validation-split results in the manuscript, we release the generation prompt templates with our artifacts rather than printing them, and we relocated the notation table into the Method section and removed the appendix. We will further condense secondary ablations and merge closely related tables in the final typeset version to keep the regular-paper body within the $35$-page limit.
 
-For the reviewers' reference, the validation-split subset results (which we
-verified are consistent with the test-split conclusions) are reported here. On the
-difficulty subsets, the CLIP baseline reaches Easy/Medium/Hard/Avg.\ of
-\res{$80.10/60.30/40.03/60.14$} and FDIL \res{$80.58/62.27/50.02/64.29$}; on the
-content-dependent subsets, the CLIP baseline reaches Object/Context/Others/Avg.\ of
-\res{$62.08/64.17/51.70/59.32$} and FDIL \res{$64.45/67.42/57.37/63.08$}. As on the
-test split, FDIL improves every subset, with the largest gains on the Hard and
-\textit{Others} groups, where both ambiguities are most active.}
+For the reviewers' reference, the validation-split subset results (which we verified are consistent with the test-split conclusions) are reported here. On the difficulty subsets, the CLIP baseline reaches Easy/Medium/Hard/Avg.\ of \res{$80.10/60.30/40.03/60.14$} and FDIL \res{$80.58/62.27/50.02/64.29$}; on the content-dependent subsets, the CLIP baseline reaches Object/Context/Others/Avg.\ of \res{$62.08/64.17/51.70/59.32$} and FDIL \res{$64.45/67.42/57.37/63.08$}. As on the test split, FDIL improves every subset, with the largest gains on the Hard and \textit{Others} groups, where both ambiguities are most active.}

@@ -5,65 +5,17 @@ We thank the Associate Editor and all five reviewers for their careful and const
 We have grouped the major concerns into five themes and addressed each one with new experiments, new analysis, and substantial rewriting:
 
 \begin{itemize}
-  \item \textbf{Fairness and interpretability of the comparisons; the effect of
-  class-wise thresholding (R1).} We added a controlled protocol in which all
-  in-house baselines and FDIL share the \emph{same} CLIP ViT-L/14 features, the
-  \emph{same} train/val/test split, and the \emph{same} validation-only
-  thresholding protocol, together with a four-cell grid that decomposes the
-  contribution of the \emph{method} from that of \emph{calibration} (global vs.\
-  class-wise thresholding), reported as mean$\pm$std over 3 seeds. FDIL improves
-  over the CLIP baseline under \emph{both} thresholding protocols, and the
-  threshold-free mAP confirms the gain is not a calibration artifact. We further
-  re-implemented representative external methods (HLEG, LabCR, IntCLIP) over the
-  \emph{same} frozen CLIP ViT-L/14 features: once the backbone is equalized they
-  fall to the level of the plain CLIP baseline, while FDIL still leads them by
-  $+3.4$ to $+4.7$ average F1, confirming the improvement is algorithmic rather
-  than backbone-driven.
+\item \textbf{Fairness and interpretability of the comparisons; the effect of class-wise thresholding (R1).} We added a controlled protocol in which all in-house baselines and FDIL share the \emph{same} CLIP ViT-L/14 features, the \emph{same} train/val/test split, and the \emph{same} validation-only thresholding protocol, together with a four-cell grid that decomposes the contribution of the \emph{method} from that of \emph{calibration} (global vs.\ class-wise thresholding), reported as mean$\pm$std over 3 seeds. FDIL improves over the CLIP baseline under \emph{both} thresholding protocols, and the threshold-free mAP confirms the gain is not a calibration artifact. We further re-implemented representative external methods (HLEG, LabCR, IntCLIP) over the \emph{same} frozen CLIP ViT-L/14 features: once the backbone is equalized they fall to the level of the plain CLIP baseline, while FDIL still leads them by $+3.4$ to $+4.7$ average F1, confirming the improvement is algorithmic rather than backbone-driven.
 
-  \item \textbf{Novelty and theoretical depth (R2, R4, R1).} We added a formal,
-  information-theoretic / feature-selection motivation for \emph{why} the two
-  ambiguities are most naturally handled by orthogonal components, a head-to-head
-  unified-vs-decoupled comparison, negative-control experiments showing that
-  arbitrary VLM text priors do \emph{not} reproduce the gains, and a controlled
-  generalization study on a second (affect) dataset on which privileged
-  distillation significantly beats the baseline where its precondition holds.
+\item \textbf{Novelty and theoretical depth (R2, R4, R1).} We added a formal, information-theoretic / feature-selection motivation for \emph{why} the two ambiguities are most naturally handled by orthogonal components, a head-to-head unified-vs-decoupled comparison, negative-control experiments showing that arbitrary VLM text priors do \emph{not} reproduce the gains, and a controlled generalization study on a second (affect) dataset on which privileged distillation significantly beats the baseline where its precondition holds.
 
-  \item \textbf{Presentation and clarity (R4, R5, R3).} We rewrote the
-  Introduction (clear purpose, critical analysis of how existing methods fail on
-  each ambiguity type, expanded LLM-based intent-understanding survey), added a
-  notation table and a Discussion section, fixed the Figure~2 caption, corrected
-  the ``FDIR''$\rightarrow$``FDIL'' typos, and proofread the manuscript and
-  bibliography.
+\item \textbf{Presentation and clarity (R4, R5, R3).} We rewrote the Introduction (clear purpose, critical analysis of how existing methods fail on each ambiguity type, expanded LLM-based intent-understanding survey), added a notation table and a Discussion section, fixed the Figure~2 caption, corrected the ``FDIR''$\rightarrow$``FDIL'' typos, and proofread the manuscript and bibliography.
 
-  \item \textbf{Stronger and larger-scale evaluation (R4, R3).} We added a
-  controlled cross-validation generalization study on a second (affect) dataset
-  with paired significance testing, comparisons
-  against 2025/2026 large multimodal models, t-SNE embedding
-  visualizations, ROC/PR curves, threshold-free metrics with statistical
-  significance testing, and an extended efficiency comparison
-  (params/FLOPs/latency). In the new zero-shot MLLM comparison, GPT-4o reaches
-  $51.52$ average F1 on the test split, while Qwen3-VL-8B and InternVL3-8B
-  reach $39.63$ and $39.97$, respectively; all remain below the trained
-  CLIP/FDIL models, clarifying that prompting a general MLLM alone does not
-  solve Intentonomy.
+\item \textbf{Stronger and larger-scale evaluation (R4, R3).} We added a controlled cross-validation generalization study on a second (affect) dataset with paired significance testing, comparisons against 2025/2026 large multimodal models, t-SNE embedding visualizations, ROC/PR curves, threshold-free metrics with statistical significance testing, and an extended efficiency comparison (params/FLOPs/latency). In the new zero-shot MLLM comparison, our own runs of Qwen3-VL-8B and InternVL3-8B reach $39.63$ and $39.97$ average F1 on the test split, and the GPT-4o zero-shot result reported by IntentMLM is $40.50$; all remain below the trained CLIP/FDIL models, clarifying that prompting a general MLLM alone does not solve Intentonomy.
 
-  \item \textbf{Reproducibility (R1, EiC).} We documented the validation-only
-  selection protocol, expanded implementation details, and replaced the
-  ``available on request'' statement with a concrete artifact-release plan.
+\item \textbf{Reproducibility (R1, EiC).} We documented the validation-only selection protocol, expanded implementation details, and replaced the ``available on request'' statement with a concrete artifact-release plan.
 \end{itemize}
 
-\paragraph{Note on the page limit.} We retained all reviewer- and editor-requested
-analyses in the main manuscript, but substantially condensed their presentation to
-comply with the Pattern Recognition 35-page limit. Specifically, we (i) moved the
-notation table into the Method section and reduced it to the core symbols, (ii)
-merged the t-SNE visualization and per-class attribution into a single compact
-interpretability subsection, (iii) merged the gating and teacher-modality
-ablations into one table, and (iv) shortened the related-work, theoretical-derivation,
-and discussion text. No analysis or result was removed: where a table was condensed
-out of the main text, its full version is reproduced in this letter. In particular,
-the complete per-class F1 attribution is given in Table~\ref{tab:per_class_attr} of
-our response to Reviewer~1.
+\paragraph{Note on the page limit.} We retained all reviewer- and editor-requested analyses in the main manuscript, but substantially condensed their presentation to comply with the Pattern Recognition 35-page limit. Specifically, we (i) moved the notation table into the Method section and reduced it to the core symbols, (ii) merged the t-SNE visualization and per-class attribution into a single compact interpretability subsection, (iii) merged the gating and teacher-modality ablations into one table, and (iv) shortened the related-work, theoretical-derivation, and discussion text. No analysis or result was removed: where a table was condensed out of the main text, its full version is reproduced in this letter. In particular, the complete per-class F1 attribution is given in Table~\ref{tab:per_class_attr} of our response to Reviewer~1.
 
-Below we provide point-by-point responses to each reviewer. Newly added or
-revised content is referenced by section, table, or figure. In the revised
-manuscript, all changes are highlighted in \revised{red}.
+Below we provide point-by-point responses to each reviewer. Newly added or revised content is referenced by section, table, or figure. In the revised manuscript, all changes are highlighted in \revised{red}.

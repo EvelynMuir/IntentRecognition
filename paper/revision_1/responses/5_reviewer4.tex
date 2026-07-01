@@ -2,127 +2,37 @@
 % === Reviewer 4 ===
 % ================================
 \reviewerblock{Reviewer~4}{%
-We thank the reviewer for the thorough, itemized list, which we address point by
-point.}
+We thank the reviewer for the thorough, itemized list, which we address point by point.}
 
-\cresp{The manuscript requires careful proofreading, such as [7] IEEE Trans.\
-Affect.\ Comput., and so on.}
-{Done -- we proofread the manuscript and standardized the bibliography, including
-the journal-name/abbreviation formatting flagged by the reviewer (e.g.\ the
-\emph{IEEE Transactions on Affective Computing} entry) and consistent venue names
-across entries.}
+\cresp{The manuscript requires careful proofreading, such as [7] IEEE Trans.\ Affect.\ Comput., and so on.}
+{We have proofread the manuscript and standardized the bibliography, correcting the journal-name and abbreviation formatting flagged by the reviewer (for example, the \emph{IEEE Transactions on Affective Computing} entry) and making venue names consistent across entries.}
 
-\cresp{Give more analysis of the disadvantages of existing visual-intention
-understanding methods on the two forms of ambiguity.}
-{We rewrote the Introduction (Section~\ref{sec:intro}) with an explicit critical
-analysis of how prior visual-intent methods handle (or conflate) supervisory and
-semantic ambiguity, arguing that most existing methods treat one perspective of
-ambiguity as dominant rather than separating the two failure modes.}
+\cresp{Give more analysis of the disadvantages of existing visual-intention understanding methods on the two forms of ambiguity.}
+{We rewrote the Introduction (Section~\ref{sec:intro}) with an explicit critical analysis of how prior visual-intent methods handle (or conflate) supervisory and semantic ambiguity, arguing that most existing methods treat one perspective of ambiguity as dominant rather than separating the two failure modes.}
 
 \cresp{The clear purpose of the proposed work is lacking in the Introduction.}
-{Done -- the Introduction now states the purpose and objectives explicitly.}
+{We have revised the Introduction so that it now states the purpose and objectives of the work explicitly.}
 
-\cresp{The Introduction should be re-discussed and extended; more LLM-based
-visual-intention understanding methods should be mentioned, as the latest
-development is hard for readers to follow.}
-{We expanded the survey of LLM/MLLM-based visual-intent understanding in the
-Introduction (Section~\ref{sec:intro}), including the recent peer-reviewed
-IntCLIP (ECCV~2024) and IntentMLM (Pattern Recognition~2026), and added a new
-paragraph situating these within the broader shift toward MLLMs as sources of
-external semantic knowledge, with a forward pointer to our zero-shot MLLM
-experiment (Table~\ref{tab:main_results}, ``Zero-shot VLM'' group).}
+\cresp{The Introduction should be re-discussed and extended; more LLM-based visual-intention understanding methods should be mentioned, as the latest development is hard for readers to follow.}
+{We expanded the survey of LLM/MLLM-based visual-intent understanding in the Introduction (Section~\ref{sec:intro}), including the recent peer-reviewed IntCLIP (ECCV~2024) and IntentMLM (Pattern Recognition~2026), and added a new paragraph situating these within the broader shift toward MLLMs as sources of external semantic knowledge, with a forward pointer to our zero-shot MLLM experiment (Table~\ref{tab:main_results}, ``Zero-shot VLM'' group).}
 
 \cresp{Consider including a table of notations.}
-{Added a notation table (Table~\ref{tab:notation}), now placed in the Method section.}
+{We have added a notation table (Table~\ref{tab:notation}), which we place in the Method section.}
 
 \cresp{There should be larger-scale datasets to better evaluate the method.}
-{We added a generalization study on the EMOTIC affect dataset, detailed in our
-response to Reviewer~2 comment~(c). Briefly: on EMOTIC's standard split the
-agreement gate reduces to standard distillation \emph{by construction}, because
-EMOTIC multi-annotates only val/test while its training split is single-annotator
-(degenerate agreement); we therefore ran a controlled $5\times5$ cross-validation
-on the multi-annotated val+test pool, where per-sample agreement is available.
-There, privileged distillation \emph{significantly} improves the image-only
-baseline on every metric (mAP/Macro/Micro/Samples-F1, paired $p<0.01$ over $25$
-runs; Table~\ref{tab:emotic_pool} in the Reviewer~2 response), giving positive
-evidence that the framework transfers to a second, affect domain. We report the
-gate's incremental effect transparently (it matches standard KD on this pool,
-where the borrowed agreement is coarser than Intentonomy's) and state the
-cross-task scope as a limitation (Section~\ref{sec:discussion}).}
+{We have added a generalization study on the EMOTIC affect dataset, developed in full in our response to Reviewer~2, comment~(c). In brief, EMOTIC's standard split is uninformative for our agreement gate by construction, because the dataset multi-annotates only its validation and test splits, so every single-annotator training instance carries a degenerate agreement and the gated term reduces to standard distillation. We therefore evaluated the framework in the regime where its precondition holds, running a controlled $5\times5$ cross-validation on the multi-annotated validation+test pool, in which per-sample agreement is available. There, privileged distillation \emph{significantly} improves the image-only baseline on every metric (mAP, Macro-, Micro-, and Samples-F1; paired $p<0.01$ over $25$ runs; Table~\ref{tab:emotic_pool} in the Reviewer~2 response), providing positive evidence that the framework transfers to a second, affect domain. Where agreement is present the gate also activates and, consistent with its design, concentrates its benefit on low-agreement samples; in aggregate it matches standard distillation on this pool, whose borrowed agreement signal is coarser than Intentonomy's, and we report this scope transparently in the Limitations (Section~\ref{sec:discussion}).}
 
-\cresp{Experimental evaluation is not sufficient; more comparisons with 2025/2026
-LLM methods and t-SNE are needed.}
-{We added a zero-shot MLLM comparison (E5, Table~\ref{tab:main_results},
-``Zero-shot VLM'' group) using
-the same Intentonomy label set and probability-dictionary prompting protocol.
-GPT-4o reaches Test Macro/Micro/Samples/Avg.\ F1 of
-\res{43.05, 54.77, 56.75, and 51.52}. We also evaluated two newer open-weight MLLMs
-through vLLM services: Qwen3-VL-8B-Instruct obtains Test
-\res{38.51, 40.75, 39.63, and 39.63}, and InternVL3-8B obtains
-\res{37.54, 41.85, 40.50, and 39.97}. These direct-prompting baselines are
-competitive but still below the trained CLIP/FDIL models, supporting the need
-for dataset-specific visual calibration and uncertainty-aware refinement. We
-also added t-SNE visualizations of intent embeddings for FDIL vs.\ the baseline,
-emphasizing hard / semantically adjacent classes (E6, Figure~\ref{fig:tsne}).}
+\cresp{Experimental evaluation is not sufficient; more comparisons with 2025/2026 LLM methods and t-SNE are needed.}
+{We added a zero-shot MLLM comparison (Table~\ref{tab:main_results}, ``Zero-shot VLM'' group). We evaluated two recent open-weight MLLMs through vLLM services under the same Intentonomy label set and probability-dictionary prompting protocol: Qwen3-VL-8B-Instruct obtains Test Macro/Micro/Samples/Avg.\ F1 of \res{38.51, 40.75, 39.63, and 39.63}, and InternVL3-8B obtains \res{37.54, 41.85, 40.50, and 39.97}. For reference we also include the GPT-4o zero-shot result reported by IntentMLM, \res{39.48, 40.57, 41.45, and 40.50}. These direct-prompting baselines are competitive but still below the trained CLIP/FDIL models, supporting the need for dataset-specific visual calibration and uncertainty-aware refinement. We also added t-SNE visualizations of intent embeddings for FDIL vs.\ the baseline, emphasizing hard / semantically adjacent classes (Figure~\ref{fig:tsne}).}
 
 \cresp{Use ROC-based curves for a clearer evaluation against other SOTA methods.}
-{Done, and redrawn specifically as a method comparison. The micro-averaged ROC and
-precision-recall curves (E7, Figure~\ref{fig:roc_pr}) now compare FDIL against the
-CLIP baseline and three representative SOTA methods (HLEG, LabCR, IntCLIP)
-reproduced under the \emph{matched} CLIP ViT-L/14 features, split, and protocol of
-our E1b controlled comparison, rather than against FDIL's own ablations. Once the
-backbone is equalized the external methods cluster only slightly above the CLIP
-baseline (micro ROC-AUC $\approx 0.86$), while FDIL dominates all of them on both
-curves (micro ROC-AUC $0.88$, micro AP $0.61$). The accompanying threshold-free
-metrics table (Table~\ref{tab:threshold_free}) and paired significance tests
-quantify the gap, and the per-method test mAP is consistent with the E1b CSV
-(reproduced HLEG/LabCR/IntCLIP at $50.5$/$51.3$/$47.5$ vs.\ FDIL $54.8$).}
+{We have added ROC-based curves and redrawn them specifically as a method comparison. The micro-averaged ROC and precision-recall curves (Figure~\ref{fig:roc_pr}) now compare FDIL against the CLIP baseline and three representative SOTA methods (HLEG, LabCR, IntCLIP) reproduced under the \emph{matched} CLIP ViT-L/14 features, split, and protocol of our matched-backbone controlled comparison, rather than against FDIL's own ablations. Once the backbone is equalized the external methods cluster only slightly above the CLIP baseline (micro ROC-AUC $\approx 0.86$), while FDIL dominates all of them on both curves (micro ROC-AUC $0.88$, micro AP $0.61$). The accompanying threshold-free metrics table (Table~\ref{tab:threshold_free}) and paired significance tests quantify the gap, and the per-method test mAP is consistent with the matched-backbone reproduction (HLEG/LabCR/IntCLIP at $50.5$/$51.3$/$47.5$ vs.\ FDIL $54.8$).}
 
-\cresp{A ``Discussion'' section could be added covering main findings, advantages,
-and disadvantages.}
-{Added / expanded the Discussion (Section~\ref{sec:discussion}) with a ``Main
-Findings and Advantages'' subsection and an extended Limitations subsection
-covering main findings, advantages, and failure modes (including the
-\textit{CreativeUnique} confusion-pair regression and the cross-task EMOTIC
-caveat).}
+\cresp{A ``Discussion'' section could be added covering main findings, advantages, and disadvantages.}
+{We have added and expanded the Discussion (Section~\ref{sec:discussion}), which now contains a ``Main Findings and Advantages'' subsection and an extended Limitations subsection covering main findings, advantages, and failure modes, including the \textit{CreativeUnique} confusion-pair regression and the cross-task scope of the EMOTIC generalization.}
 
-\cresp{Add more theoretical analysis, e.g.\ from information-theoretic or
-feature-selection perspectives.}
-{Added a formal analysis in \S\ref{sec:decoupling_principle}. We now motivate it
-with an empirical diagnostic showing why a feature-selection / local-aliasing
-view is appropriate: the visual baseline's Top-10 candidates already cover
-\res{$83.9\%$} of positive labels, \res{$95.1\%$} of test images contain at least
-one ground-truth intent inside that Top-10 set, and \res{$67.8\%$} of baseline
-false negatives are still recoverable from the same candidate set. An oracle
-restricted to this local neighborhood would reach \res{$87.4/91.3/89.7$}
-Macro/Micro/Samples F1. This indicates that the core semantic failure is often
-not global absence of the correct intent, but local ranking, calibration, and
-separation among already retrieved, semantically adjacent candidates. Based on
-this observation, we decompose the per-class excess risk into a label-side
-conditional-entropy term (supervisory ambiguity, a functional of $\Pr(Y\mid X)$)
-and a feature-side inter-class mutual-information aliasing term (semantic
-ambiguity, a functional of the representation $\phi$), and show the two
-corrections have non-interfering first-order effects -- SLR-C is a
-feature-selection step that lowers the aliasing term, while UTD's agreement gate
-reduces reliance on high-entropy targets. The analysis yields three testable
-predictions that the experiments confirm (additive threshold-free increments,
-content-dependence of the rationale teacher, and non-uniqueness of the decoupled
-realization). See also Reviewer~2 comment~(a).}
+\cresp{Add more theoretical analysis, e.g.\ from information-theoretic or feature-selection perspectives.}
+{We have added a formal analysis in \S\ref{sec:decoupling_principle}, motivated by an empirical diagnostic showing why a feature-selection / local-aliasing view is appropriate: the visual baseline's Top-10 candidates already cover \res{$83.9\%$} of positive labels, \res{$95.1\%$} of test images contain at least one ground-truth intent inside that Top-10 set, and \res{$67.8\%$} of baseline false negatives are still recoverable from the same candidate set. An oracle restricted to this local neighborhood would reach \res{$87.4/91.3/89.7$} Macro/Micro/Samples F1. This indicates that the core semantic failure is often not global absence of the correct intent, but local ranking, calibration, and separation among already retrieved, semantically adjacent candidates. Based on this observation, we decompose the per-class excess risk into a label-side conditional-entropy term (supervisory ambiguity, a functional of $\Pr(Y\mid X)$) and a feature-side inter-class mutual-information aliasing term (semantic ambiguity, a functional of the representation $\phi$), and show the two corrections have non-interfering first-order effects -- SLR-C is a feature-selection step that lowers the aliasing term, while UTD's agreement gate reduces reliance on high-entropy targets. The analysis yields three testable predictions that the experiments confirm (additive threshold-free increments, content-dependence of the rationale teacher, and non-uniqueness of the decoupled realization). See also Reviewer~2 comment~(a).}
 
-\cresp{A comparative analysis of model parameters, FLOPs, or inference times is
-necessary.}
-{We now report exact, same-environment params/FLOPs/latency for all methods that
-admit a feature-level head, including the external baselines
-(Table~\ref{tab:efficiency_comparison}). Using their public source code, we
-profile HLEG and IntCLIP under the same shared frozen CLIP ViT-L/14 protocol as
-their ``(CLIP ViT-L/14)'' accuracy rows, counting each method's inference-active
-head on a single RTX 4090. The contrast is informative: HLEG's Query2Label
-transformer decoder alone costs $203.7$M params, $12.1$G FLOPs, and $2.73$ms per
-image, whereas IntCLIP/DualCoOp's learnable head is only $0.02$M prompt-context
-parameters ($22.0$M FLOPs, $0.11$ms) because its classifier weights are cached
-frozen-text-encoder embeddings. FDIL sits between them at $2.41$M params,
-$4.93$M FLOPs, and $0.47$ms. IntentMLM is the only method kept qualitative: it
-runs a multimodal LLM with caption generation and retrieval (billions of
-parameters, tens-to-hundreds of milliseconds per image), whose cost is dominated
-by the LLM rather than a feature-level head. See E8,
-Section~\ref{sec:experiments} (Efficiency Comparison).}
+\cresp{A comparative analysis of model parameters, FLOPs, or inference times is necessary.}
+{We now report exact, same-environment params/FLOPs/latency for all methods that admit a feature-level head, including the external baselines (Table~\ref{tab:efficiency_comparison}). Using their public source code, we profile HLEG and IntCLIP under the same shared frozen CLIP ViT-L/14 protocol as their ``(CLIP ViT-L/14)'' accuracy rows, counting each method's inference-active head on a single RTX 4090. The contrast is informative: HLEG's Query2Label transformer decoder alone costs $203.7$M params, $12.1$G FLOPs, and $2.73$ms per image, whereas IntCLIP/DualCoOp's learnable head is only $0.02$M prompt-context parameters ($22.0$M FLOPs, $0.11$ms) because its classifier weights are cached frozen-text-encoder embeddings. FDIL sits between them at $2.41$M params, $4.93$M FLOPs, and $0.47$ms. IntentMLM is the only method kept qualitative: it runs a multimodal LLM with caption generation and retrieval (billions of parameters, tens-to-hundreds of milliseconds per image), whose cost is dominated by the LLM rather than a feature-level head. See Section~\ref{sec:experiments} (Efficiency Comparison).}

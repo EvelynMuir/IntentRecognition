@@ -4,45 +4,11 @@
 \reviewerblock{Reviewer~3 (Associate Editor)}{%
 We thank the Associate Editor for the focused, actionable points.}
 
-\cresp{The authors are encouraged to clearly state, in the Abstract, the
-quantitative improvements achieved by FDIL compared to existing approaches.}
-{Done. The Abstract now reports concrete numbers under the matched CLIP ViT-L/14
-backbone and identical validation-only thresholding protocol: \res{Avg-F1 $+4.1$}
-and \res{Hard-F1 $+6.6$} over the strong CLIP baseline,
-together with \res{$+4.4$ on threshold-free mAP}, with wording emphasizing that
-the gain reflects better intent discrimination rather than calibration alone.}
+\cresp{The authors are encouraged to clearly state, in the Abstract, the quantitative improvements achieved by FDIL compared to existing approaches.}
+{We have revised the Abstract to report concrete numbers under the matched CLIP ViT-L/14 backbone and identical validation-only thresholding protocol: \res{Avg-F1 $+4.1$} and \res{Hard-F1 $+6.6$} over the strong CLIP baseline, together with \res{$+4.4$ on threshold-free mAP}, with wording emphasizing that the gain reflects better intent discrimination rather than calibration alone.}
 
-\cresp{In Section~3.3.1 (Semantic Prior Construction), provide a more detailed
-justification for the selected scenarios, including their representativeness and
-the expected outcomes in conditions not covered by the presented scenarios.}
-{We expanded \S3.3.1 (Semantic Prior Construction) with the selection criteria and
-a representativeness argument, and we state the expected behavior under uncovered
-conditions there; the detailed argument is given here. The criterion for including
-a scenario is representativeness of the visual modes by which an intent is commonly
-expressed in social-media imagery, not exhaustive coverage of all possible
-situations. Two properties make the prior robust to incomplete coverage. First,
-the scenario source is only one of three prior sources and is combined by
-per-source normalization and averaging, so a class whose true scene is poorly
-covered still receives lexical and canonical evidence. Second, the prior is used
-only to rerank a Top-$K$ candidate set and is further corrected by the trainable
-residual student. Consequently, for a test image whose situation falls outside the
-generated scenarios, the expected behavior is graceful degradation rather than
-failure: the scenario term contributes little discriminative signal, the
-prediction falls back toward the base visual logits and the other two prior
-sources, and the residual student can still recover the correct intent from image
-evidence.}
+\cresp{In Section~3.3.1 (Semantic Prior Construction), provide a more detailed justification for the selected scenarios, including their representativeness and the expected outcomes in conditions not covered by the presented scenarios.}
+{We expanded \S3.3.1 (Semantic Prior Construction) with the selection criteria and a representativeness argument, and we state the expected behavior under uncovered conditions there; the detailed argument is given here. The criterion for including a scenario is representativeness of the visual modes by which an intent is commonly expressed in social-media imagery, not exhaustive coverage of all possible situations. Two properties make the prior robust to incomplete coverage. First, the scenario source is only one of three prior sources and is combined by per-source normalization and averaging, so a class whose true scene is poorly covered still receives lexical and canonical evidence. Second, the prior is used only to rerank a Top-$K$ candidate set and is further corrected by the trainable residual student. Consequently, for a test image whose situation falls outside the generated scenarios, the expected behavior is graceful degradation rather than failure: the scenario term contributes little discriminative signal, the prediction falls back toward the base visual logits and the other two prior sources, and the residual student can still recover the correct intent from image evidence.}
 
-\cresp{Table~2 shows FDIL below HLEG on the Easy subset, yet
-this is not discussed. Explain the possible reasons and discuss the key
-observations in the table.}
-{We now discuss the Easy subset explicitly (Section~\ref{sec:experiments},
-difficulty-subset paragraph, and the per-class attribution in
-Table~\ref{tab:per_class_attr}). With the updated numbers, FDIL ($81.19$) is in
-fact the stronger of our two models on the Easy subset (CLIP baseline $80.99$) and
-sits only $0.30$ below HLEG ($81.49$). The Easy subset is dominated by visually
-unambiguous categories where semantic-overlap modeling and uncertainty-guided
-distillation offer little headroom, so this $0.30$ gap is negligible and is
-accompanied by large gains on the Medium ($+4.4$) and Hard ($+6.6$) subsets, where
-both ambiguities are active -- precisely the regime FDIL targets. The per-class
-attribution confirms that the only non-trivial regression (\textit{CreativeUnique})
-is a semantically overlapping category, not an easy visually clear one.}
+\cresp{Table~2 shows FDIL below HLEG on the Easy subset, yet this is not discussed. Explain the possible reasons and discuss the key observations in the table.}
+{We now discuss the Easy subset explicitly (Section~\ref{sec:experiments}, difficulty-subset paragraph, and the per-class attribution in Table~\ref{tab:per_class_attr}). With the updated numbers, FDIL ($81.19$) is in fact the stronger of our two models on the Easy subset (CLIP baseline $80.99$) and sits only $0.30$ below HLEG ($81.49$). The Easy subset is dominated by visually unambiguous categories where semantic-overlap modeling and uncertainty-guided distillation offer little headroom, so this $0.30$ gap is negligible and is accompanied by large gains on the Medium ($+4.4$) and Hard ($+6.6$) subsets, where both ambiguities are active -- precisely the regime FDIL targets. The per-class attribution confirms that the only non-trivial regression (\textit{CreativeUnique}) is a semantically overlapping category, not an easy visually clear one.}
