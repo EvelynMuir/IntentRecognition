@@ -23,7 +23,6 @@ As a result, the supervisory signal itself may become unstable, especially for d
 Under such circumstances, directly optimizing against hard labels can force the model to fit oversimplified or unreliable targets, thereby harming the robustness of the learned decision boundaries.
 Recent studies have increasingly argued that such disagreement should not be treated as mere annotation noise, but as meaningful uncertainty that reflects the structure of subjective interpretation itself \cite{peterson_human_2019, mostafazadeh_davani_dealing_2022}.
 
-
 \begin{figure}[t]
 \centering
 \begin{subfigure}[t]{0.51\linewidth}
@@ -35,7 +34,7 @@ Recent studies have increasingly argued that such disagreement should not be tre
 \centering
 \includegraphics[width=\linewidth]{1_teaser_b.pdf}
 \end{subfigure}
-\caption{\textbf{Functionally decoupled ambiguity modeling in FDIL.} \textbf{(a) The dual ambiguity challenge:} subjective visual intent recognition is fundamentally bottlenecked by \textit{semantic ambiguity} (highly overlapping conceptual boundaries) and \textit{supervisory ambiguity} (annotator disagreement and unstable training targets). \textbf{(b) Functionally decoupled pipeline:} FDIL separates ambiguity-aware semantic refinement from ambiguity-aware semantic supervision. Semantic Local Reranking and Calibration (SLR-C) builds a semantic prior from textual cues to provide structured candidate semantics, while Uncertainty-guided Text Distillation (UTD) stabilizes learning under disagreement through rationale-guided text distillation and supports image-aware prediction on top of the semantic prior.}
+\caption{\revised{\textbf{Functionally decoupled ambiguity modeling in FDIL.} (a) Visual intent recognition suffers from semantic ambiguity among overlapping intents and supervisory ambiguity from annotator disagreement. (b) FDIL separates semantic refinement via Semantic Local Reranking and Calibration (SLR-C) from uncertainty-aware semantic supervision via Uncertainty-guided Text Distillation (UTD).}}
 \label{fig:teaser}
 \end{figure}
 
@@ -61,7 +60,7 @@ Extensive experiments on the Intentonomy dataset show that our FDIL consistently
 
 The main contributions of this work are summarized as follows:
 \begin{itemize}
-    \item We reformulate visual intention recognition as a \emph{functionally decoupled} ambiguity problem, \revised{treating supervisory ambiguity and semantic ambiguity as two separately justified functional roles rather than a single undifferentiated mechanism. This decomposition matches a strong unified alternative in accuracy while keeping each function individually interpretable, separately measurable, and independently deployable.}
+    \item We reformulate visual intention recognition as a \emph{functionally decoupled} ambiguity problem, \revised{treating supervisory ambiguity and semantic ambiguity as two separately justified functional roles rather than a single undifferentiated mechanism. This decomposition outperforms a strong unified alternative while keeping each function individually interpretable, separately measurable, and independently deployable.}
     \item We propose Semantic Local Reranking and Calibration (SLR-C) together with residual semantic refinement, where heterogeneous textual priors first define a semantic prior with structured candidate semantics and a lightweight residual student further adapts prediction to image evidence.
     \item We propose Uncertainty-guided Text Distillation (UTD), which leverages annotator disagreement as an uncertainty signal to adaptively introduce semantic guidance, improving robustness under ambiguous supervision.
 \end{itemize}
