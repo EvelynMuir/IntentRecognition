@@ -308,12 +308,12 @@ Top-$K$ & Macro & Micro & Samples & Avg. & Hard \\
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=\linewidth]{4_roc_pr.pdf}
+\includegraphics[width=0.9\linewidth]{4_roc_pr.pdf}
 \caption{\revised{Micro-averaged ROC (a) and precision-recall (b) curves, comparing FDIL against the CLIP baseline and three representative methods (HLEG, LabCR, IntCLIP) reproduced under the matched CLIP ViT-L/14 features, split, and protocol.}}
 \label{fig:roc_pr}
 \end{figure}
 
-\revised{Table~\ref{tab:threshold_free} and Figure~\ref{fig:roc_pr} report fully threshold-free, rank-based metrics (mAP, ROC-AUC, PR-AUC) for FDIL, its ablations, and representative methods reproduced under the matched CLIP ViT-L/14 protocol. FDIL improves over the baseline on every metric with a $95\%$ paired-bootstrap interval excluding zero ($p<0.001$), and the ROC/PR curves show that FDIL dominates the reproduced methods once the backbone is equalized.}
+\revised{Table~\ref{tab:threshold_free} and Figure~\ref{fig:roc_pr} report fully threshold-free, rank-based metrics (mAP, ROC-AUC, PR-AUC) for FDIL, its ablations, and representative methods reproduced under the matched CLIP ViT-L/14 protocol. FDIL improves over the baseline on every metric with a $95\%$ paired-bootstrap interval excluding zero ($p<0.001$), and FDIL outperforms the reproduced methods when the backbone is equalized.}
 
 \subsubsection{The Effectiveness of Rationale}
 
@@ -476,7 +476,8 @@ The table confirms two intended properties of our design. First, FDIL (UTD only)
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\textwidth]{3_cases.pdf}
-\caption{Qualitative case study of baseline and FDIL on representative Intentonomy samples. Top row: the baseline predicts an incorrect alternative, whereas FDIL rejects that distractor using counterfactual rationale evidence and recovers the correct intent. Bottom row: FDIL errs, but the soft label has only 0.33 agreement, so its alternative remains semantically plausible rather than arbitrary.
+\caption{Qualitative case study of baseline and FDIL on representative Intentonomy samples.
+% Top row: the baseline predicts an incorrect alternative, whereas FDIL rejects that distractor using counterfactual rationale evidence and recovers the correct intent. Bottom row: FDIL errs, but the soft label has only 0.33 agreement, so its alternative remains semantically plausible rather than arbitrary.
 }
 \label{fig:case_study}
 \end{figure*}
