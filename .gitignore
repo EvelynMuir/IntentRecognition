@@ -152,6 +152,7 @@ configs/local/default.yaml
 /data/
 /logs/
 /output/
+outputs/
 .env
 
 # Aim logging
