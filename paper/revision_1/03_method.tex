@@ -210,7 +210,11 @@ This gated formulation allows the model to rely more on visual supervision when 
 
 \subsection{Functionally Decoupled Ambiguity Modeling}
 \label{sec:decoupling_principle}
-We interpret visual intention recognition as a functionally decoupled ambiguity problem: semantic ambiguity primarily distorts local candidate semantics, while supervisory ambiguity primarily destabilizes semantic supervision. \revised{A short risk-decomposition argument explains why two separately parameterized functions are preferable. Let $\phi=f_{\text{img}}(X)$ be the frozen image feature, $\tilde{y}_c$ the noisy annotation, and $\eta_c(x)=\Pr(Y_c{=}1\mid X{=}x)$ the Bayes posterior. For class $c$, the per-sample excess risk splits into a label-side and a feature-side term:
+We interpret visual intention recognition as a functionally decoupled ambiguity problem: semantic ambiguity primarily distorts local candidate semantics, while supervisory ambiguity primarily destabilizes semantic supervision.
+
+\revised{A candidate-recall diagnostic supports this local view. The baseline Top-10 candidates already cover $83.9\%$ of positive labels, and $67.8\%$ of its false negatives remain recoverable within the same set on Intentonomy. Thus, the main bottleneck is often ranking and calibration among retrieved neighboring intents rather than failure to retrieve the correct intent.}
+
+\revised{A short risk-decomposition argument explains why two separately parameterized functions are preferable. Let $\phi=f_{\text{img}}(X)$ be the frozen image feature, $\tilde{y}_c$ the noisy annotation, and $\eta_c(x)=\Pr(Y_c{=}1\mid X{=}x)$ the Bayes posterior. For class $c$, the per-sample excess risk splits into a label-side and a feature-side term:
 \begin{equation}
 \label{eq:risk_decomp}
 \mathbb{E}\!\left[\ell\big(g_c(\phi),\, \tilde{y}_c\big)\right]

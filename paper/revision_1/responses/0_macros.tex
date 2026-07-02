@@ -15,7 +15,7 @@
   colbacktitle=mytitle,
   arc=3pt,
   left=5pt,right=5pt,top=5pt,bottom=5pt,
-  boxrule=1.2pt,
+  boxrule=1.5pt,
   title style={font=\bfseries}
 }
 
@@ -31,11 +31,11 @@
 
 % \cresp{verbatim reviewer comment}{our response}
 \newcommand{\cresp}[2]{%
-  \refstepcounter{commentctr}%
+  \stepcounter{commentctr}%
   \begin{tcolorbox}[title={Comment~\thecommentctr}]
-    \itshape #1
+    #1
   \end{tcolorbox}
-  \noindent\textbf{Response:} #2\par\vspace{1em}%
+  \noindent \textbf{Response:} #2\par\vspace{1em}%
 }
 
 % Placeholder for content that still depends on unfinished experiments / writing.
@@ -44,3 +44,26 @@
 
 % Inline marker for a confirmed quantitative result (kept black, just bolded).
 \newcommand{\res}[1]{\textbf{#1}}
+
+% Keep response-letter tables distinct from tables in the revised manuscript.
+\renewcommand{\thetable}{R\arabic{table}}
+
+% Uniform pointer from each response to the corresponding manuscript revision.
+\newcommand{\revloc}[1]{%
+  \par\smallskip\noindent\textbf{Revised manuscript:} #1.%
+}
+
+% Reserved screenshot position. The argument keeps a stable screenshot key so
+% each placeholder can be replaced with its corresponding excerpt later.
+\newcommand{\revshot}[1]{%
+  \par\smallskip
+  \begin{center}
+    \begin{minipage}{0.96\linewidth}
+      \centering
+      {\setlength{\fboxsep}{2pt}%
+       \fcolorbox{myframe}{white}{%
+         \rule{0pt}{0.24\textheight}%
+         \rule{0.94\linewidth}{0pt}}}
+    \end{minipage}
+  \end{center}
+}

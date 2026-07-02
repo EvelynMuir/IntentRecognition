@@ -2,37 +2,77 @@
 % === Reviewer 4 ===
 % ================================
 \reviewerblock{Reviewer~4}{%
-We thank the reviewer for the thorough, itemized list, which we address point by point.}
+We thank the reviewer for the thorough review, which we address point by point.}
 
-\cresp{The manuscript requires careful proofreading, such as [7] IEEE Trans.\ Affect.\ Comput., and so on.}
-{We have proofread the manuscript and standardized the bibliography, correcting the journal-name and abbreviation formatting flagged by the reviewer (for example, the \emph{IEEE Transactions on Affective Computing} entry) and making venue names consistent across entries.}
+\cresp{The manuscript must require careful proofreading, such as [7] IEEE Trans.\ Affect.\ Comput., and so on.}
+{Thank you for catching this presentation issue. We performed a manuscript-wide proofreading pass and standardized bibliography venue names and abbreviations, including the flagged \emph{IEEE Trans.\ Affect.\ Comput.} entry.
+\revloc{Bibliography and manuscript-wide language}
+\revshot{proofreading}}
 
-\cresp{Give more analysis of the disadvantages of existing visual-intention understanding methods on the two forms of ambiguity.}
-{We rewrote the Introduction (Section~\ref{sec:intro}) with an explicit critical analysis of how prior visual-intent methods handle (or conflate) supervisory and semantic ambiguity, arguing that most existing methods treat one perspective of ambiguity as dominant rather than separating the two failure modes.}
+\cresp{The paper is not very clear but only claims that `` A central difficulty of this task lies in two complementary forms of ambiguity: supervisory ambiguity, caused by subjective annotation over plausible intentions, and semantic ambiguity, caused by semantically adjacent and overlapping intents.'' Please give more analysis about these disadvantages in the existing visual intention understanding.}
+{We appreciate this request for a sharper diagnosis. The Introduction and Related Work now explain that structure-aware and semantic-prior methods mainly address class-side overlap, whereas robust-loss and disagreement-aware methods mainly address supervision-side uncertainty; treating either as the sole source leaves the other failure mode unresolved. % 加一下，在method里我们给了empirical motivation和理论解释，说明我们的方法是有理论依据的
+\revloc{Sec.~\ref{sec:intro} and Sec.~\ref{sec:related_work}}
+\revshot{ambiguity_analysis}}
 
-\cresp{The clear purpose of the proposed work is lacking in the Introduction.}
-{We have revised the Introduction so that it now states the purpose and objectives of the work explicitly.}
+\cresp{The clear purpose of work the proposed work is lacking in the introduction section.}
+{We have rewritten the Introduction to state the purpose directly: FDIL converts external semantic knowledge into a structured prior and an uncertainty-gated training signal that target semantic and supervisory ambiguity separately.
+\revloc{Sec.~\ref{sec:intro} (final related-work transition and contribution paragraphs)}
+\revshot{purpose}}
 
-\cresp{The Introduction should be re-discussed and extended; more LLM-based visual-intention understanding methods should be mentioned, as the latest development is hard for readers to follow.}
-{We expanded the survey of LLM/MLLM-based visual-intent understanding in the Introduction (Section~\ref{sec:intro}), including the recent peer-reviewed IntCLIP (ECCV~2024) and IntentMLM (Pattern Recognition~2026), and added a new paragraph situating these within the broader shift toward MLLMs as sources of external semantic knowledge, with a forward pointer to our zero-shot MLLM experiment (Table~\ref{tab:main_results}, ``Zero-shot VLM'' group).}
+\cresp{The introduction should be re-discussed and extended. I think that more Large Language model-based visual intention understanding methods should be mentioned. In the introduction, this section is hard for readers to understand its latest development.}
+{To bring the literature discussion up to date, we have expanded it to include IntCLIP (ECCV~2024), IntentMLM (Pattern Recognition~2026), and the broader use of MLLMs as external semantic sources. Specifically, the revised text distinguishes semantic knowledge supplied by these models from the dataset-specific calibration and uncertainty-aware supervision required by FDIL, and links this distinction to the new zero-shot MLLM comparison.
+\revloc{Sec.~\ref{sec:intro}, Sec.~\ref{sec:related_work}, and Table~\ref{tab:main_results} (Zero-shot VLM group)}
+\revshot{recent_mllm_work}}
 
-\cresp{Consider including a table of notations.}
-{We have added a notation table (Table~\ref{tab:notation}), which we place in the Method section.}
+\cresp{You may consider including a table of notations.}
+{We have followed this suggestion and added a compact notation table covering the symbols used in the method and theoretical analysis. % 加一句由于page limit我们列了主要符号
+\revloc{Sec.~\ref{sec:method}, Table~\ref{tab:notation}}
+\revshot{notation}}
 
-\cresp{There should be larger-scale datasets to better evaluate the method.}
-{We have added a generalization study on the EMOTIC affect dataset, developed in full in our response to Reviewer~2, comment~(c). In brief, EMOTIC's standard split is uninformative for our agreement gate by construction, because the dataset multi-annotates only its validation and test splits, so every single-annotator training instance carries a degenerate agreement and the gated term reduces to standard distillation. We therefore evaluated the framework in the regime where its precondition holds, running a controlled $5\times5$ cross-validation on the multi-annotated validation+test pool, in which per-sample agreement is available. There, privileged distillation \emph{significantly} improves the image-only baseline on every metric (mAP, Macro-, Micro-, and Samples-F1; paired $p<0.01$ over $25$ runs; Table~\ref{tab:emotic_pool} in the Reviewer~2 response), providing positive evidence that the framework transfers to a second, affect domain. Where agreement is present the gate also activates and, consistent with its design, concentrates its benefit on low-agreement samples; in aggregate it matches standard distillation on this pool, whose borrowed agreement signal is coarser than Intentonomy's, and we report this scope transparently in the Limitations (Section~\ref{sec:discussion}).}
+\cresp{There should be larger-scale datasets to better evaluate the proposed methods.}
+{We share the reviewer's view that evidence beyond Intentonomy is useful for assessing scope. We have added a controlled $5\times5$ cross-validation study on the multi-annotated EMOTIC pool, using out-of-fold teacher predictions so that agreement-aware distillation is evaluated without target leakage. Specifically, standard and agreement-gated distillation each improve the image-only baseline on all four metrics ($p<0.01$ over 25 runs), while the gated variant is comparable to standard distillation in aggregate. We therefore use EMOTIC as secondary evidence of framework-level transfer and retain Intentonomy as the dataset that establishes the incremental value of native training-time agreement. % 写得更详细一点，当有agreement信息时，gated的效果更好。这里应该还有一张表，展现不同agreement下的结果，其中agreement较低时效果更好。之前跑过结果，需要找一下并绘制表格。加几句说我们把Emotic的结果和分析写进了discussion里，说明了我们的方法在Emotic上也有一定的泛化能力
 
-\cresp{Experimental evaluation is not sufficient; more comparisons with 2025/2026 LLM methods and t-SNE are needed.}
-{We added a zero-shot MLLM comparison (Table~\ref{tab:main_results}, ``Zero-shot VLM'' group). We evaluated two recent open-weight MLLMs through vLLM services under the same Intentonomy label set and probability-dictionary prompting protocol: Qwen3-VL-8B-Instruct obtains Test Macro/Micro/Samples/Avg.\ F1 of \res{38.51, 40.75, 39.63, and 39.63}, and InternVL3-8B obtains \res{37.54, 41.85, 40.50, and 39.97}. For reference we also include the GPT-4o zero-shot result reported by IntentMLM, \res{39.48, 40.57, 41.45, and 40.50}. These direct-prompting baselines are competitive but still below the trained CLIP/FDIL models, supporting the need for dataset-specific visual calibration and uncertainty-aware refinement. We also added t-SNE visualizations of intent embeddings for FDIL vs.\ the baseline, emphasizing hard / semantically adjacent classes (Figure~\ref{fig:tsne}).}
+\begin{table}[t]\centering\small
+\caption{Secondary generalization evidence on the multi-annotated EMOTIC validation and test pool: controlled $5\times5$ cross-validation, mean over $25$
+seed$\times$fold runs. $^{*}p<0.01$, paired $t$-test vs.\ baseline.}
+\label{tab:emotic_pool}
+\begin{tabular}{lcccc}
+\hline
+Method & mAP & Macro-F1 & Micro-F1 & Samples-F1 \\
+\hline
+Image-only baseline            & $42.57$ & $43.34$ & $60.32$ & $60.01$ \\
+\;\;+ standard KD              & $42.77^{*}$ & $43.68^{*}$ & $60.95^{*}$ & $60.75^{*}$ \\
+\;\;+ agreement-gated KD       & $42.77^{*}$ & $43.72^{*}$ & $60.97^{*}$ & $60.67^{*}$ \\
+\hline
+Oracle teacher (privileged text) & $66.43$ & $60.96$ & $74.63$ & $75.68$ \\
+\hline
+\end{tabular}
+\end{table}
 
-\cresp{Use ROC-based curves for a clearer evaluation against other SOTA methods.}
-{We have added ROC-based curves and redrawn them specifically as a method comparison. The micro-averaged ROC and precision-recall curves (Figure~\ref{fig:roc_pr}) now compare FDIL against the CLIP baseline and three representative SOTA methods (HLEG, LabCR, IntCLIP) reproduced under the \emph{matched} CLIP ViT-L/14 features, split, and protocol of our matched-backbone controlled comparison, rather than against FDIL's own ablations. Once the backbone is equalized the external methods cluster only slightly above the CLIP baseline (micro ROC-AUC $\approx 0.86$), while FDIL dominates all of them on both curves (micro ROC-AUC $0.88$, micro AP $0.61$). The accompanying threshold-free metrics table (Table~\ref{tab:threshold_free}) and paired significance tests quantify the gap, and the per-method test mAP is consistent with the matched-backbone reproduction (HLEG/LabCR/IntCLIP at $50.5$/$51.3$/$47.5$ vs.\ FDIL $54.8$).}
+\revloc{Sec.~\ref{sec:discussion} (Limitations and Future Directions); auxiliary results in Table~\ref{tab:emotic_pool} of this letter}
+\revshot{discussion_scope}}
 
-\cresp{A ``Discussion'' section could be added covering main findings, advantages, and disadvantages.}
-{We have added and expanded the Discussion (Section~\ref{sec:discussion}), which now contains a ``Main Findings and Advantages'' subsection and an extended Limitations subsection covering main findings, advantages, and failure modes, including the \textit{CreativeUnique} confusion-pair regression and the cross-task scope of the EMOTIC generalization.}
+\cresp{Experimental evaluation is not sufficient. More comparisons with state-of-the-art Large Language Model methods (such as 2025 and 2026) and t-SNE are needed.}
+{In response, we have added zero-shot Qwen3-VL-8B-Instruct and InternVL3-8B under the same label set and output protocol, together with the published GPT-4o result from IntentMLM. Specifically, all three prompt-only models remain below the task-trained CLIP/FDIL models, so we treat MLLMs as useful semantic sources rather than substitutes for task-specific learning. We also added a t-SNE comparison on semantically adjacent intents, with the complete scores retained in the main-results table.
+\revloc{Sec.~\ref{sec:experiments} (Zero-shot Multimodal Large Model Comparison and Interpretability Analysis), Table~\ref{tab:main_results}, and Fig.~\ref{fig:tsne}}
+\revshot{zero_shot_and_tsne}}
 
-\cresp{Add more theoretical analysis, e.g.\ from information-theoretic or feature-selection perspectives.}
-{We have added a formal analysis in \S\ref{sec:decoupling_principle}, motivated by an empirical diagnostic showing why a feature-selection / local-aliasing view is appropriate: the visual baseline's Top-10 candidates already cover \res{$83.9\%$} of positive labels, \res{$95.1\%$} of test images contain at least one ground-truth intent inside that Top-10 set, and \res{$67.8\%$} of baseline false negatives are still recoverable from the same candidate set. An oracle restricted to this local neighborhood would reach \res{$87.4/91.3/89.7$} Macro/Micro/Samples F1. This indicates that the core semantic failure is often not global absence of the correct intent, but local ranking, calibration, and separation among already retrieved, semantically adjacent candidates. Based on this observation, we decompose the per-class excess risk into a label-side conditional-entropy term (supervisory ambiguity, a functional of $\Pr(Y\mid X)$) and a feature-side inter-class mutual-information aliasing term (semantic ambiguity, a functional of the representation $\phi$), and show the two corrections have non-interfering first-order effects -- SLR-C is a feature-selection step that lowers the aliasing term, while UTD's agreement gate reduces reliance on high-entropy targets. The analysis yields three testable predictions that the experiments confirm (additive threshold-free increments, content-dependence of the rationale teacher, and non-uniqueness of the decoupled realization). See also Reviewer~2 comment~(a).}
+\cresp{Please use some ROC-based curves for a clear evaluation of the proposed method with other state-of-the-art methods.}
+{We have added micro-averaged ROC and precision--recall curves for FDIL, the CLIP baseline, HLEG, LabCR, and IntCLIP using the same matched CLIP ViT-L/14 features and split. Specifically, FDIL is higher on both curves, and the accompanying table reports ROC-AUC, PR-AUC, mAP, confidence intervals, and paired tests. This keeps the visual comparison and the numerical evidence under the same controlled setting.
+\revloc{Sec.~\ref{sec:experiments} (Calibration and Threshold-free Evaluation), Fig.~\ref{fig:roc_pr}, and Table~\ref{tab:threshold_free}}
+\revshot{roc_pr}}
+
+\cresp{A new section called ``Discussion'' could be added. The authors can discuss the main findings and also the important advantages and disadvantages of the proposed model.}
+{Following this suggestion, we have added a Discussion that summarizes the main findings and advantages and states the observed failure cases and generalization limits, including the \textit{CreativeUnique} regression and the scope of the EMOTIC evidence.
+\revloc{Sec.~\ref{sec:discussion}}
+\revshot{discussion}}
+
+\cresp{It would add more value to the paper if more theoretical analysis were conducted, e.g., from information-theoretical or feature selection perspectives.}
+{We have added an information-theoretic excess-risk decomposition that separates label-side conditional entropy from feature-side inter-class aliasing. We also cast SLR-C as local feature selection and reranking: the candidate-recall diagnostic shows that most positives are already retrievable within the Top-10 set, so the remaining challenge is primarily to separate neighboring intents. The resulting predictions are evaluated by the component, negative-control, and unified-versus-decoupled experiments; the detailed control results are given in our response to Reviewer~2's novelty concern rather than repeated here.
+\revloc{Sec.~\ref{sec:decoupling_principle}, Eq.~\eqref{eq:risk_decomp}, and Sec.~\ref{sec:experiments}, Tables~\ref{tab:unified_decoupled}, \ref{tab:negative_controls}, and~\ref{tab:threshold_free}}
+\revshot{theory}}
 
 \cresp{A comparative analysis of model parameters, FLOPs, or inference times is necessary.}
-{We now report exact, same-environment params/FLOPs/latency for all methods that admit a feature-level head, including the external baselines (Table~\ref{tab:efficiency_comparison}). Using their public source code, we profile HLEG and IntCLIP under the same shared frozen CLIP ViT-L/14 protocol as their ``(CLIP ViT-L/14)'' accuracy rows, counting each method's inference-active head on a single RTX 4090. The contrast is informative: HLEG's Query2Label transformer decoder alone costs $203.7$M params, $12.1$G FLOPs, and $2.73$ms per image, whereas IntCLIP/DualCoOp's learnable head is only $0.02$M prompt-context parameters ($22.0$M FLOPs, $0.11$ms) because its classifier weights are cached frozen-text-encoder embeddings. FDIL sits between them at $2.41$M params, $4.93$M FLOPs, and $0.47$ms. IntentMLM is the only method kept qualitative: it runs a multimodal LLM with caption generation and retrieval (billions of parameters, tens-to-hundreds of milliseconds per image), whose cost is dominated by the LLM rather than a feature-level head. See Section~\ref{sec:experiments} (Efficiency Comparison).}
+{We now quantify the deployment cost with a same-environment comparison of trainable parameters, FLOPs, and per-image latency for FDIL and the feature-level baselines, with all heads evaluated over the shared frozen CLIP features. Specifically, FDIL uses $2.41$M parameters, $4.93$M FLOPs, and $0.47$ms per image; the table contains the full method-by-method comparison. IntentMLM is identified separately as an MLLM pipeline whose cost is not directly comparable to a feature-level head.
+\revloc{Sec.~\ref{sec:experiments} (Efficiency Comparison), Table~\ref{tab:efficiency_comparison}}
+\revshot{efficiency}}

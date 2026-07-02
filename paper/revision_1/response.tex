@@ -10,40 +10,37 @@
 %     comment shown verbatim in a tcolorbox followed by our Response.
 % Changes in the revised manuscript (main.tex) are highlighted in \revised{red}.
 % ============================================================
-\documentclass[11pt]{article}
+\documentclass[10pt,journal,compsoc]{elsarticle}
 
-\usepackage[a4paper,margin=1in]{geometry}
-\usepackage{amsmath,amssymb}
+\usepackage{amsmath,amsfonts,amssymb}
+\usepackage{array}
+\usepackage{textcomp}
+\usepackage{url}
 \usepackage[table,xcdraw]{xcolor}
 \usepackage{graphicx}
+\usepackage{cite}
+\usepackage{booktabs}
+\usepackage{makecell}
+\usepackage{bm}
+\usepackage{multirow}
 \usepackage[most]{tcolorbox}
-\usepackage{enumitem}
-\usepackage[colorlinks,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
-\usepackage{titlesec}
+\usepackage[colorlinks,linkcolor=red,anchorcolor=blue,citecolor=green]{hyperref}
 % Import manuscript labels so \ref{...} to main.tex resolve to the manuscript's
 % section/table/figure numbers. Requires main.aux to be built first.
 \usepackage{xr}
 \externaldocument{main}
 
-% red markup, matching the manuscript's \revised macro
+% Red markup, matching the manuscript's \revised macro.
 \newcommand{\revised}[1]{\textcolor{red}{#1}}
-
-\setlength{\parskip}{0.4em}
-\setlength{\parindent}{0pt}
-\titleformat{\section}{\large\bfseries}{\thesection.}{0.6em}{}
-\titlespacing*{\section}{0pt}{1.4em}{0.6em}
 
 \input{responses/0_macros}
 
 \begin{document}
 
+\onecolumn
+\setlength{\emergencystretch}{2em}
 \begin{center}
-  {\LARGE\bfseries Response to Reviewers\par}
-  \vspace{0.4em}
-  {\large Functionally Decoupled Visual Intent Learning under Supervisory and
-  Semantic Ambiguity\par}
-  \vspace{0.3em}
-  {\itshape Pattern Recognition\quad--\quad Major Revision}
+  {\LARGE \bfseries Response to Reviewers\par}
 \end{center}
 \vspace{0.5em}
 
