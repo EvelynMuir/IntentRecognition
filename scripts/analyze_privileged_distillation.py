@@ -93,6 +93,24 @@ def _parse_args() -> argparse.Namespace:
         choices=["full", "step1_only", "step1_step2"],
     )
     parser.add_argument("--temperature", type=float, default=2.0)
+    parser.add_argument(
+        "--kd-target-mode",
+        type=str,
+        default="in_sample",
+        choices=["in_sample", "oof"],
+        help=(
+            "Source of the teacher soft targets distilled into the student. "
+            "'in_sample' uses the oracle teacher's predictions on its own training "
+            "data (overfit, near-binary). 'oof' uses k-fold out-of-fold predictions "
+            "so the KD targets reflect teacher generalization, not memorization."
+        ),
+    )
+    parser.add_argument(
+        "--oof-folds",
+        type=int,
+        default=5,
+        help="Number of cross-fit folds when --kd-target-mode oof.",
+    )
     parser.add_argument("--standard-kd-weight", type=float, default=1.0)
     parser.add_argument("--dynamic-kd-weight", type=float, default=1.0)
     parser.add_argument(
@@ -1167,6 +1185,86 @@ def _train_teacher(
     }
 
 
+def _compute_oof_teacher_scores(
+    train_text_features: np.ndarray,
+    train_labels: np.ndarray,
+    val_text_features: np.ndarray,
+    val_targets: np.ndarray,
+    test_text_features: np.ndarray,
+    test_targets: np.ndarray,
+    device: torch.device,
+    args: argparse.Namespace,
+    train_image_features: np.ndarray | None = None,
+    val_image_features: np.ndarray | None = None,
+    test_image_features: np.ndarray | None = None,
+) -> np.ndarray:
+    """Cross-fit teacher predictions on the train split.
+
+    For each of ``--oof-folds`` folds, a fresh teacher is trained on the other
+    folds (early-stopped on the real validation split) and used to score the
+    held-out fold. The resulting predictions are out-of-sample for every train
+    row, so they carry the teacher's generalization behaviour rather than its
+    in-sample memorization.
+    """
+    num_rows = int(train_text_features.shape[0])
+    text_dim = int(train_text_features.shape[1])
+    num_classes = int(train_labels.shape[1])
+    num_folds = max(2, int(args.oof_folds))
+
+    rng = np.random.RandomState(int(args.seed) + 777)
+    permutation = rng.permutation(num_rows)
+    folds = np.array_split(permutation, num_folds)
+
+    oof_scores = np.zeros((num_rows, num_classes), dtype=np.float32)
+    image_dim = None if train_image_features is None else int(train_image_features.shape[1])
+
+    for fold_idx, holdout in enumerate(folds):
+        holdout = np.asarray(holdout, dtype=np.int64)
+        train_idx = np.setdiff1d(np.arange(num_rows, dtype=np.int64), holdout, assume_unique=False)
+        fold_seed = _set_component_seed(int(args.seed), offset=400 + fold_idx)
+        print(
+            f"[Distill][OOF] fold {fold_idx + 1}/{num_folds} "
+            f"train={train_idx.shape[0]} holdout={holdout.shape[0]} seed={fold_seed}"
+        )
+        fold_dataset = TeacherDataset(
+            text_features=train_text_features[train_idx],
+            labels=train_labels[train_idx],
+            image_features=(
+                None if train_image_features is None else train_image_features[train_idx]
+            ),
+        )
+        fold_model = TeacherMLP(
+            text_dim=text_dim,
+            hidden_dim=int(args.teacher_hidden_dim),
+            num_classes=num_classes,
+            dropout=float(args.dropout),
+            input_mode=str(args.teacher_input_mode),
+            image_dim=image_dim,
+        ).to(device)
+        _train_teacher(
+            model=fold_model,
+            train_dataset=fold_dataset,
+            val_text_features=val_text_features,
+            val_targets=val_targets,
+            test_text_features=test_text_features,
+            test_targets=test_targets,
+            device=device,
+            args=args,
+            val_image_features=val_image_features,
+            test_image_features=test_image_features,
+        )
+        oof_scores[holdout] = _predict_teacher(
+            model=fold_model,
+            text_features=train_text_features[holdout],
+            device=device,
+            batch_size=int(args.batch_size),
+            image_features=(
+                None if train_image_features is None else train_image_features[holdout]
+            ),
+        )
+    return oof_scores
+
+
 def _train_student(
     mode: str,
     model: StudentMLP,
@@ -1578,7 +1676,42 @@ def main() -> None:
         ),
     )
 
-    teacher_probs_train = _sigmoid_np(_logit_np(teacher_train_scores) / float(args.temperature))
+    if str(args.kd_target_mode) == "oof":
+        print(f"[Distill] computing out-of-fold KD targets ({int(args.oof_folds)} folds)")
+        kd_teacher_scores = _compute_oof_teacher_scores(
+            train_text_features=np.asarray(train_text[teacher_text_feature_key], dtype=np.float32),
+            train_labels=train_labels,
+            val_text_features=np.asarray(val_text[teacher_text_feature_key], dtype=np.float32),
+            val_targets=val_labels,
+            test_text_features=np.asarray(test_text[teacher_text_feature_key], dtype=np.float32),
+            test_targets=test_labels,
+            device=device,
+            args=args,
+            train_image_features=(
+                np.asarray(train_clip["features"], dtype=np.float32)
+                if str(args.teacher_input_mode) == "image_text"
+                else None
+            ),
+            val_image_features=(
+                np.asarray(val_clip["features"], dtype=np.float32)
+                if str(args.teacher_input_mode) == "image_text"
+                else None
+            ),
+            test_image_features=(
+                np.asarray(test_clip["features"], dtype=np.float32)
+                if str(args.teacher_input_mode) == "image_text"
+                else None
+            ),
+        )
+        oof_train_map = compute_mAP(kd_teacher_scores, train_labels)
+        print(
+            f"[Distill] OOF teacher train mAP={oof_train_map:.2f} "
+            f"(in-sample oracle train mAP={compute_mAP(teacher_train_scores, train_labels):.2f})"
+        )
+    else:
+        kd_teacher_scores = teacher_train_scores
+
+    teacher_probs_train = _sigmoid_np(_logit_np(kd_teacher_scores) / float(args.temperature))
 
     student_agreement = _compute_sample_agreement(
         labels=train_labels,
@@ -1723,7 +1856,11 @@ def main() -> None:
     slice_targets = train_labels
     slice_soft_labels = train_soft_labels
     if args.slice_split == "train":
-        slice_note = "train split used because public val/test annotations do not expose agreement soft labels."
+        slice_note = (
+            "train split is single-annotator on EMOTIC, so its soft labels are binary "
+            "and carry no annotator-agreement signal; use --slice-split test (3-annotator) "
+            "for the agreement-stratified analysis."
+        )
     else:
         source_bundle = {"val": val_clip, "test": test_clip}[str(args.slice_split)]
         slice_targets = np.asarray(source_bundle["labels"], dtype=np.float32)
@@ -1861,6 +1998,8 @@ def main() -> None:
                     "feature_distill_temperature": float(args.feature_distill_temperature),
                     "feature_proj_dim": int(args.feature_proj_dim),
                     "temperature": float(args.temperature),
+                    "kd_target_mode": str(args.kd_target_mode),
+                    "oof_folds": int(args.oof_folds),
                     "student_agreement_pool": str(args.student_agreement_pool),
                     "slice_agreement_pool": str(args.slice_agreement_pool),
                     "slice_split": str(args.slice_split),

@@ -1,0 +1,56 @@
+% ============================================================
+% Response to Reviewers -- standalone letter
+% Manuscript: Functionally Decoupled Visual Intent Learning under
+%             Supervisory and Semantic Ambiguity (FDIL)
+% Journal:    Pattern Recognition  |  Decision: Major Revision
+%
+% Structure (after the LanEvil_TPAMI revision package):
+%   - General Response / Summary of Changes
+%   - Point-by-point responses, one section per reviewer, with each
+%     comment shown verbatim in a tcolorbox followed by our Response.
+% Changes in the revised manuscript (main.tex) are highlighted in \revised{red}.
+% ============================================================
+\documentclass[10pt,journal,compsoc]{elsarticle}
+
+\usepackage{amsmath,amsfonts,amssymb}
+\usepackage{array}
+\usepackage{textcomp}
+\usepackage{url}
+\usepackage[table,xcdraw]{xcolor}
+\usepackage{graphicx}
+\usepackage{cite}
+\usepackage{booktabs}
+\usepackage{makecell}
+\usepackage{bm}
+\usepackage{multirow}
+\usepackage[most]{tcolorbox}
+\usepackage[colorlinks,linkcolor=red,anchorcolor=blue,citecolor=green]{hyperref}
+% Import manuscript labels so \ref{...} to main.tex resolve to the manuscript's
+% section/table/figure numbers. Requires main.aux to be built first.
+\usepackage{xr}
+\externaldocument{main}
+
+% Red markup, matching the manuscript's \revised macro.
+\newcommand{\revised}[1]{\textcolor{red}{#1}}
+
+\input{responses/0_macros}
+
+\begin{document}
+
+\onecolumn
+\setlength{\emergencystretch}{2em}
+\begin{center}
+  {\LARGE \bfseries Response to Reviewers\par}
+\end{center}
+\vspace{0.5em}
+
+\input{responses/1_general}
+\input{responses/2_reviewer1}
+\input{responses/3_reviewer2}
+\input{responses/4_reviewer3_ae}
+\input{responses/5_reviewer4}
+\input{responses/6_reviewer5}
+\input{responses/7_eic}
+\input{responses/8_summary}
+
+\end{document}

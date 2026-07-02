@@ -1,0 +1,57 @@
+% ================================
+% === Reviewer 1 ===
+% ================================
+\reviewerblock{Reviewer~1}{%
+We thank the reviewer for a very constructive review and for recognizing the importance of the problem and the empirical interest of FDIL.}
+
+\cresp{The main concerns are the fairness and interpretability of the comparisons. Please provide controlled baselines under the same backbone and thresholding protocol.}
+{This is an important fairness concern. We now compare FDIL, the CLIP baseline, HLEG, LabCR, and IntCLIP using the same frozen CLIP ViT-L/14 features, data split, and validation-only threshold search. Under this matched protocol, FDIL leads the three representative external methods by \res{$+3.4$ to $+4.7$ Avg F1}. We retain results from the methods' original pipelines only as a complementary robustness check and do not use their different backbones to support the FDIL claim. To make the source of the controlled gain interpretable, we also report per-class attribution: the largest improvements occur in abstract, disagreement-prone intents, while only two of the 28 classes regress.
+
+\revloc{Sec.~\ref{sec:experiments}, Table~\ref{tab:main_results}, and the Interpretability Analysis; complete per-class values in Table~\ref{tab:per_class_attr} of this letter}
+\begin{table}[h]
+\centering
+\caption{Per-class F1 attribution of FDIL versus the CLIP baseline under the
+matched class-wise protocol. The table reports the five largest improvements
+and the only two regressions among all 28 classes.}
+\label{tab:per_class_attr}
+\begin{tabular}{lcccc}
+\hline
+Intent class & Subset & Baseline & FDIL & $\Delta$ \\
+\hline
+WorkILike & Hard & 14.6 & 43.0 & $+28.5$ \\
+PassionAboutSomething & Hard & 11.3 & 28.6 & $+17.3$ \\
+SocialLifeFriendship & Hard & 33.9 & 51.2 & $+17.2$ \\
+ManageableMakePlan & Medium & 17.5 & 32.0 & $+14.5$ \\
+BeatCompete & Medium & 54.6 & 68.1 & $+13.5$ \\
+\hline
+FineDesignLearnArt-Arch & Easy & 84.0 & 83.1 & $-1.0$ \\
+CreativeUnique & Medium & 41.9 & 36.6 & $-5.3$ \\
+\hline
+\end{tabular}
+\end{table}
+\revshot{interpretability}}
+
+\cresp{The strong effect of class-wise thresholding.}
+{To separate calibration gain from method gain, we added a four-cell, three-seed comparison of the CLIP baseline and FDIL under global and class-wise thresholds. FDIL improves Avg F1 under both class-wise (\res{$+4.08$}) and global (\res{$+2.31$}) thresholding, while class-wise calibration benefits both methods. We further report four threshold-free metrics and a 5,000-resample paired bootstrap test. FDIL improves over the CLIP baseline on every threshold-free metric; its mean mAP gain is \res{$+4.43$}, and the representative-seed difference is \res{$+4.80$} with 95\% CI \res{$[3.58,6.10]$} and $p<0.001$.
+\revloc{Sec.~\ref{sec:experiments} (Calibration and Threshold-free Evaluation), Tables~\ref{tab:thresholding_test} and~\ref{tab:threshold_free}}
+\revshot{threshold_free}}
+
+\cresp{Report variance over runs.}
+{Following this suggestion, the main comparison and thresholding decomposition now report mean$\pm$std over \res{three seeds} for UTD-only and full FDIL.
+\revloc{Sec.~\ref{sec:experiments}, Tables~\ref{tab:main_results} and~\ref{tab:thresholding_test}}
+\revshot{main_multiseed}}
+
+\cresp{Clarify validation-only model selection.}
+{We have made the selection boundary explicit and audited the implementation: early stopping uses validation metrics only, and all thresholds are fitted on validation and fixed before test evaluation. Test outputs are used solely for final reporting and never enter a model- or threshold-selection branch.
+\revloc{Sec.~\ref{sec:experiments} (Experimental Setup and Implementation Details)}
+\revshot{implementation_details}}
+
+\cresp{The dependence on offline VLM-generated rationales and semantic priors, and incomplete reproducibility details. Please release or document generated artifacts.}
+{We now state this dependence and its cost explicitly: rationales and class scenarios are generated offline, the UTD text teacher is discarded after training, and the full FDIL model retains the lightweight semantic-prior reranking stage. We document feature extraction, prior construction, teacher encoding, optimization, threshold search, and the agreement gate. We also replaced ``available on request'' with a concrete commitment to release the generated priors, rationales, cached features/logits, exact prompts, thresholds, seeds, checksums, and training/evaluation scripts upon acceptance.
+\revloc{Sec.~\ref{sec:method}; Sec.~\ref{sec:experiments} (Implementation Details); Sec.~\ref{sec:discussion} (Limitations and Future Directions); and the Data and artifact availability statement}
+\revshot{data_availability}}
+
+\cresp{Tone down claims about functional decoupling and SOTA performance unless the ablations isolate these factors more cleanly.}
+{We agree that these claims require evidence that separates architectural organization from backbone and calibration effects. We therefore added a series of stricter experiments, including three-seed evaluation, global- and class-wise-threshold controls, threshold-free metrics with paired bootstrap tests, and unified-versus-decoupled ablations under identical features and selection rules. The most direct unified control, which merges the semantic prior and rationale teacher into one distillation target, reaches \res{$55.66$ Avg F1}, whereas decoupled FDIL reaches \res{$57.49$}; the component and negative-control studies further confirm that both the image-matched rationale and agreement-aware use of supervision contribute to the result. For a fair comparison with recent state-of-the-art approaches, we also reproduced HLEG, LabCR, and IntCLIP using the same frozen CLIP ViT-L/14 features, data split, and validation-only class-wise thresholding. FDIL retains a \res{$+3.4$ to $+4.7$ Avg F1} advantage under this matched protocol. We have accordingly removed unsupported absolute-SOTA wording and now claim that functional decoupling is an empirically validated, interpretable design with a measurable aggregate advantage under controlled comparisons.
+\revloc{Abstract; Sec.~\ref{sec:experiments}, Tables~\ref{tab:main_results}, \ref{tab:unified_decoupled}, and~\ref{tab:threshold_free}}
+\revshot{claims_scope}}

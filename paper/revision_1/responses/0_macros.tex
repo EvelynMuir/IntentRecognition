@@ -1,0 +1,69 @@
+% ============================================================
+% Shared formatting for the point-by-point response letter.
+% Adapted from the LanEvil_TPAMI revision package.
+% ============================================================
+
+\definecolor{myback}{HTML}{F2F2FF}   % comment box background
+\definecolor{myframe}{HTML}{737373}  % comment box frame
+\definecolor{mytitle}{HTML}{737373}  % comment box title bar
+
+\tcbset{
+  colback=myback,
+  colframe=myframe,
+  coltitle=white,
+  fonttitle=\bfseries,
+  colbacktitle=mytitle,
+  arc=3pt,
+  left=5pt,right=5pt,top=5pt,bottom=5pt,
+  boxrule=1.5pt,
+  title style={font=\bfseries}
+}
+
+% ---- One comment counter, reset at the start of each reviewer block ----
+\newcounter{commentctr}
+
+% \reviewerblock{Reviewer 1}{lead-in paragraph}
+\newcommand{\reviewerblock}[2]{%
+  \section{Response to #1}%
+  \setcounter{commentctr}{0}%
+  #2\par\vspace{0.75em}%
+}
+
+% \cresp{verbatim reviewer comment}{our response}
+\newcommand{\cresp}[2]{%
+  \stepcounter{commentctr}%
+  \begin{tcolorbox}[title={Comment~\thecommentctr}]
+    #1
+  \end{tcolorbox}
+  \noindent \textbf{Response:} #2\par\vspace{1em}%
+}
+
+% Placeholder for content that still depends on unfinished experiments / writing.
+% Visible in red so co-authors can find and replace every item before submission.
+\newcommand{\todo}[1]{{\color{red}\textbf{[TODO: #1]}}}
+
+% Inline marker for a confirmed quantitative result (kept black, just bolded).
+\newcommand{\res}[1]{\textbf{#1}}
+
+% Keep response-letter tables distinct from tables in the revised manuscript.
+\renewcommand{\thetable}{R\arabic{table}}
+
+% Uniform pointer from each response to the corresponding manuscript revision.
+\newcommand{\revloc}[1]{%
+  \par\smallskip\noindent\textbf{Revised manuscript:} #1.%
+}
+
+% Reserved screenshot position. The argument keeps a stable screenshot key so
+% each placeholder can be replaced with its corresponding excerpt later.
+\newcommand{\revshot}[1]{%
+  \par\smallskip
+  \begin{center}
+    \begin{minipage}{0.96\linewidth}
+      \centering
+      {\setlength{\fboxsep}{2pt}%
+       \fcolorbox{myframe}{white}{%
+         \rule{0pt}{0.24\textheight}%
+         \rule{0.94\linewidth}{0pt}}}
+    \end{minipage}
+  \end{center}
+}

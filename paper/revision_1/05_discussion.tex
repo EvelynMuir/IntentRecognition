@@ -1,0 +1,31 @@
+\section{Discussion}
+\label{sec:discussion}
+
+\subsection{A Functionally Decoupled View of Ambiguity}
+
+% The experimental results support the central premise of this work: ambiguity in visual intention recognition is not a single phenomenon, but a functionally decoupled one. Supervisory ambiguity destabilizes the semantic supervision signal itself, whereas semantic ambiguity distorts the local decision geometry among neighboring intent labels. 
+\revised{
+    % This is why the manner of combining the two signals matters. The semantic prior and the rationale teacher are each only partial on their own, and forcing both into a single undifferentiated supervision target underperforms the decoupled model. The benefit of separating the two functions lies less in a higher accuracy ceiling than in keeping each function individually justified, separately measurable, and independently deployable.
+The results support our premise that visual-intent ambiguity is functionally decoupled: supervisory ambiguity destabilizes the training target, whereas semantic ambiguity distorts the local decision geometry among neighboring intents. This explains why combining the semantic prior and rationale teacher into a single target is weaker than FDIL, while the decoupled formulation keeps each function separately justified, measurable, and deployable.}
+
+This viewpoint also clarifies why a strong CLIP baseline already performs well. Once visual representation is sufficiently expressive, the remaining bottleneck is no longer basic visual recognition, but the mapping from rich visual semantics to abstract intent labels. In other words, the main challenge is not merely seeing better, but deciding better under ambiguity.
+
+% \subsection{Heterogeneous Priors Improve Robustness Only with Controlled Integration}
+
+% Our results show that heterogeneous priors are useful, but not in an unconstrained way. In SLR-C, the lexical, canonical, and scenario sources provide complementary signals: lexical phrases are concise but coarse, canonical descriptions are semantically cleaner but still abstract, and scenario descriptions offer the strongest visual grounding. Their combination improves semantic coverage and hard-case robustness. However, the component ablation also shows that a fixed heterogeneous prior alone is insufficient and may even distort the score geometry when directly injected without adaptive refinement.
+
+% This observation is important for understanding the role of SLR-C in the final FDIL system. The prior should not be interpreted as a standalone classifier. Instead, it should be viewed as a structured semantic organizer that proposes a more informed local score space, after which residual refinement adapts the prediction to image evidence. This is precisely why the full system outperforms naive prior fusion, and why heterogeneous semantics become most effective when coupled with trainable adaptation.
+
+% \subsection{Text Teacher Distillation Provides Structured Semantic Supervision}
+
+% The rationale-related ablations reveal another important point: not every form of text supervision is equally useful. Generic image captions already provide some privileged signal, but they remain weaker than structured rationale. Likewise, simply enriching the text with contextual interpretation is not enough; the largest gain appears only when counterfactual disambiguation is included. This suggests that the most useful textual signal for subjective intent recognition is not raw description, but a semantically sharpened explanation that explicitly contracts the boundary between nearby intents.
+
+% The modality ablation further reinforces this interpretation. A multimodal teacher with both image and text inputs is not the strongest distillation target, even though its oracle performance is not necessarily worse. This implies that the teacher is most useful when it behaves as a cleaner semantic supervisor rather than as another fused classifier. In this sense, UTD works less like conventional multimodal fusion and more like structured semantic regularization.
+
+\subsection{Limitations and Future Directions}
+
+Despite the consistent gains, the framework has several limitations. First, it depends on offline text generation and external prior construction, increasing preparation cost, even though UTD adds no inference-time cost. Second, the gains shrink on weaker backbones such as ResNet101, indicating that residual refinement still relies on reasonably strong base representations. Third, richer priors are not automatically better unless their interaction with the student is carefully controlled. \revised{Fourth, per-class attribution reveals a failure mode: for a few broadly defined, overlapping categories, the residual student can resolve the local candidate set toward a competing neighbor and lose accuracy on the original class.
+Fifth, the framework generalizes to an adjacent subjective task. On EMOTIC~\cite{kosti_context_2019}, privileged distillation significantly improves an image-only baseline, and where per-sample annotator agreement is available the gate activates and directs its benefit toward low-agreement samples as intended. Because EMOTIC supplies rich training-time agreement on only part of its data, the gate's decisive advantage is established on Intentonomy, whose native three-annotator training labels make it identifiable. We therefore claim framework-level generalization while scoping the gate's demonstrated gains to datasets with native agreement annotations.
+}
+
+These limitations suggest several future directions: learning source-aware prior weighting instead of uniform averaging, designing stronger students for weaker backbones, and incorporating explicit candidate-level reasoning so that textual guidance operates through confusion-pair-specific evidence resolution rather than only global distillation and local reranking.

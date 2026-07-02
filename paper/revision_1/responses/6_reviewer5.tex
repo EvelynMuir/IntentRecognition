@@ -1,0 +1,25 @@
+% ================================
+% === Reviewer 5 ===
+% ================================
+\reviewerblock{Reviewer~5}{%
+We thank the reviewer for the positive assessment of the decoupling perspective and the module design, and for the precise minor corrections.}
+
+\cresp{Figure~2 caption inconsistency: The caption refers to ``(Top) UTD'' and ``(Bottom) SLR-C'', but the figure shows ``A'' as the top and ``B'' as the bottom. Please revise the caption or the figure to ensure consistent correspondence.}
+{Thank you for identifying this inconsistency. To satisfy the page limit, we shortened the Figure~2 caption and removed the former ``Top/Bottom'' panel description. The revised caption now summarizes the functions of SLR-C and UTD without making the inconsistent correspondence.
+\revloc{Fig.~\ref{fig:fdil_framework} caption}
+\revshot{framework_caption}}
+
+\cresp{Missing experimental settings in Table~5:: Two additional configurations should be included: (i) Lexical + Scenario, and (ii) Canonical + Scenario.}
+{We have added both missing pairwise configurations for a complete ablation: Lexical+Scenario and Canonical+Scenario under the same $K{=}10$ reranking-only protocol. Specifically, both improve over their single-source components; Canonical+Scenario is the strongest pair on Hard-F1, while the three-source ensemble remains best on aggregate Avg-F1. The table reports the complete metric values.
+\revloc{Sec.~\ref{sec:experiments} (Heterogeneous Priors in SLR-C), Table~\ref{tab:prior_ablation}}
+\revshot{prior_ablation}}
+
+\cresp{Unexplained anomaly in Table~6: Provide a justification for why $K=5$ $K=28$ yield better performance than $K=10$.}
+{We revisited this anomaly by rerunning $K\in\{5,10,28\}$ over three seeds under the final protocol. The revised sweep identifies \res{$K=10$} as the best setting, so the earlier single-seed dip is not used in our conclusion. Specifically, $K=5$ is slightly too restrictive and can exclude plausible positive labels, whereas $K=28$ admits all classes and adds distractor noise without improving semantic coverage. A moderate $K=10$ best balances candidate recall and local separability. We now use $K=10$ throughout and have added this analysis directly to the sensitivity experiment accompanying the complete metrics table.
+\revloc{Sec.~\ref{sec:experiments} (Sensitivity to Candidate Size $K$), Table~\ref{tab:k_sensitivity_test}}
+\revshot{k_sensitivity}}
+
+\cresp{Typo in Appendix tables: In Table~B.1 and Table~B.2 (page~35), ``FDIR'' should be corrected to ``FDIL''.}
+{Thank you for identifying this typo. To meet the page limit, we removed the former Appendix Tables~B.1--B.2 from the revised manuscript, so the reported instance is no longer present. We also performed a manuscript-wide terminology check and confirmed that every remaining occurrence uses the correct acronym ``FDIL''.
+\revloc{Manuscript-wide terminology; former Appendix Tables~B.1--B.2}
+\revshot{terminology}}

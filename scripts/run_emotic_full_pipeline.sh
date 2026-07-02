@@ -78,6 +78,9 @@ python scripts/analyze_privileged_distillation.py \
   --train-annotation-file "$ANNOTATION_FILE" \
   --image-dir "$IMAGE_ROOT" \
   --output-dir "$DISTILL_OUT" \
+  --kd-target-mode oof \
+  --oof-folds 5 \
+  --slice-split test \
   --device cuda
 
 python scripts/analyze_distillation_slrc.py \

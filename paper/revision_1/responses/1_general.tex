@@ -1,0 +1,17 @@
+\section{General Response}
+
+We thank the Associate Editor and all five reviewers for their careful and constructive evaluation. The reviews were detailed and fair, and they have substantially improved the manuscript. We are encouraged that the reviewers found the problem \textbf{important} (R1, R2, R4) and the functional-decoupling perspective \textbf{theoretically well-motivated} (R5), including gains over a strong CLIP ViT-L/14 baseline and larger improvements on hard intent categories (R1, R5).
+
+We have organized the revision around four major concerns:
+
+\begin{itemize}
+\item \textbf{Fair comparison and calibration (R1).} We added a matched-feature controlled protocol, an original-pipeline robustness check, a method-versus-thresholding decomposition, multi-seed reporting, and threshold-free metrics. We use the matched-feature setting as the controlled comparison and report the original pipelines only as a complementary check.
+
+\item \textbf{Novelty and theoretical depth (R2, R4).} We now state a formal decoupling principle, test it with a unified-versus-decoupled control, and use negative controls to show that the result does not follow from arbitrary external text. An auxiliary study on an adjacent subjective dataset is presented as secondary evidence of cross-task generalization.
+
+\item \textbf{Evaluation and interpretation (R3, R4).} We added recent zero-shot MLLM baselines, ROC/PR and t-SNE visualizations, per-class attribution, efficiency comparisons, and a second-dataset study. The main manuscript reports the conclusions and controlled comparisons; detailed auxiliary results remain in tables or released artifacts.
+
+\item \textbf{Clarity and reproducibility (R1, R4, R5, EiC).} We clarified the purpose and limitations, added a notation table and Discussion, documented validation-only selection, committed to a concrete artifact release, and corrected the bibliography, ``FDIR'' typo, and Figure~2 caption.
+\end{itemize}
+
+Below, we provide point-by-point responses to each reviewer. Newly added or revised content is referenced by section, table, or figure. In the revised manuscript, all changes are highlighted in \revised{red}.
