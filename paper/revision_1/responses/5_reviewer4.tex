@@ -10,8 +10,8 @@ We thank the reviewer for the thorough review, which we address point by point.}
 \revshot{proofreading}}
 
 \cresp{The paper is not very clear but only claims that `` A central difficulty of this task lies in two complementary forms of ambiguity: supervisory ambiguity, caused by subjective annotation over plausible intentions, and semantic ambiguity, caused by semantically adjacent and overlapping intents.'' Please give more analysis about these disadvantages in the existing visual intention understanding.}
-{We appreciate this request for a sharper diagnosis. The Introduction and Related Work now explain that structure-aware and semantic-prior methods mainly address class-side overlap, whereas robust-loss and disagreement-aware methods mainly address supervision-side uncertainty; treating either as the sole source leaves the other failure mode unresolved. % 加一下，在method里我们给了empirical motivation和理论解释，说明我们的方法是有理论依据的
-\revloc{Sec.~\ref{sec:intro} and Sec.~\ref{sec:related_work}}
+{We appreciate this request for a sharper diagnosis. The Introduction and Related Work now explain that structure-aware and semantic-prior methods mainly address class-side overlap, whereas robust-loss and disagreement-aware methods mainly address supervision-side uncertainty; treating either as the sole source leaves the other failure mode unresolved. We also added empirical and theoretical support in the Method section. The candidate-recall diagnostic shows that the baseline Top-10 set already covers \res{$83.9\%$} of positive labels and retains \res{$67.8\%$} of false negatives as locally recoverable candidates, locating much of the remaining semantic error in local ranking and calibration. The accompanying excess-risk decomposition separates label-side conditional entropy from feature-side inter-class aliasing, explaining why uncertainty-guided supervision and semantic reranking address different factors of the risk. Thus, the two-ambiguity formulation is supported by a measurable diagnostic and a formal argument rather than asserted only as an architectural intuition.
+\revloc{Sec.~\ref{sec:intro}, Sec.~\ref{sec:related_work}, and Sec.~\ref{sec:decoupling_principle}}
 \revshot{ambiguity_analysis}}
 
 \cresp{The clear purpose of work the proposed work is lacking in the introduction section.}
@@ -25,12 +25,14 @@ We thank the reviewer for the thorough review, which we address point by point.}
 \revshot{recent_mllm_work}}
 
 \cresp{You may consider including a table of notations.}
-{We have followed this suggestion and added a compact notation table covering the symbols used in the method and theoretical analysis. % 加一句由于page limit我们列了主要符号
+{We have followed this suggestion and added a compact notation table covering the principal symbols used in the method and theoretical analysis. To remain within the 35-page limit, the table focuses on the notation needed to follow the model formulation, ambiguity decomposition, and training objective rather than repeating symbols that are defined locally and used only once.
 \revloc{Sec.~\ref{sec:method}, Table~\ref{tab:notation}}
 \revshot{notation}}
 
 \cresp{There should be larger-scale datasets to better evaluate the proposed methods.}
-{We share the reviewer's view that evidence beyond Intentonomy is useful for assessing scope. We have added a controlled $5\times5$ cross-validation study on the multi-annotated EMOTIC pool, using out-of-fold teacher predictions so that agreement-aware distillation is evaluated without target leakage. Specifically, standard and agreement-gated distillation each improve the image-only baseline on all four metrics ($p<0.01$ over 25 runs), while the gated variant is comparable to standard distillation in aggregate. We therefore use EMOTIC as secondary evidence of framework-level transfer and retain Intentonomy as the dataset that establishes the incremental value of native training-time agreement. % 写得更详细一点，当有agreement信息时，gated的效果更好。这里应该还有一张表，展现不同agreement下的结果，其中agreement较低时效果更好。之前跑过结果，需要找一下并绘制表格。加几句说我们把Emotic的结果和分析写进了discussion里，说明了我们的方法在Emotic上也有一定的泛化能力
+{We share the reviewer's view that evidence beyond Intentonomy is useful for assessing scope. We therefore added a controlled $5\times5$ cross-validation study on the multi-annotated EMOTIC validation and test pool (10,613 persons), using out-of-fold teacher predictions so that privileged distillation is evaluated without target leakage. Across 25 seed$\times$fold runs, both standard and agreement-gated distillation improve the image-only baseline on all four aggregate metrics ($p<0.01$ in the paired fold-level tests), while the gated variant is comparable to standard distillation overall.
+
+The agreement-stratified results below provide the more informative view of the gate. On the lowest-agreement ($1/3$) subset, gated KD improves the image-only baseline by \res{$+0.43$ Macro-F1}, \res{$+0.69$ Micro-F1}, and \res{$+0.69$ Samples-F1} (all $p<0.01$), and is numerically strongest among the two distillation variants on Macro-, Micro-, and Hard-F1. At agreement $2/3$, it is strongest on Macro-F1, mAP, and Hard-F1. In contrast, no reliable gated gain appears on fully agreed samples, where the gate is designed to defer to direct supervision. The gated-versus-standard differences within individual slices are small and mostly not significant, so we interpret this result conservatively: privileged semantic supervision transfers to EMOTIC, and agreement conditioning concentrates its useful behavior on uncertain samples, while Intentonomy remains the dataset that establishes the gate's incremental advantage with native training-time agreement. We have added this cross-dataset evidence and its limitations to the Discussion, showing that the framework has a degree of generalization beyond visual intention recognition without presenting EMOTIC as a new benchmark result.
 
 \begin{table}[t]\centering\small
 \caption{Secondary generalization evidence on the multi-annotated EMOTIC validation and test pool: controlled $5\times5$ cross-validation, mean over $25$
@@ -45,6 +47,31 @@ Image-only baseline            & $42.57$ & $43.34$ & $60.32$ & $60.01$ \\
 \;\;+ agreement-gated KD       & $42.77^{*}$ & $43.72^{*}$ & $60.97^{*}$ & $60.67^{*}$ \\
 \hline
 Oracle teacher (privileged text) & $66.43$ & $60.96$ & $74.63$ & $75.68$ \\
+\hline
+\end{tabular}
+\end{table}
+
+\begin{table}[t]\centering\small
+\caption{Agreement-stratified EMOTIC results over the same 25 seed$\times$fold runs. Values are percentages; bold marks the best image-only student in each agreement group.}
+\label{tab:emotic_agreement}
+\begin{tabular}{llccccc}
+\hline
+Agreement & Method & Macro & Micro & Samples & mAP & Hard \\
+\hline
+\multirow{3}{*}{$1/3$}
+& Baseline & $44.15$ & $62.19$ & $62.03$ & $44.15$ & $36.92$ \\
+& Standard KD & $44.55$ & $62.83$ & $\mathbf{62.75}$ & $\mathbf{44.37}$ & $37.38$ \\
+& Gated KD & $\mathbf{44.58}$ & $\mathbf{62.88}$ & $62.72$ & $44.32$ & $\mathbf{37.45}$ \\
+\hline
+\multirow{3}{*}{$2/3$}
+& Baseline & $40.84$ & $54.39$ & $54.84$ & $44.63$ & $34.30$ \\
+& Standard KD & $41.04$ & $\mathbf{55.00}$ & $\mathbf{55.63}$ & $44.85$ & $34.44$ \\
+& Gated KD & $\mathbf{41.20}$ & $54.92$ & $55.41$ & $\mathbf{45.18}$ & $\mathbf{34.69}$ \\
+\hline
+\multirow{3}{*}{$1$}
+& Baseline & $22.42$ & $36.31$ & $36.60$ & $34.07$ & $\mathbf{18.23}$ \\
+& Standard KD & $\mathbf{22.83}$ & $\mathbf{37.28}$ & $\mathbf{37.80}$ & $34.07$ & $18.05$ \\
+& Gated KD & $22.15$ & $36.79$ & $37.20$ & $\mathbf{34.34}$ & $17.41$ \\
 \hline
 \end{tabular}
 \end{table}
