@@ -13,7 +13,7 @@ To better understand the effectiveness of our method, we further conduct experim
 \begin{table}[htbp]
 \centering
 \small
-\caption{\revised{Main comparison on Intentonomy test split. Avg.\ is the mean of Macro/Micro/Samples F1. $^{\dagger}$Quoted from IntentMLM~\cite{wang_unlocking_2026}.}}
+\caption{\revised{Main comparison on Intentonomy test split. Avg.\ is the mean of Macro/Micro/Samples F1. FDIL rows report mean$\pm$std over three seeds. $^{\dagger}$Quoted from IntentMLM~\cite{wang_unlocking_2026}.}}
 \label{tab:main_results}
 \begingroup
 \setlength{\tabcolsep}{4pt}
@@ -58,7 +58,7 @@ IntentMLM \cite{wang_unlocking_2026} & PR 2026 & 43.05 & 54.77 & 56.75 & 51.52 \
 \revised{InternVL3-8B \cite{zhu_internvl3_2025}} & \revised{-} & \revised{37.54} & \revised{41.85} & \revised{40.50} & \revised{39.97} \\
 \revised{GPT-4o \cite{hurst_gpt-4o_2024}$^{\dagger}$} & \revised{-} & \revised{39.48} & \revised{40.57} & \revised{41.45} & \revised{40.50} \\
 \hline
-CLIP ViT-L/14 \cite{radford_learning_2021} & ICML 2021 & \revised{$47.40$} & \revised{$56.42$} & \revised{$56.41$} & \revised{$53.41$} \\
+CLIP ViT-L/14 \cite{radford_learning_2021} & ICML 2021 & $47.40$ & $56.42$ & $56.41$ & $53.41$ \\
 FDIL (UTD only) & Ours & \revised{$50.20_{\pm0.44}$} & \revised{$58.03_{\pm0.11}$} & \revised{$58.79_{\pm0.78}$} & \revised{$55.68_{\pm0.44}$} \\
 FDIL & Ours & \revised{$\mathbf{52.13}_{\pm0.81}$} & \revised{$\mathbf{60.06}_{\pm0.24}$} & \revised{$\mathbf{60.28}_{\pm0.42}$} & \revised{$\mathbf{57.49}_{\pm0.49}$} \\
 \hline
@@ -87,7 +87,7 @@ To better understand the effectiveness of our method, we further evaluate perfor
 
 \begin{table}[htbp]
 \centering
-\caption{\revised{Difficulty-based intent subsets (Easy/Medium/Hard); Avg.\ is the subset mean.}}
+\caption{\revised{Difficulty-based intent subsets (Easy/Medium/Hard); Avg.\ is the subset mean. FDIL is the mean over three seeds.}}
 \label{tab:difficulty_results}
 \begin{tabular}{lcccc}
 \hline
@@ -111,7 +111,7 @@ FDIL & \revised{\textbf{81.19}} & \revised{\textbf{57.73}} & \revised{\textbf{35
 
 \begin{table}[htbp]
 \centering
-\caption{\revised{Content-dependent intent subsets (Object/Context/Others); Avg.\ is the subset mean.}}
+\caption{\revised{Content-dependent intent subsets (Object/Context/Others); Avg.\ is the subset mean. FDIL is the mean over three seeds.}}
 \label{tab:content_results}
 \begin{tabular}{lcccc}
 \hline
@@ -183,7 +183,7 @@ It again shows that the strong CLIP baseline is already highly effective on obje
 We first study how SLR-C interacts with residual learning and distillation. Table~\ref{tab:slrc_ablation} shows that prior alone is insufficient, while adding a trainable student and distillation is essential for recovering robust intent predictions.
 \begin{table}[htbp]
 \centering
-\caption{\revised{Component ablation of FDIL (\textit{w/o UTD}: no text distillation; \textit{w/o Gated}: no agreement-aware gating).}}
+\caption{\revised{Component ablation of FDIL (\textit{w/o UTD}: no text distillation; \textit{w/o Gated}: no agreement-aware gating). Full FDIL is the mean over three seeds; ablations use a single seed.}}
 \label{tab:slrc_ablation}
 \begin{tabular}{lccccc}
 \hline
@@ -205,7 +205,7 @@ Two observations are noteworthy. First, naively injecting a heterogeneous prior 
 \begin{table}[htbp]
 \centering
 \small
-\caption{\revised{Unified versus functionally decoupled ambiguity handling.}}
+\caption{\revised{Unified versus functionally decoupled ambiguity handling. Results are means over three seeds.}}
 \label{tab:unified_decoupled}
 \setlength{\tabcolsep}{4pt}
 \begin{tabular}{lccccc}
@@ -227,7 +227,7 @@ Two observations are noteworthy. First, naively injecting a heterogeneous prior 
 We next compare different textual priors used by SLR-C. We consider three semantic sources: \textit{Lexical}, which uses short class-name phrases; \textit{Canonical}, which uses the official intent descriptions provided by Intentonomy; and \textit{Scenario}, which uses Gemini-generated visual scenarios. For the ensemble setting, we average the normalized logits from the selected sources before local reranking. \revised{Table~\ref{tab:prior_ablation} therefore isolates} the effect of prior sources under the SLR-C reranking stage only.
 \begin{table}[htbp]
 \centering
-\caption{\revised{Ablation of textual priors in SLR-C (reranking-only, $K{=}10$).}}
+\caption{\revised{Ablation of textual priors in SLR-C (reranking-only, $K{=}10$). Results use a single seed.}}
 \label{tab:prior_ablation}
 \begin{tabular}{cccccccc}
 \hline
@@ -252,7 +252,7 @@ We next study the effect of candidate size $K$ while fixing the thresholding str
 
 \begin{table}[htbp]
 \centering
-\caption{\revised{Sensitivity to candidate size $K$ (class-wise thresholding).}}
+\caption{\revised{Sensitivity to candidate size $K$ (class-wise thresholding). Results are means over three seeds.}}
 \label{tab:k_sensitivity_test}
 \begin{tabular}{lccccc}
 \hline
@@ -268,7 +268,7 @@ Top-$K$ & Macro & Micro & Samples & Avg. & Hard \\
 \begin{table}[htbp]
 \centering
 \small
-\caption{\revised{Calibration decomposition under matched global/class-wise thresholding.}}
+\caption{\revised{Calibration decomposition under matched global/class-wise thresholding. FDIL is mean$\pm$std over three seeds; CLIP uses a single seed.}}
 \label{tab:thresholding_test}
 \setlength{\tabcolsep}{3pt}
 \begin{tabular}{llcccccc}
@@ -291,7 +291,7 @@ Top-$K$ & Macro & Micro & Samples & Avg. & Hard \\
 \begin{table}[htbp]
 \centering
 \small
-\caption{\revised{Threshold-free, rank-based metrics. mAP is the macro average precision.}}
+\caption{\revised{Threshold-free, rank-based metrics. mAP is the macro average precision. FDIL/UTD mAP values are means over three seeds; all AUCs and CLIP mAP use a single representative seed.}}
 \label{tab:threshold_free}
 \setlength{\tabcolsep}{4pt}
 \begin{tabular}{lcccc}
@@ -320,7 +320,7 @@ Top-$K$ & Macro & Micro & Samples & Avg. & Hard \\
 We then compare generic image captioning with rationale-style supervision under UTD only setting. We further ablate the internal structure of the rationale used by the text teacher. Specifically, we compare Caption, which only describes visible content in short natural language; Step 1 only, which contains observable visual evidence; Step 1 with Step 2, which additionally introduces contextual interpretation; and Full rationale, which further adds counterfactual disambiguation cues. Table~\ref{tab:rationale_ablation} reports the results under gated distillation without SLR-C.
 \begin{table}[htbp]
 \centering
-\caption{\revised{Ablation of rationale construction for UTD (Step 1/2/3: visual evidence, contextual bridging, counterfactual disambiguation).}}
+\caption{\revised{Ablation of rationale construction for UTD (Step 1/2/3: visual evidence, contextual bridging, counterfactual disambiguation). Results use a single seed.}}
 \label{tab:rationale_ablation}
 \begin{tabular}{lccccc}
 \hline
@@ -342,7 +342,7 @@ The trend is revealing. Caption supervision is already a reasonably strong privi
 \begin{table}[htbp]
 \centering
 \small
-\caption{\revised{UTD teacher ablations without SLR-C. Top: agreement-aware gating. Bottom: teacher input modality (oracle and gated student). Bold marks the best entry within each comparison.}}
+\caption{\revised{UTD teacher ablations without SLR-C. Top: agreement-aware gating. Bottom: teacher input modality (oracle and gated student). Results use a single seed; bold marks the best entry within each comparison.}}
 \label{tab:utd_ablation}
 \setlength{\tabcolsep}{4pt}
 \begin{tabular}{llccccc}
@@ -372,7 +372,7 @@ Gated student & Image+Text & 48.57 & 56.10 & 57.13 & 53.93 & 28.58 \\
 \begin{table}[htbp]
 \centering
 \small
-\caption{\revised{Negative controls on the UTD text teacher ($\Delta$ in points; negative denotes degradation).}}
+\caption{\revised{Negative controls on the UTD text teacher ($\Delta$ in points; negative denotes degradation). Full FDIL is the mean over three seeds; control deltas use a single seed.}}
 \label{tab:negative_controls}
 \setlength{\tabcolsep}{4pt}
 \begin{tabular}{lcccccc}
@@ -422,7 +422,7 @@ To examine whether FDIL depends entirely on a strong backbone, we also test the 
 
 \begin{table}[htbp]
 \centering
-\caption{Backbone sensitivity of FDIL on the Intentonomy test split.}
+\caption{Backbone sensitivity of FDIL on the Intentonomy test split. CLIP FDIL is the mean over three seeds; ResNet101 results use a single seed.}
 \label{tab:backbone_ablation}
 \begin{tabular}{lcccccc}
 \hline

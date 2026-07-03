@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -36,6 +37,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 import scripts.analyze_privileged_distillation as P  # noqa: E402
+import scripts.analyze_distillation_slrc as S  # noqa: E402
 
 
 def _parse_args() -> argparse.Namespace:
@@ -86,6 +88,26 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--feature-proj-dim", type=int, default=256)
     parser.add_argument("--student-agreement-pool", type=str, default="mean", choices=["mean", "min"])
     parser.add_argument("--teacher-input-mode", type=str, default="text_only", choices=["text_only", "image_text"])
+    parser.add_argument(
+        "--emotion-description-file",
+        type=str,
+        default="../Emotic/emotion_description_gemini.json",
+        help="EMOTIC class definitions and visual archetypes used by SLR-C.",
+    )
+    parser.add_argument(
+        "--semantic-prior-cache",
+        type=str,
+        default=None,
+        help="Reusable SLR-C prior cache. Defaults to <cache-dir>/emotic_scenario_prior_logits.npz.",
+    )
+    parser.add_argument("--slr-topk", type=int, default=10)
+    parser.add_argument("--slr-alpha", type=float, default=0.3)
+    parser.add_argument("--fdil-hidden-dim", type=int, default=768)
+    parser.add_argument(
+        "--no-resume",
+        action="store_true",
+        help="Ignore completed per-fold checkpoints in the output directory.",
+    )
     return parser.parse_args()
 
 
@@ -118,7 +140,7 @@ def _trainer_args(args: argparse.Namespace, seed: int) -> SimpleNamespace:
 def _load_pool(args: argparse.Namespace) -> Dict[str, np.ndarray]:
     cache_dir = Path(args.cache_dir)
     vlm_dir = Path(args.vlm_dir)
-    feats, texts, labels, soft, ids = [], [], [], [], []
+    feats, full_feats, texts, labels, soft, ids = [], [], [], [], [], []
     for split in ("val", "test"):
         clip = P._load_cache_bundle(cache_dir / f"{split}_clip.npz")
         text = P._align_text_bundle_to_clip(
@@ -128,12 +150,14 @@ def _load_pool(args: argparse.Namespace) -> Dict[str, np.ndarray]:
         if clip["image_ids"] != text["image_ids"]:
             raise RuntimeError(f"{split}: image order mismatch after text alignment.")
         feats.append(np.asarray(clip["features"], dtype=np.float32))
+        full_feats.append(np.asarray(clip.get("full_features", clip["features"]), dtype=np.float32))
         texts.append(np.asarray(text["features"], dtype=np.float32))
         labels.append(np.asarray(clip["labels"], dtype=np.float32))
         soft.append(np.asarray(clip["soft_labels"], dtype=np.float32))
         ids.extend([f"{split}|{i}" for i in clip["image_ids"]])
     pool = {
         "image_features": np.concatenate(feats, axis=0),
+        "full_features": np.concatenate(full_feats, axis=0),
         "text_features": np.concatenate(texts, axis=0),
         "labels": np.concatenate(labels, axis=0),
         "soft_labels": np.concatenate(soft, axis=0),
@@ -147,12 +171,70 @@ def _mean_std(values: List[float]) -> Dict[str, float]:
     return {"mean": float(arr.mean()), "std": float(arr.std(ddof=0))}
 
 
-METHODS = ["oracle_teacher", "baseline", "standard_kd", "dynamic_gated_kd"]
+METHODS = ["oracle_teacher", "baseline", "slr_c", "dynamic_gated_kd", "fdil"]
 METRIC_KEYS = ["mAP", "macro", "micro", "samples", "hard"]
+
+
+def _build_semantic_prior(
+    pool: Dict[str, np.ndarray],
+    args: argparse.Namespace,
+    device: torch.device,
+) -> np.ndarray:
+    description_file = Path(args.emotion_description_file)
+    cache_path = (
+        Path(args.semantic_prior_cache)
+        if args.semantic_prior_cache
+        else Path(args.cache_dir) / "emotic_scenario_prior_logits.npz"
+    )
+    description_sha256 = hashlib.sha256(description_file.read_bytes()).hexdigest()
+    expected_ids = np.asarray(pool["image_ids"]).astype(str)
+    if cache_path.exists():
+        cached = np.load(cache_path, allow_pickle=False)
+        cached_ids = np.asarray(cached["image_ids"]).astype(str)
+        cached_hash = str(np.asarray(cached["description_sha256"]).item())
+        if (
+            cached_ids.shape == expected_ids.shape
+            and np.array_equal(cached_ids, expected_ids)
+            and cached_hash == description_sha256
+        ):
+            print(f"[SLR-C] reusing semantic prior cache: {cache_path}")
+            return np.asarray(cached["prior_logits"], dtype=np.float32)
+        print(f"[SLR-C] ignoring stale semantic prior cache: {cache_path}")
+
+    payload = json.loads(description_file.read_text(encoding="utf-8"))
+    class_names = [str(item["emotion_name"]) for item in payload["emotions"]]
+    if len(class_names) != int(pool["labels"].shape[1]):
+        raise ValueError(
+            f"Description has {len(class_names)} classes, cache has {pool['labels'].shape[1]}."
+        )
+    text_pools = S._build_scenario_text_pool(class_names, description_file)
+    clip_model, _ = S.clip.load("ViT-L/14", device=device)
+    clip_model = clip_model.eval().to(device)
+    text_embeddings = S._encode_text_pool(clip_model, text_pools, wrap_prompt=False)
+    logit_scale = float(clip_model.logit_scale.exp().item())
+    prior_logits = S._text_logits_from_features(
+        np.asarray(pool["full_features"], dtype=np.float32),
+        text_embeddings,
+        logit_scale,
+    )
+    del clip_model
+    if device.type == "cuda":
+        torch.cuda.empty_cache()
+    prior_logits = np.asarray(prior_logits, dtype=np.float32)
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    np.savez_compressed(
+        cache_path,
+        prior_logits=prior_logits,
+        image_ids=expected_ids,
+        description_sha256=np.asarray(description_sha256),
+    )
+    print(f"[SLR-C] saved semantic prior cache: {cache_path}")
+    return prior_logits
 
 
 def run_cv(
     pool: Dict[str, np.ndarray],
+    semantic_prior: np.ndarray,
     seed: int,
     args: argparse.Namespace,
     device: torch.device,
@@ -174,6 +256,16 @@ def run_cv(
     oof_pred = {m: np.zeros((n, num_classes), dtype=np.float32) for m in METHODS if m != "oracle_teacher"}
 
     for k in range(int(args.folds)):
+        fold_path = Path(args.output_dir) / "folds" / f"seed_{seed}_fold_{k}.json"
+        if fold_path.exists() and not bool(args.no_resume):
+            saved = json.loads(fold_path.read_text(encoding="utf-8"))
+            for method in METHODS:
+                per_fold[method].append(saved["metrics"][method])
+            gate_means.append(float(saved["gate_mean"]))
+            slice_rows.extend(saved["slice_rows"])
+            print(f"\n===== seed {seed} fold {k + 1}/{args.folds} | resumed from {fold_path} =====")
+            continue
+
         test_idx = np.asarray(fold_assign[k], dtype=np.int64)
         val_idx = np.asarray(fold_assign[(k + 1) % int(args.folds)], dtype=np.int64)
         train_idx = np.setdiff1d(
@@ -206,14 +298,15 @@ def run_cv(
 
         student_specs = {
             "baseline": dict(agree=np.ones_like(agreement), tprobs=np.zeros_like(tr_lab), mode="baseline"),
-            "standard_kd": dict(agree=np.ones_like(agreement), tprobs=teacher_probs, mode="standard_kd"),
             "dynamic_gated_kd": dict(agree=agreement, tprobs=teacher_probs, mode="dynamic_kd"),
         }
+        trained_students: Dict[str, torch.nn.Module] = {}
         for offset, (name, spec) in enumerate(student_specs.items(), start=1):
             P._set_component_seed(int(seed), offset=10 * k + offset)
             model = P.StudentMLP(image_dim, int(args.student_hidden_dim), num_classes, float(args.dropout), int(args.feature_proj_dim)).to(device)
             ds = P.StudentDataset(tr_img, tr_lab, spec["agree"], tr_soft, spec["tprobs"])
             res = P._train_student(spec["mode"], model, ds, va_img, va_lab, te_img, te_lab, device, targs)
+            trained_students[name] = model
             per_fold[name].append(_metrics_of(res["bundle"]))
             te_scores = P._predict_student(model, te_img, device, int(args.batch_size))
             oof_pred[name][test_idx] = te_scores
@@ -225,6 +318,99 @@ def run_cv(
             if name == "dynamic_gated_kd":
                 best = next((h for h in res["history"] if h["epoch"] == res["best_epoch"]), res["history"][-1])
                 gate_means.append(float(best.get("mean_gate", float("nan"))))
+
+        # ---- SLR-C semantic reconstruction on the fold-specific baseline ----
+        baseline_model = trained_students["baseline"]
+        tr_base_logits = P._logit_np(P._predict_student(baseline_model, tr_img, device, int(args.batch_size)))
+        va_base_logits = P._logit_np(P._predict_student(baseline_model, va_img, device, int(args.batch_size)))
+        te_base_logits = P._logit_np(P._predict_student(baseline_model, te_img, device, int(args.batch_size)))
+        tr_slr_logits = S._apply_slr(
+            tr_base_logits, semantic_prior[train_idx], topk=int(args.slr_topk), alpha=float(args.slr_alpha)
+        )
+        va_slr_logits = S._apply_slr(
+            va_base_logits, semantic_prior[val_idx], topk=int(args.slr_topk), alpha=float(args.slr_alpha)
+        )
+        te_slr_logits = S._apply_slr(
+            te_base_logits, semantic_prior[test_idx], topk=int(args.slr_topk), alpha=float(args.slr_alpha)
+        )
+        slr_bundle = P._evaluate_score_bundle(
+            val_scores=P._sigmoid_np(va_slr_logits),
+            val_targets=va_lab,
+            test_scores=P._sigmoid_np(te_slr_logits),
+            test_targets=te_lab,
+        )
+        per_fold["slr_c"].append(_metrics_of(slr_bundle))
+        slr_scores = P._sigmoid_np(te_slr_logits)
+        oof_pred["slr_c"][test_idx] = slr_scores
+        slr_thresholds = np.asarray(
+            slr_bundle["classwise"]["val"]["class_thresholds"], dtype=np.float32
+        )
+        for srow in P._slice_metrics(
+            slr_scores, te_lab, te_groups, slr_thresholds, method="slr_c", split="test"
+        ):
+            srow.update({"seed": int(seed), "fold": int(k)})
+            slice_rows.append(srow)
+
+        # ---- Full FDIL: SLR-C base plus agreement-gated residual UTD ----
+        fdil_dataset = S.SLRCDataset(
+            image_features=tr_img,
+            slr_logits=tr_slr_logits,
+            labels=tr_lab,
+            soft_labels=tr_soft,
+            agreement=agreement,
+            teacher_probs=teacher_probs,
+        )
+        P._set_component_seed(int(seed), offset=10 * k + 3)
+        fdil_model = S.ResidualStudent(
+            image_dim=image_dim,
+            hidden_dim=int(args.fdil_hidden_dim),
+            num_classes=num_classes,
+            dropout=float(args.dropout),
+        ).to(device)
+        fdil_res = S._train_residual_student(
+            mode="dynamic_kd",
+            model=fdil_model,
+            train_dataset=fdil_dataset,
+            val_image_features=va_img,
+            val_slr_logits=va_slr_logits,
+            val_targets=va_lab,
+            test_image_features=te_img,
+            test_slr_logits=te_slr_logits,
+            test_targets=te_lab,
+            device=device,
+            args=targs,
+            loader_seed=int(seed) + 10 * k + 3,
+        )
+        per_fold["fdil"].append(_metrics_of(fdil_res["bundle"]))
+        fdil_scores = S._predict_residual_student(
+            fdil_model, te_img, te_slr_logits, device, int(args.batch_size)
+        )
+        oof_pred["fdil"][test_idx] = fdil_scores
+        fdil_thresholds = np.asarray(
+            fdil_res["bundle"]["classwise"]["val"]["class_thresholds"], dtype=np.float32
+        )
+        for srow in P._slice_metrics(
+            fdil_scores, te_lab, te_groups, fdil_thresholds, method="fdil", split="test"
+        ):
+            srow.update({"seed": int(seed), "fold": int(k)})
+            slice_rows.append(srow)
+
+        fold_slice_rows = [
+            row for row in slice_rows
+            if int(row["seed"]) == int(seed) and int(row["fold"]) == int(k)
+        ]
+        fold_payload = {
+            "seed": int(seed),
+            "fold": int(k),
+            "metrics": {method: per_fold[method][-1] for method in METHODS},
+            "gate_mean": float(gate_means[-1]),
+            "slice_rows": fold_slice_rows,
+        }
+        fold_path.parent.mkdir(parents=True, exist_ok=True)
+        temporary_path = fold_path.with_suffix(".json.tmp")
+        temporary_path.write_text(json.dumps(fold_payload, indent=2), encoding="utf-8")
+        temporary_path.replace(fold_path)
+        print(f"[Pool] saved completed fold: {fold_path}")
 
     return {"per_fold": per_fold, "oof_pred": oof_pred, "gate_means": gate_means, "slice_rows": slice_rows}
 
@@ -253,6 +439,8 @@ def _paired_test(deltas: np.ndarray) -> Dict[str, Any]:
 
 def main() -> None:
     args = _parse_args()
+    if int(args.folds) < 3:
+        raise ValueError("--folds must be at least 3 (one test fold, one validation fold, and training folds).")
     out_dir = Path(args.output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     device = P._resolve_device(args.device)
@@ -265,6 +453,7 @@ def main() -> None:
     P._set_seed(seeds[0])
 
     pool = _load_pool(args)
+    semantic_prior = _build_semantic_prior(pool, args, device)
     n = int(pool["labels"].shape[0])
     pool_agreement = P._compute_sample_agreement(
         labels=pool["labels"], soft_labels=pool["soft_labels"], mode=str(args.student_agreement_pool)
@@ -283,7 +472,7 @@ def main() -> None:
     all_slice: List[Dict[str, Any]] = []
 
     for seed in seeds:
-        cv = run_cv(pool, seed, args, device)
+        cv = run_cv(pool, semantic_prior, seed, args, device)
         gate_all.extend(cv["gate_means"])
         all_slice.extend(cv["slice_rows"])
         for m in METHODS:
@@ -304,9 +493,11 @@ def main() -> None:
     # ---- overall paired significance: each method vs a reference, paired by split ----
     sig_metrics = ("mAP", "macro", "micro", "samples")
     contrasts = [
-        ("standard_kd", "baseline"),
         ("dynamic_gated_kd", "baseline"),
-        ("dynamic_gated_kd", "standard_kd"),  # isolates the gate's marginal effect
+        ("slr_c", "baseline"),
+        ("fdil", "baseline"),
+        ("fdil", "dynamic_gated_kd"),
+        ("fdil", "slr_c"),
     ]
     sig_rows: List[Dict[str, Any]] = []
     for a_name, b_name in contrasts:
@@ -333,7 +524,7 @@ def main() -> None:
     slice_rows: List[Dict[str, Any]] = []
     for ag in agreements_seen:
         keys = sorted({(r["seed"], r["fold"]) for r in all_slice if r["agreement"] == ag})
-        for m in ("baseline", "standard_kd", "dynamic_gated_kd"):
+        for m in ("baseline", "slr_c", "dynamic_gated_kd", "fdil"):
             row: Dict[str, Any] = {"agreement": ag, "method": m,
                                    "obs": sum(1 for (s, f) in keys if (m, s, f, ag) in lookup)}
             for mk in slice_metric_keys:
@@ -344,11 +535,17 @@ def main() -> None:
             slice_rows.append(row)
     _write_csv(out_dir / "pool_kfold_agreement_slice.csv", slice_rows)
 
-    # paired gate effect within each agreement bin (gated - standard_kd, gated - baseline)
+    # Paired full-method effects within each agreement bin.
     slice_sig_rows: List[Dict[str, Any]] = []
     for ag in agreements_seen:
         keys = sorted({(r["seed"], r["fold"]) for r in all_slice if r["agreement"] == ag})
-        for a_name, b_name in [("dynamic_gated_kd", "standard_kd"), ("dynamic_gated_kd", "baseline")]:
+        for a_name, b_name in [
+            ("dynamic_gated_kd", "baseline"),
+            ("slr_c", "baseline"),
+            ("fdil", "baseline"),
+            ("fdil", "dynamic_gated_kd"),
+            ("fdil", "slr_c"),
+        ]:
             paired = [(lookup[(a_name, s, f, ag)], lookup[(b_name, s, f, ag)])
                       for (s, f) in keys if (a_name, s, f, ag) in lookup and (b_name, s, f, ag) in lookup]
             for mk in ("macro", "micro", "samples", "mAP"):
@@ -363,7 +560,7 @@ def main() -> None:
 
     gate_summary = _mean_std([g for g in gate_all if g == g]) if gate_all else {"mean": float("nan"), "std": float("nan")}
     (out_dir / "summary.json").write_text(json.dumps({
-        "note": "Multi-seed controlled k-fold on EMOTIC val+test pool (agreement available at train time); NOT a benchmark.",
+        "note": "Full EMOTIC FDIL controlled k-fold on val+test pool; NOT a benchmark.",
         "pool_persons": n, "seeds": seeds, "folds": int(args.folds),
         "pool_mean_agreement": float(pool_agreement.mean()),
         "frac_samples_gate_active": frac_gated,
@@ -383,9 +580,9 @@ def main() -> None:
     print("\n=== OVERALL PAIRED CONTRASTS (per-fold n=25) ===")
     for r in sig_rows:
         print(f"  {r['contrast']:34s} {r['metric']:7s} Δ={r['per_fold_mean_delta']:+.4f} p_t={r['per_fold_ttest_p']:.4f} p_wil={r['per_fold_wilcoxon_p']:.4f}")
-    print("\n=== AGREEMENT-SLICE: gate effect (gated - standard_kd) ===")
+    print("\n=== AGREEMENT-SLICE: full FDIL effect (FDIL - baseline) ===")
     for r in slice_sig_rows:
-        if r["contrast"].endswith("standard_kd"):
+        if r["contrast"] == "fdil-vs-baseline":
             print(f"  agree={r['agreement']:3s} {r['metric']:7s} n={r['n']:2d} Δ={r['mean_delta']:+.3f} p_t={r['ttest_p']:.4f} p_wil={r['wilcoxon_p']:.4f}")
     print(f"[Pool] artifacts -> {out_dir}")
 
