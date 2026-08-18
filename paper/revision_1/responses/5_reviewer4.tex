@@ -32,21 +32,25 @@ We thank the reviewer for the thorough review, which we address point by point.}
 \showNotation
 
 \cresp{There should be larger-scale datasets to better evaluate the proposed methods.}
-{We share the reviewer's view that evidence beyond Intentonomy is useful for assessing scope. We add a new cross-dataset paragraph to ``Limitations and Future Directions'' and report the full auxiliary results here. Specifically, we construct a controlled $5\times5$ cross-validation study on the multi-annotated EMOTIC validation and test pool (10,613 persons), using out-of-fold teacher predictions so that privileged distillation is evaluated without target leakage. Across 25 seed$\times$fold runs, both standard and agreement-gated distillation improve the baseline on all four aggregate metrics ($p<0.01$ in the paired fold-level tests), while the gated variant is comparable to standard distillation overall.
+{We share the reviewer's view that evidence beyond Intentonomy is useful for assessing the scope of the proposed method. To this end, we add an auxiliary cross-dataset study on EMOTIC and report the full results here. Since multi-annotator agreement is available only for the EMOTIC validation and test partitions, we pool these partitions and conduct a controlled $5\times5$ cross-validation study over 10,613 persons, using out-of-fold teacher predictions to avoid target leakage. EMOTIC differs from Intentonomy in that it focuses on affective categories rather than visual-intention categories; therefore, we use it to examine transfer to a related subjective social-understanding task, rather than as a second in-domain benchmark.
 
-The agreement-stratified results below provide a more informative view of the gate. On the lowest-agreement ($1/3$) subset, gated KD improves the baseline by \res{$+0.43$ Macro-F1}, \res{$+0.69$ Micro-F1}, and \res{$+0.69$ Samples-F1} (all $p<0.01$), and is numerically strongest among the two distillation variants on Macro-, Micro-, and Hard-F1. At agreement $2/3$, it is strongest on Macro-F1, mAP, and Hard-F1. In contrast, no reliable gated gain appears on fully agreed samples, where the gate is designed to defer to direct supervision. We interpret this result conservatively: privileged semantic supervision transfers to EMOTIC, and agreement conditioning concentrates its useful behavior on uncertain samples, while Intentonomy remains the dataset that establishes the gate's incremental advantage with native training-time agreement. We add this cross-dataset evidence and its limitations to the Discussion, showing that the framework has a degree of generalization beyond visual intention recognition without presenting EMOTIC as a new benchmark result.
+As shown in Table~\ref{tab:emotic_pool}, FDIL still shows a degree of transferability on EMOTIC. Across 25 seed$\times$fold runs, full FDIL improves the baseline by \res{$+0.18$ Macro-F1}, \res{$+0.50$ Micro-F1}, \res{$+0.40$ Samples-F1}, and \res{$+0.18$ mAP}. The gains on Micro-F1 and mAP are significant at $p<0.01$, the Samples-F1 gain reaches $p=0.0255$, and the Macro-F1 gain is positive but not statistically significant. The ablation results further show that agreement-gated UTD is the main source of transfer: UTD-only obtains the best Macro-, Micro-, Samples-, and Hard-F1, while full FDIL obtains the best mAP and remains statistically comparable to UTD-only on all aggregate metrics. In contrast, SLR-C alone is less effective on EMOTIC, which is expected given the gap between EMOTIC's affective label space and the visual-intention taxonomy targeted by our semantic prior.
+
+The agreement-stratified results in Table~\ref{tab:emotic_agreement} provide a more detailed picture. FDIL yields reliable gains on less-than-fully-agreed samples, improving Micro-F1 by \res{$+0.50$} at agreement 0.33 ($p=0.0045$) and mAP by \res{$+0.58$} at agreement 0.66 ($p=0.0006$). No reliable gain is observed on fully agreed samples, suggesting that the benefit of uncertainty-guided supervision is more evident when annotator disagreement is present. Overall, these results indicate that FDIL has a degree of generalization beyond visual intention recognition, mainly through its uncertainty-guided supervision component, while also revealing that SLR-C depends on the compatibility between textual label semantics and the target taxonomy. Because EMOTIC differs from our main task setting and our controlled split is not comparable with the official EMOTIC train/validation/test protocol or published baselines, we add this cross-dataset evidence and its limitations to the Discussion without presenting it as a new EMOTIC benchmark result.
+
 
 \begin{table}[h]\centering
 \caption{Results on the multi-annotated EMOTIC validation and test pool. Controlled $5\times5$ cross-validation, mean over $25$
-seed$\times$fold runs. $^{*}p<0.01$, paired $t$-test vs.\ baseline.}
+seed$\times$fold runs. Values are percentages; bold marks the best method. $^{*}p<0.01$ for a positive gain over the baseline (paired $t$-test).}
 \label{tab:emotic_pool}
-\begin{tabular}{lcccc}
+\begin{tabular}{lccccc}
 \toprule
-Method & Macro & Micro & Samples & mAP \\
+Method & Macro & Micro & Samples & mAP & Hard \\
 \midrule
-baseline            & $43.34$ & $60.32$ & $60.01$ & $42.57$ \\
-\;\;+ UTD(w/o gated)              & $43.68^{*}$ & $60.95^{*}$ & $60.75^{*}$ & $42.77^{*}$ \\
-\;\;+ UTD(with gated)       & $43.72^{*}$ & $60.97^{*}$ & $60.67^{*}$ & $42.77^{*}$ \\
+Baseline            & $43.34$ & $60.32$ & $60.01$ & $42.57$ & $36.20$ \\
+\;\;+ SLR-C         & $42.88$ & $60.13$ & $59.94$ & $42.12$ & $35.59$ \\
+\;\;+ UTD           & $\mathbf{43.67}^{*}$ & $\mathbf{60.88}^{*}$ & $\mathbf{60.61}^{*}$ & $42.70$ & $\mathbf{36.69}$ \\
+FDIL                & $43.52$ & $60.81^{*}$ & $60.41$ & $\mathbf{42.75}^{*}$ & $36.27$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -58,26 +62,29 @@ baseline            & $43.34$ & $60.32$ & $60.01$ & $42.57$ \\
 \toprule
 Agreement & Method & Macro & Micro & Samples & mAP & Hard \\
 \midrule
-\multirow{3}{*}{$1/3$}
+\multirow{4}{*}{0.33}
 & Baseline & $44.15$ & $62.19$ & $62.03$ & $44.15$ & $36.92$ \\
-& \;\;+ UTD(w/o gated) & $44.55$ & $62.83$ & $\mathbf{62.75}$ & $\mathbf{44.37}$ & $37.38$ \\
-& \;\;+ UTD(with gated) & $\mathbf{44.58}$ & $\mathbf{62.88}$ & $62.72$ & $44.32$ & $\mathbf{37.45}$ \\
+& \;\;+ SLR-C & $43.60$ & $61.90$ & $61.82$ & $43.52$ & $36.26$ \\
+& \;\;+ UTD & $\mathbf{44.54}$ & $\mathbf{62.79}$ & $\mathbf{62.64}$ & $\mathbf{44.30}$ & $\mathbf{37.44}$ \\
+& FDIL & $44.34$ & $62.69$ & $62.42$ & $44.30$ & $37.11$ \\
 \midrule
-\multirow{3}{*}{$2/3$}
+\multirow{4}{*}{0.66}
 & Baseline & $40.84$ & $54.39$ & $54.84$ & $44.63$ & $34.30$ \\
-& \;\;+ UTD(w/o gated) & $41.04$ & $\mathbf{55.00}$ & $\mathbf{55.63}$ & $44.85$ & $34.44$ \\
-& \;\;+ UTD(with gated) & $\mathbf{41.20}$ & $54.92$ & $55.41$ & $\mathbf{45.18}$ & $\mathbf{34.69}$ \\
+& \;\;+ SLR-C & $40.80$ & $54.60$ & $55.26$ & $44.54$ & $34.09$ \\
+& \;\;+ UTD & $\mathbf{41.19}$ & $54.84$ & $\mathbf{55.37}$ & $44.90$ & $\mathbf{34.92}$ \\
+& FDIL & $41.14$ & $\mathbf{54.89}$ & $55.23$ & $\mathbf{45.20}$ & $34.16$ \\
 \midrule
-\multirow{3}{*}{$1$}
+\multirow{4}{*}{$1$}
 & Baseline & $22.42$ & $36.31$ & $36.60$ & $34.07$ & $\mathbf{18.23}$ \\
-& \;\;+ UTD(w/o gated) & $\mathbf{22.83}$ & $\mathbf{37.28}$ & $\mathbf{37.80}$ & $34.07$ & $18.05$ \\
-& \;\;+ UTD(with gated) & $22.15$ & $36.79$ & $37.20$ & $\mathbf{34.34}$ & $17.41$ \\
+& \;\;+ SLR-C & $22.26$ & $36.29$ & $36.82$ & $33.81$ & $18.14$ \\
+& \;\;+ UTD & $22.52$ & $36.88$ & $\mathbf{37.34}$ & $\mathbf{34.21}$ & $17.70$ \\
+& FDIL & $\mathbf{22.73}$ & $\mathbf{36.90}$ & $37.28$ & $34.09$ & $17.50$ \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \revloc{the new cross-dataset scope-and-limitations paragraph in Sec.~\ref{sec:discussion} (Limitations and Future Directions); the aggregate $5\times5$ protocol and results in Table~\ref{tab:emotic_pool} of this letter; the agreement-stratified analysis in Table~\ref{tab:emotic_agreement} of this letter}
-\revshot{discussion_scope}}
+}
 
 \cresp{Experimental evaluation is not sufficient. More comparisons with state-of-the-art Large Language Model methods (such as 2025 and 2026) and t-SNE are needed.}
 {In response, we created a dedicated ``Zero-shot Multimodal Large Model Comparison'' subsection and added zero-shot Qwen3-VL-8B-Instruct and InternVL3-8B under the same Intentonomy label set and output protocol, together with the published GPT-4o result from IntentMLM. Their Macro-, Micro-, Samples-, Avg-, and difficulty-stratified F1 values are now separate rows in Table~\ref{tab:main_results}. Because all three prompt-only models remain below the task-trained CLIP/FDIL models, the accompanying paragraph now interprets MLLMs as semantic sources rather than substitutes for task-specific learning. We also added an ``Interpretability Analysis'' subsection and Fig.~\ref{fig:tsne}, which compares the CLIP baseline and FDIL embeddings for selected semantically adjacent intents and explains the observed change in local separation.
