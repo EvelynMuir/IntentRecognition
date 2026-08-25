@@ -1,9 +1,8 @@
-
 @inproceedings{guo_calibration_2017,
 	title = {On {Calibration} of {Modern} {Neural} {Networks}},
 	issn = {2640-3498},
 	url = {https://proceedings.mlr.press/v70/guo17a.html},
-	abstract = {Confidence calibration – the problem of predicting probability estimates representative of the true correctness likelihood – is important for classification models in many applications. We discover that modern neural networks, unlike those from a decade ago, are poorly calibrated. Through extensive experiments, we observe that depth, width, weight decay, and Batch Normalization are important factors influencing calibration. We evaluate the performance of various post-processing calibration methods on state-of-the-art architectures with image and document classification datasets. Our analysis and experiments not only offer insights into neural network learning, but also provide a simple and straightforward recipe for practical settings: on most datasets, temperature scaling – a single-parameter variant of Platt Scaling – is surprisingly effective at calibrating predictions.},
+	abstract = {Confidence calibration - the problem of predicting probability estimates representative of the true correctness likelihood – is important for classification models in many applications. We discover that modern neural networks, unlike those from a decade ago, are poorly calibrated. Through extensive experiments, we observe that depth, width, weight decay, and Batch Normalization are important factors influencing calibration. We evaluate the performance of various post-processing calibration methods on state-of-the-art architectures with image and document classification datasets. Our analysis and experiments not only offer insights into neural network learning, but also provide a simple and straightforward recipe for practical settings: on most datasets, temperature scaling – a single-parameter variant of Platt Scaling – is surprisingly effective at calibrating predictions.},
 	language = {en},
 	urldate = {2026-03-31},
 	booktitle = {Proceedings of the 34th {International} {Conference} on {Machine} {Learning}},
@@ -68,11 +67,11 @@
 @inproceedings{peterson_human_2019,
 author = { Peterson, Joshua and Battleday, Ruairidh and Griffiths, Thomas and Russakovsky, Olga },
 	title = {Human {Uncertainty} {Makes} {Classification} {More} {Robust}},
-booktitle = { 2019 IEEE/CVF International Conference on Computer Vision (ICCV) },
+booktitle = { 2019 IEEE/CVF International Conference on Computer Vision },
 year = {2019},
 volume = {},
 ISSN = {},
-pages = {9616-9625},
+pages = {9616--9625},
 abstract = { The classification performance of deep neural networks has begun to asymptote at near-perfect levels. However, their ability to generalize outside the training set and their robustness to adversarial attacks have not. In this paper, we make progress on this problem by training with full label distributions that reflect human perceptual uncertainty. We first present a new benchmark dataset which we call CIFAR10H, containing a full distribution of human labels for each image of the CIFAR10 test set. We then show that, while contemporary classifiers fail to exhibit human-like uncertainty on their own, explicit training on our dataset closes this gap, supports improved generalization to increasingly out-of-training-distribution test datasets, and confers robustness to adversarial attacks. },
 keywords = {Training;Robustness;Uncertainty;Benchmark testing;Standards;Task analysis;Dogs},
 doi = {10.1109/ICCV.2019.00971},
@@ -81,13 +80,12 @@ publisher = {IEEE Computer Society},
 address = {Los Alamitos, CA, USA},
 month =Nov}
 
-
-@article{team_gemini_2025,
-	title = {Gemini: {A} {Family} of {Highly} {Capable} {Multimodal} {Models}},
-	author = {Team, Gemini},
-	month = may,
-	year = {2025},
-	journal = {arXiv preprint arXiv:2312.11805},
+@misc{team_gemini_2025,
+  author       = {{Google DeepMind}},
+  title        = {Gemini 3.1 Pro Model Card},
+  year         = {2026},
+  month        = feb,
+  url          = {https://storage.googleapis.com/deepmind-media/Model-Cards/Gemini-3-1-Pro-Model-Card.pdf}
 }
 
 @inproceedings{loshchilov_decoupled_2018,
@@ -98,8 +96,8 @@ month =Nov}
 	urldate = {2026-03-25},
 	author = {Loshchilov, Ilya and Hutter, Frank},
 	month = sep,
-	booktitle={International Conference on Learning Representations (ICLR)},
-  year={2019}
+	booktitle = {International Conference on Learning Representations},
+	year = {2019}
 }
 
 @inproceedings{xiao_c-pack_2024,
@@ -137,14 +135,14 @@ month =Nov}
 @inproceedings{li_dividemix_2019,
 	title = {{DivideMix}: {Learning} with {Noisy} {Labels} as {Semi}-supervised {Learning}},
 	shorttitle = {{DivideMix}},
-	url = {https://openreview.net/forum?id=HJgExaVtwr&utm_source=chatgpt.com},
+	url = {https://openreview.net/forum?id=HJgExaVtwr},
 	abstract = {Deep neural networks are known to be annotation-hungry. Numerous efforts have been devoted to reducing the annotation cost when learning with deep networks. Two prominent directions include learning with noisy labels and semi-supervised learning by exploiting unlabeled data. In this work, we propose DivideMix, a novel framework for learning with noisy labels by leveraging semi-supervised learning techniques. In particular, DivideMix models the per-sample loss distribution with a mixture model to dynamically divide the training data into a labeled set with clean samples and an unlabeled set with noisy samples, and trains the model on both the labeled and unlabeled data in a semi-supervised manner. To avoid confirmation bias, we simultaneously train two diverged networks where each network uses the dataset division from the other network. During the semi-supervised training phase, we improve the MixMatch strategy by performing label co-refinement and label co-guessing on labeled and unlabeled samples, respectively. Experiments on multiple benchmark datasets demonstrate substantial improvements over state-of-the-art methods. Code is available at https://github.com/LiJunnan1992/DivideMix .},
 	language = {en},
 	urldate = {2026-03-25},
 	author = {Li, Junnan and Socher, Richard and Hoi, Steven C. H.},
 	month = sep,
-	booktitle={International Conference on Learning Representations (ICLR)},
-  year={2020}
+	booktitle = {International Conference on Learning Representations},
+	year = {2020}
 }
 
 @article{chen_structured_2022,
@@ -212,7 +210,7 @@ month =Nov}
 }
 
 @inproceedings{lukasik_does_2020,
-	title = {Does label smoothing mitigate label noise?},
+	title = {Does Label Smoothing Mitigate Label Noise?},
 	issn = {2640-3498},
 	url = {https://proceedings.mlr.press/v119/lukasik20a.html},
 	abstract = {Label smoothing is commonly used in training deep learning models, wherein one-hot training labels are mixed with uniform label vectors. Empirically, smoothing has been shown to improve both predictive performance and model calibration. In this paper, we study whether label smoothing is also effective as a means of coping with label noise. While label smoothing apparently amplifies this problem — being equivalent to injecting symmetric noise to the labels — we show how it relates to a general family of loss-correction techniques from the label noise literature. Building on this connection, we show that label smoothing is competitive with loss-correction under label noise. Further, we show that when distilling models from noisy data, label smoothing of the teacher is beneficial; this is in contrast to recent findings for noise-free problems, and sheds further light on settings where label smoothing is beneficial.},
@@ -233,13 +231,13 @@ month =Nov}
 	author = {He, Kaiming and Zhang, Xiangyu and Ren, Shaoqing and Sun, Jian},
 	year = {2016},
 	pages = {770--778},
-    booktitle={Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition (CVPR)}
+    booktitle = {Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition}
 }
 
 @inproceedings{sun_dualcoop_2022,
 	address = {Red Hook, NY, USA},
 	series = {{NIPS} '22},
-	title = {{DualCoOp}: fast adaptation to multi-label recognition with limited annotations},
+	title = {{DualCoOp}: Fast Adaptation to Multi-Label Recognition with Limited Annotations},
 	isbn = {978-1-7138-7108-8},
 	shorttitle = {{DualCoOp}},
 	abstract = {Solving multi-label recognition (MLR) for images in the low-label regime is a challenging task that has many real-world applications. Recent work learns an alignment between textual and visual spaces to compensate for insufficient image labels, but loses accuracy because of the limited amount of available MLR annotations. In this work, we utilize the strong alignment of textual and visual features pretrained with millions of auxiliary image-text pairs and propose Dual Context Optimization (DualCoOp) as a unified framework for partial-label MLR and zero-shot MLR. DualCoOp encodes positive and negative contexts with class names as part of the linguistic input (i.e. prompts). Since DualCoOp only introduces a very light learnable overhead upon the pretrained vision-language framework, it can quickly adapt to multi-label recognition tasks that have limited annotations and even unseen classes. Experiments on standard multi-label recognition benchmarks across two challenging low-label settings demonstrate the advantages of our approach over state-of-the-art methods.},
@@ -275,7 +273,7 @@ month =Nov}
 	abstract = {An image is worth a thousand words, conveying information that goes beyond the mere visual content therein. In this paper, we study the intent behind social media images with an aim to analyze how visual information can facilitate recognition of human intent. Towards this goal, we introduce an intent dataset, Intentonomy, comprising 14K images covering a wide range of everyday scenes. These images are manually annotated with 28 intent categories derived from a social psychology taxonomy. We then systematically study whether, and to what extent, commonly used visual information, i.e., object and context, contribute to human motive understanding. Based on our findings, we conduct further study to quantify the effect of attending to object and context classes as well as textual information in the form of hashtags when training an intent classifier. Our results quantitatively and qualitatively shed light on how visual and textual information can produce observable effects when predicting intent.1},
 	language = {en-US},
 	urldate = {2026-03-23},
-	booktitle = {2021 {IEEE}/{CVF} {Conference} on {Computer} {Vision} and {Pattern} {Recognition} ({CVPR})},
+	booktitle = {2021 {IEEE}/{CVF} {Conference} on {Computer} {Vision} and {Pattern} {Recognition}},
 	author = {Jia, Menglin and Wu, Zuxuan and Reiter, Austin and Cardie, Claire and Belongie, Serge and Lim, Ser-Nam},
 	month = jun,
 	year = {2021},
@@ -323,7 +321,7 @@ month =Nov}
 	doi = {10.1109/CVPR.2016.89},
 	abstract = {The field of object detection has made significant advances riding on the wave of region-based ConvNets, but their training procedure still includes many heuristics and hyperparameters that are costly to tune. We present a simple yet surprisingly effective online hard example mining (OHEM) algorithm for training region-based ConvNet detectors. Our motivation is the same as it has always been - detection datasets contain an overwhelming number of easy examples and a small number of hard examples. Automatic selection of these hard examples can make training more effective and efficient. OHEM is a simple and intuitive algorithm that eliminates several heuristics and hyperparameters in common use. But more importantly, it yields consistent and significant boosts in detection performance on benchmarks like PASCAL VOC 2007 and 2012. Its effectiveness increases as datasets become larger and more difficult, as demonstrated by the results on the MS COCO dataset. Moreover, combined with complementary advances in the field, OHEM leads to state-of-the-art results of 78.9\% and 76.3\% mAP on PASCAL VOC 2007 and 2012 respectively.},
 	urldate = {2026-03-24},
-	booktitle = {2016 {IEEE} {Conference} on {Computer} {Vision} and {Pattern} {Recognition} ({CVPR})},
+	booktitle = {2016 {IEEE} {Conference} on {Computer} {Vision} and {Pattern} {Recognition}},
 	author = {Shrivastava, Abhinav and Gupta, Abhinav and Girshick, Ross},
 	month = jun,
 	year = {2016},
@@ -349,14 +347,14 @@ month =Nov}
 
 @inproceedings{ridnik_asymmetric_2021,
 	title = {Asymmetric {Loss} {For} {Multi}-{Label} {Classification}},
-  author={Ridnik, Tal and Ben-Baruch, Emanuel and Zamir, Nadav and Noy, Asaf and Friedman, Itamar and Protter, Matan and Zelnik-Manor, Lihi},
-  booktitle={2021 IEEE/CVF International Conference on Computer Vision (ICCV)}, 
-  year={2021},
-  volume={},
-  number={},
-  pages={82-91},
-  keywords={Training;Computer vision;Adaptive systems;Object detection;Benchmark testing;Complexity theory;Task analysis;Recognition and classification;Efficient training and inference methods;Machine learning architectures and formulations;Optimization and learning methods;Scene analysis and understanding},
-  doi={10.1109/ICCV48922.2021.00015}}
+	author = {Ridnik, Tal and Ben-Baruch, Emanuel and Zamir, Nadav and Noy, Asaf and Friedman, Itamar and Protter, Matan and Zelnik-Manor, Lihi},
+  booktitle = {2021 IEEE/CVF International Conference on Computer Vision}, 
+	year = {2021},
+	volume = {},
+	number = {},
+	pages = {82--91},
+	keywords = {Training;Computer vision;Adaptive systems;Object detection;Benchmark testing;Complexity theory;Task analysis;Recognition and classification;Efficient training and inference methods;Machine learning architectures and formulations;Optimization and learning methods;Scene analysis and understanding},
+	doi = {10.1109/ICCV48922.2021.00015}}
 
 @inproceedings{zhang_use_2022,
 	title = {Use {All} {The} {Labels}: {A} {Hierarchical} {Multi}-{Label} {Contrastive} {Learning} {Framework}},
@@ -366,7 +364,7 @@ month =Nov}
 	doi = {10.1109/CVPR52688.2022.01616},
 	abstract = {Current contrastive learning frameworks focus on leveraging a single supervisory signal to learn representations, which limits the efficacy on unseen data and downstream tasks. In this paper, we present a hierarchical multi-label representation learning framework that can leverage all available labels and preserve the hierarchical relationship between classes. We introduce novel hierarchy preserving losses, which jointly apply a hierarchical penalty to the contrastive loss, and enforce the hierarchy constraint. The loss function is data driven and automatically adapts to arbitrary multi-label structures. Experiments on several datasets show that our relationship-preserving embedding performs well on a variety of tasks and outperform the base-line supervised and self-supervised approaches. Code is available at https://github.com/salesforce/hierarchicalContrastiveLearning.},
 	urldate = {2026-03-24},
-	booktitle = {2022 {IEEE}/{CVF} {Conference} on {Computer} {Vision} and {Pattern} {Recognition} ({CVPR})},
+	booktitle = {2022 {IEEE}/{CVF} {Conference} on {Computer} {Vision} and {Pattern} {Recognition}},
 	author = {Zhang, Shu and Xu, Ran and Xiong, Caiming and Ramaiah, Chetan},
 	month = jun,
 	year = {2022},
@@ -417,7 +415,7 @@ month =Nov}
 	abstract = {The human face is a primary medium of human communication and a prominent source of information used to infer various attributes. In this paper, we study a fully automated system that can infer the perceived traits of a person from his face – social dimensions, such as “intelligence,” “honesty,” and “competence” – and how those traits can be used to predict the outcomes of real-world social events that involve long-term commitments, such as political elections, job hires, and marriage engagements. To this end, we propose a hierarchical model for enduring traits inferred from faces, incorporating high-level perceptions and intermediate-level attributes.},
 	language = {en},
 	urldate = {2026-03-24},
-	booktitle = {2015 {IEEE} {International} {Conference} on {Computer} {Vision} ({ICCV})},
+	booktitle = {2015 {IEEE} {International} {Conference} on {Computer} {Vision}},
 	publisher = {IEEE},
 	author = {Joo, Jungseock and Steen, Francis F. and Zhu, Song-Chun},
 	month = dec,
@@ -451,7 +449,7 @@ month =Nov}
 	abstract = {Visual intention understanding is to mine the potential and subjective intention behind the images, which includes the user\&amp;\#x0027;s hidden emotions and perspectives. Due to the label ambiguity, this paper presents a novel learnable Hierarchical Label Embedding and Grouping (HLEG). It is featured in three aspects: 1) For effectively mining the underlying meaning of images, we build a hierarchical transformer structure to model the hierarchy of labels, formulating a multi-level classification scheme. 2) For the label ambiguity issue, we design a novel learnable label embedding with accumulative grouping integrated into the hierarchical structure, which does not require additional annotation. 3) For multi-level classification, we propose a \&amp;\#x201C;Hard-First\&amp;\#x201D; optimization strategy to adaptively adjust the classification optimization at different levels, avoiding over-classification of the coarse labels. HLEG enhances the F1 score (average +1.24\&amp;\#x0025;) and mAP (average +1.48\&amp;\#x0025;) on Intentonomy over prominent baseline models. Comprehensive experiments validate the superiority of our proposed method, achieving state-of-the-art performance under various settings. Code is available at \&lt;uri\&gt;https://github.com/ShiQingHongYa/HLEG\&lt;/uri\&gt;.},
 	number = {4},
 	urldate = {2026-03-23},
-	journal = {IEEE Trans. Affect. Comput.},
+	journal = {IEEE Transactions on Affective Computing},
 	author = {Shi, QingHongYa and Ye, Mang and Zhang, Ziyi and Du, Bo},
 	year = {2023},
 	pages = {3218--3230},
@@ -468,7 +466,7 @@ month =Nov}
 	abstract = {Sarcasm indicates the literal meaning is contrary to the real attitude. Considering the popularity and complementarity of image-text data, we investigate the task of multimodal sarcasm detection. Diﬀerent from other multi-modal tasks, for the sarcastic data, there exists intrinsic incongruity between a pair of image and text as demonstrated in psychological theories. To tackle this issue, we propose a Dual Incongruity Perceiving (DIP) network consisting of two branches to mine the sarcastic information from factual and aﬀective levels. For the factual aspect, we introduce a channel-wise reweighting strategy to obtain semantically discriminative embeddings, and leverage gaussian distribution to model the uncertain correlation caused by the incongruity. The distribution is generated from the latest data stored in the memory bank, which can adaptively model the diﬀerence of semantic similarity between sarcastic and non-sarcastic data. For the aﬀective aspect, we utilize siamese layers with shared parameters to learn cross-modal sentiment information. Furthermore, we use the polarity value to construct a relation graph for the mini-batch, which forms the continuous contrastive loss to acquire aﬀective embeddings. Extensive experiments demonstrate that our proposed method performs favorably against state-of-the-art approaches. Our code is released on https://github.com/downdric/MSD.},
 	language = {en},
 	urldate = {2026-03-20},
-	booktitle = {2023 {IEEE}/{CVF} {Conference} on {Computer} {Vision} and {Pattern} {Recognition} ({CVPR})},
+	booktitle = {2023 {IEEE}/{CVF} {Conference} on {Computer} {Vision} and {Pattern} {Recognition}},
 	publisher = {IEEE},
 	author = {Wen, Changsong and Jia, Guoli and Yang, Jufeng},
 	month = jun,
@@ -493,24 +491,15 @@ month =Nov}
 	pages = {112582},
 }
 
-@incollection{leonardis_synergy_2025,
-	address = {Cham},
+@inproceedings{leonardis_synergy_2025,
 	title = {Synergy of {Sight} and {Semantics}: {Visual} {Intention} {Understanding} with {CLIP}},
-	volume = {15069},
-	isbn = {978-3-031-73246-1 978-3-031-73247-8},
 	shorttitle = {Synergy of {Sight} and {Semantics}},
 	url = {https://link.springer.com/10.1007/978-3-031-73247-8_9},
 	doi = {10.1007/978-3-031-73247-8_9},
-	abstract = {Multi-label Intention Understanding (MIU) for images is a critical yet challenging domain, primarily due to the ambiguity of intentions leading to a resource-intensive annotation process. Current leading approaches are held back by the limited amount of labeled data. To mitigate the scarcity of annotated data, we leverage the Contrastive Language-Image Pre-training (CLIP) model, renowned for its wealth knowledge in textual and visual modalities. We introduce a novel framework, Intention Understanding with CLIP (IntCLIP), which utilizes a dual-branch approach. This framework exploits the ‘Sight’-oriented knowledge inherent in CLIP to augment ‘Semantic’-centric MIU tasks. Additionally, we propose Hierarchical Class Integration to effectively manage the complex layered label structure, aligning it with CLIP’s nuanced sentence feature extraction capabilities. Our Sight-assisted Aggregation further refines this model by infusing the semantic feature map with essential visual cues, thereby enhancing the intention understanding ability. Through extensive experiments conducted on the standard MIU benchmark and other subjective tasks such as Image Emotion Recognition, IntCLIP clearly demonstrates superiority over current state-of-the-art techniques. Code is available at https://github.com/ yan9qu/IntCLIP.},
-	language = {en},
-	urldate = {2025-03-10},
-	booktitle = {Computer {Vision} – {ECCV} 2024},
-	publisher = {Springer Nature Switzerland},
-	author = {Yang, Qu and Ye, Mang and Tao, Dacheng},
-	editor = {Leonardis, Aleš and Ricci, Elisa and Roth, Stefan and Russakovsky, Olga and Sattler, Torsten and Varol, Gül},
-	year = {2025},
-	note = {Series Title: Lecture Notes in Computer Science},
+	booktitle = {Proceedings of the European Conference on Computer Vision},
 	pages = {144--160},
+	author = {Yang, Qu and Ye, Mang and Tao, Dacheng},
+	year = {2024},
 }
 
 @article{wang_prototype-based_2023,
@@ -590,12 +579,179 @@ month =Nov}
       url={https://arxiv.org/abs/2504.10479},
 }
 
+@article{yang_holistic_2026,
+	title = {Synergy of {Sight} and {Semantics}: {Holistic} {Visual} {Understanding} with {CLIP}},
+	shorttitle = {Synergy of {Sight} and {Semantics}},
+	volume = {48},
+	number = {3},
+	journal = {IEEE Transactions on Pattern Analysis and Machine Intelligence},
+	author = {Yang, Qu and Ye, Mang and Tao, Dacheng},
+	year = {2026},
+	pages = {3119--3136},
+	doi = {10.1109/TPAMI.2025.3634165},
+}
+
+@misc{huang_cot4intent_2026,
+	title = {{CoT4Intent}: {Exploring} {Hallucination} in {MLLMs} for {Visual} {Intention} {Understanding}},
+	shorttitle = {{CoT4Intent}},
+	url = {https://ssrn.com/abstract=7035532},
+	doi = {10.2139/ssrn.7035532},
+	author = {Huang, Dan and Zhang, Ni and Wang, Xiaoxu and Zhao, Wangbo and Wang, Binglu},
+	year = {2026},
+	note = {SSRN preprint},
+}
+
 @article{kosti_context_2019,
 	title = {Context {Based} {Emotion} {Recognition} {Using} {EMOTIC} {Dataset}},
 	volume = {42},
 	number = {11},
-	journal = {IEEE Transactions on Pattern Analysis and Machine Intelligence (TPAMI)},
+	journal = {IEEE Transactions on Pattern Analysis and Machine Intelligence},
 	author = {Kosti, Ronak and Alvarez, Jose M. and Recasens, Adria and Lapedriza, Agata},
-	year = {2019},
+	year = {2020},
 	pages = {2755--2766},
+	doi = {10.1109/TPAMI.2019.2916866},
+}
+
+@article{hinton_training_2002,
+	title = {Training {Products} of {Experts} by {Minimizing} {Contrastive} {Divergence}},
+	author = {Hinton, Geoffrey E.},
+	journal = {Neural Computation},
+	volume = {14},
+	number = {8},
+	pages = {1771--1800},
+	year = {2002},
+	doi = {10.1162/089976602760128018},
+}
+
+@article{gneiting_strictly_2007,
+	title = {Strictly {Proper} {Scoring} {Rules}, {Prediction}, and {Estimation}},
+	author = {Gneiting, Tilmann and Raftery, Adrian E.},
+	journal = {Journal of the American Statistical Association},
+	volume = {102},
+	number = {477},
+	pages = {359--378},
+	year = {2007},
+	doi = {10.1198/016214506000001437},
+}
+
+@article{audibert_fast_2007,
+	title = {Fast Learning Rates for Plug-In Classifiers},
+	author = {Audibert, Jean-Yves and Tsybakov, Alexandre B.},
+	journal = {The Annals of Statistics},
+	volume = {35},
+	number = {2},
+	pages = {608--633},
+	year = {2007},
+	doi = {10.1214/009053606000001217},
+}
+
+@article{vapnik_new_2009,
+	title = {A New Learning Paradigm: {Learning} Using Privileged Information},
+	author = {Vapnik, Vladimir and Vashist, Akshay},
+	journal = {Neural Networks},
+	volume = {22},
+	number = {5-6},
+	pages = {544--557},
+	year = {2009},
+	doi = {10.1016/j.neunet.2009.06.042},
+}
+
+@inproceedings{lopez-paz_unifying_2016,
+	title = {Unifying Distillation and Privileged Information},
+	author = {Lopez-Paz, David and Bottou, L{\'e}on and Sch{\"o}lkopf, Bernhard and Vapnik, Vladimir},
+	booktitle = {International Conference on Learning Representations},
+	year = {2016},
+}
+
+@misc{qwen_qwen35_2026,
+  title  = {{Qwen3.5}: Towards Native Multimodal Agents},
+  author = {{Qwen Team}},
+  month  = {February},
+  year   = {2026},
+  url    = {https://qwen.ai/blog?id=qwen3.5}
+}
+
+@misc{huang_step3-vl-10b_2026,
+	title = {{STEP3-VL-10B} {Technical} {Report}},
+	author = {Huang, Ailin and Yao, Chengyuan and Han, Chunrui and Wan, Fanqi and Guo, Hangyu and others},
+	year = {2026},
+	eprint = {2601.09668},
+	archivePrefix = {arXiv},
+	primaryClass = {cs.CV},
+	note = {arXiv:2601.09668},
+	url = {https://arxiv.org/abs/2601.09668},
+}
+
+@misc{gemma_team_gemma4_2026,
+	title = {Gemma 4 {Technical} {Report}},
+	author = {{Gemma Team}},
+	year = {2026},
+	eprint = {2607.02770},
+	archivePrefix = {arXiv},
+	primaryClass = {cs.CL},
+	note = {arXiv:2607.02770},
+	url = {https://arxiv.org/abs/2607.02770},
+}
+
+@misc{openai_gpt56sol_2026,
+	title = {{GPT-5.6 Sol Model}},
+	author = {{OpenAI}},
+	year = {2026},
+	note = {OpenAI API model documentation, accessed August 24, 2026},
+	url = {https://developers.openai.com/api/docs/models/gpt-5.6-sol},
+}
+
+@inproceedings{yang_learning_2017,
+	title = {Learning {Visual} {Sentiment} {Distributions} via {Augmented} {Conditional} {Probability} {Neural} {Network}},
+	booktitle = {Proceedings of the Thirty-First AAAI Conference on Artificial Intelligence},
+	author = {Yang, Jufeng and Sun, Ming and Sun, Xiaoxiao},
+	year = {2017},
+	pages = {224--230},
+}
+
+@inproceedings{li_approximately_2025,
+	title = {Approximately {Correct} {Label} {Distribution} {Learning}},
+	booktitle = {Proceedings of the 42nd International Conference on Machine Learning},
+	author = {Li, Weiwei and Wu, Haitao and Lu, Yunan and Jia, Xiuyi},
+	year = {2025},
+	series = {Proceedings of Machine Learning Research},
+	volume = {267},
+}
+
+@inproceedings{lu2026divisiveness,
+  title={Divisiveness-Consistent Label Distribution Learning},
+  author={Lu, Yunan and Wu, Haitao and Li, Weiwei and Yang, Lei and Jia, Xiuyi},
+  booktitle={Proceedings of the 43rd International Conference on Machine Learning},
+  year={2026}
+}
+
+@inproceedings{peng_mixed_2015,
+	title = {A {Mixed} {Bag} of {Emotions}: {Model}, {Predict}, and {Transfer} {Emotion} {Distributions}},
+	booktitle = {Proceedings of the IEEE Conference on Computer Vision and Pattern Recognition},
+	author = {Peng, Kuan-Chuan and Chen, Tsuhan and Sadovnik, Amir and Gallagher, Andrew C.},
+	year = {2015},
+	pages = {860--868},
+	doi = {10.1109/CVPR.2015.7298687},
+}
+
+@article{jia_label_2023,
+	title = {Label {Distribution} {Learning} by {Maintaining} {Label} {Ranking} {Relation}},
+	volume = {35},
+	number = {2},
+	journal = {IEEE Transactions on Knowledge and Data Engineering},
+	author = {Jia, Xiuyi and Shen, Xiaoxia and Li, Weiwei and Lu, Yunan and Zhu, Jihua},
+	year = {2023},
+	pages = {1695--1707},
+	doi = {10.1109/TKDE.2021.3099294},
+}
+
+@article{jia_adaptive_2024,
+	title = {Adaptive {Weighted} {Ranking}-{Oriented} {Label} {Distribution} {Learning}},
+	volume = {35},
+	number = {8},
+	journal = {IEEE Transactions on Neural Networks and Learning Systems},
+	author = {Jia, Xiuyi and Qin, Tian and Lu, Yunan and Li, Weiwei},
+	year = {2024},
+	pages = {11302--11316},
+	doi = {10.1109/TNNLS.2023.3258976},
 }

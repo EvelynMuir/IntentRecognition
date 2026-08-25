@@ -2,7 +2,35 @@
 % === Editor-in-Chief Checklist ===
 % ================================
 \reviewerblock{Editor-in-Chief Checklist}{%
-\todo{lead-in paragraph}}
+We checked the revision against each item and report the outcome below.}
 
-% \cresp{verbatim checklist item}{our response
-% \revloc{where and what we changed in the manuscript}}
+\cresp{Take a careful look at your bibliography and they cover the state of the art. Missing references from last and current year most probably would mean you are missing the state of the art and the revision process can be delayed being asked to update it. Please do not make excessive citation to arXiv papers, but substitute them with their peer-reviewed versions, or papers from a single conference series. Do not cite large groups of papers without individually commenting on them. So we discourage `` In prior work [1,2,3,4,5,6] \ldots''. Your bibliography in the final version after the revision still should be between 35-55 items.}
+{\gist{Recent coverage extended, all new works discussed individually, \res{51} cited items.}
+
+\rh{Recent coverage.} We add two 2026 works, CoT4Intent and HVU-CLIP (TPAMI~2026), alongside the IntCLIP (ECCV~2024) and IntentMLM (Pattern Recognition~2026) references already present, plus the recent label-distribution-learning line (LDL-DVS, ICML~2026). The bibliography now covers the current state of the art on this benchmark.
+
+\rh{Preprint citations.} We checked every entry for a peer-reviewed version and cite it wherever one exists. The few remaining preprint citations are model technical reports and system cards for the MLLMs we evaluate zero-shot, which have no peer-reviewed version to substitute.
+
+\rh{No unsupported citation groups.} We reviewed the citation sites in the revised material. The newly added intent-recognition and label-distribution methods are each discussed by name and contribution in Sec.~\ref{sec:related_work}, rather than appended to an unexplained bracket list.
+
+\rh{Bibliography size.} The compiled revised manuscript contains \res{51} cited items, within the required 35--55 range.
+\revloc{the new entries and corrected venue fields in the Bibliography, and the individually discussed additions in Sec.~\ref{sec:related_work}}
+}
+
+\cresp{Please make sure the revised version is relevant to the readership of the Pattern Recognition field. To this end, please make sure you cite RECENT work from the field of pattern recognition not only the Pattern Recognition journal.}
+{\gist{The bibliography spans the recent pattern-recognition literature rather than a single venue.}
+
+Cited venues include IEEE~TPAMI (HVU-CLIP, 2026), Pattern Recognition (IntentMLM, 2026), ICML~2026 (LDL-DVS), ICML~2025 ($\delta$-LDL), IEEE~TKDE (LDL-LRR, 2023), IEEE~TNNLS (LDL-DPA, 2024), IEEE~TIP (LabCR~2024, CPAD~2023), IEEE~TAC (HLEG~2023), IEEE~TMM (PIP-Net~2023), and ECCV~2024 (IntCLIP), together with the multi-label classification and noisy-label lines from CVPR, NeurIPS, ICML, ICLR, and AAAI.
+
+The problem itself, multi-label recognition under ambiguous and subjective supervision with calibration and threshold selection treated explicitly, sits squarely within the journal's scope.
+\revloc{the venue distribution of the Bibliography, and the multi-label and label-noise method families compared in Table~\ref{tab:main_results}}
+}
+
+\cresp{Although the revision could lead to extending your article, it still can not exceed the page limits or violate the format, i.e. double spaced SINGLE column with a maximum of 35 pages for a regular paper and 40 pages for a review.}
+{\gist{The compiled marked-up manuscript is \res{35 pages}, double-spaced and single-column, exactly at the limit.}
+
+The revised manuscript is double-spaced and single-column throughout, in the \texttt{elsarticle} \texttt{review} format, with no reduction of line spacing anywhere, neither in the body nor the tables nor the bibliography.
+
+To fit the reviewer-requested statistical validation, theoretical analysis, zero-shot MLLM comparison, interaction experiment, and cross-dataset generalization study within that limit, we condensed repeated protocol text and kept the two label-distribution benchmarks in one combined table. An earlier exploratory EMOTIC transfer study and several supplementary diagnostic tables are not included in the submitted manuscript. The per-class attribution table among them is reproduced in this letter (Table~\ref{tab:per_class_attr_letter}). These choices preserve the requested evidence while keeping the article within both the page and formatting requirements.
+\revloc{the 35-page compiled review manuscript and its unchanged double-spaced, single-column format}
+}

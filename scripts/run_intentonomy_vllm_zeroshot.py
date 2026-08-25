@@ -41,6 +41,24 @@ SYSTEM_PROMPT = (
     "You are an expert visual intent recognition evaluator. "
     "You must infer human intents from the visible image evidence only."
 )
+PROTOCOL_VERSION = "intentonomy-vllm-zeroshot-v2-all28-json"
+RESUME_CONFIG_KEYS = (
+    "protocol_version",
+    "model",
+    "annotation_file",
+    "image_dir",
+    "max_image_size",
+    "max_tokens",
+    "temperature",
+    "top_p",
+    "top_k",
+    "min_p",
+    "presence_penalty",
+    "repetition_penalty",
+    "disable_thinking",
+    "json_response",
+    "require_all_classes",
+)
 
 
 def _parse_args() -> argparse.Namespace:
@@ -55,9 +73,31 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--max-tokens", type=int, default=192)
     parser.add_argument("--temperature", type=float, default=0.0)
     parser.add_argument("--top-p", type=float, default=1.0)
+    parser.add_argument("--top-k", type=int, default=None)
+    parser.add_argument("--min-p", type=float, default=None)
+    parser.add_argument("--presence-penalty", type=float, default=None)
+    parser.add_argument("--repetition-penalty", type=float, default=None)
     parser.add_argument("--workers", type=int, default=8)
     parser.add_argument("--request-timeout", type=float, default=120.0)
     parser.add_argument("--retries", type=int, default=3)
+    parser.add_argument(
+        "--disable-thinking",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Pass enable_thinking=false to the server chat template (default: true).",
+    )
+    parser.add_argument(
+        "--json-response",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Request OpenAI JSON-object constrained decoding (default: true).",
+    )
+    parser.add_argument(
+        "--require-all-classes",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Retry responses that omit any Intentonomy class (default: true).",
+    )
     parser.add_argument("--overwrite", action="store_true")
     return parser.parse_args()
 
@@ -116,7 +156,12 @@ def _encode_image_data_url(image_path: str, max_image_size: int) -> str:
 def _build_prompt(class_names: list[str]) -> str:
     categories = ", ".join(f"'{name}'" for name in class_names)
     return f"""
-Please analyze the given <image> and determine which of the following categories it may belong to. Provide your answer in the format: {{'Category 1': probability, 'Category 2': probability, ...}}. Ensure that the predicted probabilities for each selected category are within the range of 0 to 1. The categories are: {categories}.
+Analyze the image and estimate the probability that each human-intent category applies.
+Return exactly one JSON object and nothing else. The object must contain all 28 category
+names below as keys, in the given order, with numeric probabilities between 0 and 1.
+Do not use Markdown, explanations, or additional keys.
+
+Categories: {categories}
 """.strip()
 
 
@@ -130,8 +175,15 @@ def _request_prediction(
     max_tokens: int,
     temperature: float,
     top_p: float,
+    top_k: int | None,
+    min_p: float | None,
+    presence_penalty: float | None,
+    repetition_penalty: float | None,
     timeout: float,
     retries: int,
+    disable_thinking: bool,
+    json_response: bool,
+    require_all_classes: bool,
 ) -> dict[str, Any]:
     url = base_url.rstrip("/") + "/chat/completions"
     payload = {
@@ -150,6 +202,18 @@ def _request_prediction(
         "top_p": float(top_p),
         "max_tokens": int(max_tokens),
     }
+    if top_k is not None:
+        payload["top_k"] = int(top_k)
+    if min_p is not None:
+        payload["min_p"] = float(min_p)
+    if presence_penalty is not None:
+        payload["presence_penalty"] = float(presence_penalty)
+    if repetition_penalty is not None:
+        payload["repetition_penalty"] = float(repetition_penalty)
+    if disable_thinking:
+        payload["chat_template_kwargs"] = {"enable_thinking": False}
+    if json_response:
+        payload["response_format"] = {"type": "json_object"}
     last_error = None
     for attempt in range(int(retries) + 1):
         try:
@@ -158,6 +222,23 @@ def _request_prediction(
             body = response.json()
             text = body["choices"][0]["message"]["content"]
             pred_ids, pred_probs, parse_status = _parse_prediction(text, class_names)
+            if not pred_probs:
+                raise ValueError(
+                    f"No valid category-probability pairs parsed from response: {text[:300]!r}"
+                )
+            if require_all_classes and len(pred_probs) != len(class_names):
+                missing_names = [name for name in class_names if name not in pred_probs]
+                if len(missing_names) == 1:
+                    # A nearly complete structured response occasionally omits one
+                    # low-confidence key. Treat omission as zero while preserving an
+                    # explicit audit status instead of discarding the whole sample.
+                    pred_probs[missing_names[0]] = 0.0
+                    pred_ids = list(range(len(class_names)))
+                    parse_status = f"{parse_status}_missing_filled_zero"
+                else:
+                    raise ValueError(
+                        f"Expected {len(class_names)} class probabilities, parsed {len(pred_probs)}"
+                    )
             return {
                 **record,
                 "response_text": text,
@@ -217,13 +298,6 @@ def _parse_prediction(text: str, class_names: list[str]) -> tuple[list[int], dic
         if probs_by_idx:
             status = "regex_pairs"
 
-    if not probs_by_idx:
-        status = "text_match" if parsed is None else "fallback_text_match"
-        lowered = _normalize_label(text)
-        for key, idx in normalized_to_idx.items():
-            if key and key in lowered:
-                probs_by_idx[idx] = 1.0
-
     pred_ids = sorted(probs_by_idx)
     pred_probs = {class_names[idx]: float(probs_by_idx[idx]) for idx in pred_ids}
     return pred_ids, pred_probs, status
@@ -251,6 +325,15 @@ def _load_existing(path: Path) -> dict[str, dict[str, Any]]:
     return rows
 
 
+def _compact_predictions(path: Path, rows: list[dict[str, Any]]) -> None:
+    """Atomically rewrite the JSONL with one canonical successful row per sample."""
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    with temporary.open("w", encoding="utf-8") as handle:
+        for row in rows:
+            handle.write(json.dumps(row, ensure_ascii=False) + "\n")
+    temporary.replace(path)
+
+
 def _write_metrics(output_dir: Path, class_names: list[str], rows: list[dict[str, Any]]) -> dict[str, Any]:
     targets = np.zeros((len(rows), len(class_names)), dtype=np.int32)
     scores = np.zeros((len(rows), len(class_names)), dtype=np.float32)
@@ -274,6 +357,7 @@ def _write_metrics(output_dir: Path, class_names: list[str], rows: list[dict[str
         "medium_f1": float(difficulty["medium"]),
         "hard_f1": float(difficulty["hard"]),
         "parse_status_counts": _count_values(row["parse_status"] for row in rows),
+        "request_error_count": int(sum(1 for row in rows if row.get("error") is not None)),
         "empty_prediction_count": int(sum(1 for row in rows if not row["pred_ids"])),
         "per_class": [
             {
@@ -309,6 +393,23 @@ def main() -> None:
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     output_jsonl = output_dir / "predictions.jsonl"
+    config_path = output_dir / "run_config.json"
+    run_config = {"protocol_version": PROTOCOL_VERSION, **vars(args)}
+    if config_path.exists() and output_jsonl.exists() and not args.overwrite:
+        previous_config = json.loads(config_path.read_text(encoding="utf-8"))
+        mismatches = {
+            key: (previous_config.get(key), run_config.get(key))
+            for key in RESUME_CONFIG_KEYS
+            if previous_config.get(key) != run_config.get(key)
+        }
+        if mismatches:
+            raise RuntimeError(
+                "Refusing to mix predictions from different protocols in one output directory. "
+                f"Mismatched settings: {mismatches}. Use a new --output-dir or --overwrite."
+            )
+    config_path.write_text(
+        json.dumps(run_config, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
     if args.overwrite and output_jsonl.exists():
         output_jsonl.unlink()
 
@@ -333,8 +434,15 @@ def main() -> None:
                     max_tokens=int(args.max_tokens),
                     temperature=float(args.temperature),
                     top_p=float(args.top_p),
+                    top_k=args.top_k,
+                    min_p=args.min_p,
+                    presence_penalty=args.presence_penalty,
+                    repetition_penalty=args.repetition_penalty,
                     timeout=float(args.request_timeout),
                     retries=int(args.retries),
+                    disable_thinking=bool(args.disable_thinking),
+                    json_response=bool(args.json_response),
+                    require_all_classes=bool(args.require_all_classes),
                 )
                 for record in pending
             ]
@@ -347,6 +455,7 @@ def main() -> None:
                     print(f"[zeroshot] completed={done}/{len(futures)}")
 
     rows = [existing[record["image_id"]] for record in records if record["image_id"] in existing]
+    _compact_predictions(output_jsonl, rows)
     metrics = _write_metrics(output_dir, class_names, rows)
     print(
         "[zeroshot] "

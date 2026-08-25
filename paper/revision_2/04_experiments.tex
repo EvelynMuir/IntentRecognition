@@ -8,15 +8,24 @@ We evaluate our method on the Intentonomy dataset \cite{jia_intentonomy_2021}, a
 
 We use Macro F1, Micro F1, Samples F1 as the evaluation metrics. To be consistent with recent Intentonomy works, we additionally report $\textit{Avg.}$, which is the average of three F1 scores. Unless otherwise stated, all reported numbers are percentages and all results are computed on the Intentonomy test split.
 
-To better understand the effectiveness of our method, we further conduct experiments on subsets of the intent classes. We follow the work of Jia et al. \cite{jia_intentonomy_2021} and break down intent classes according to content difficulty and dependency. Difficulty classes are measured by how much a standard ResNet-50 model outperforms the random results. Content classes are divided into object-dependent ({\itshape Object}-classes), context-dependent ({\itshape Context}-classes), and {\itshape Others}, which depend on both foreground and background information. We emphasize the \textit{Hard} score throughout the analysis because it specifically measures performance on ambiguity-prone intent categories, where semantic overlap and subjective disagreement are most severe. Improvements on the hard subset therefore provide stronger evidence that a method is resolving the core difficulty of intention understanding rather than merely exploiting easy classes.
+To better understand the effectiveness of our method, we further conduct experiments on subsets of the intent classes. We follow the work of Jia et al. \cite{jia_intentonomy_2021} and break down intent classes according to content difficulty and dependency. Difficulty classes are measured by how much a standard ResNet-50 model outperforms the random results. Content classes are divided into object-dependent ({\itshape Object}-classes), context-dependent ({\itshape Context}-classes), and {\itshape Others}, which depend on both foreground and background information. We emphasize the \textit{Hard} score throughout the analysis, since it measures the ambiguity-prone categories where semantic overlap and annotator disagreement are most severe.
+
+% ---- EMOTIC dataset paragraph withdrawn from the manuscript (kept for reference) ----
+% \revised{For the cross-dataset study, we additionally use EMOTIC~\cite{kosti_context_2019}, a context-based benchmark for affective understanding that labels each annotated person with $26$ non-exclusive emotion categories. It contains 23,571 images with 34,320 annotated instances. Multi-annotator labels are released only for the validation and test partitions. Our transfer study is confined to the multi-annotated pool and reported as a controlled analysis with mAP alongside the three F1 scores.}
+
+\revised{For the cross-dataset study we use two label-distribution benchmarks, Flickr-LDL~\cite{yang_learning_2017} ($11{,}150$ Flickr images, eight emotions) and Emotion6~\cite{peng_mixed_2015} ($1{,}980$ images, seven categories including neutral).
+% We chose them for two reasons. Each image carries a distribution of annotator votes rather than a single label, so the disagreement FDIL exploits is recorded natively instead of inferred; and that supervision lives on the probability simplex, which lets us test whether our decoupling depends on the output geometry it was designed around. Emotion6, an order of magnitude smaller, serves as a low-power replication. Each official test split is left untouched, and we report the seven standard label-distribution metrics: Chebyshev, Clark, KL divergence (KLD), cosine similarity, Spearman rank correlation, the parameter-free approximate-correctness percentage $\mu$~\cite{li_approximately_2025}, and the divisiveness error DVSE~\cite{lu2026divisiveness}, which measures how much conflicting positive and negative emotion mass a prediction preserves and is therefore the metric closest to the ambiguity we target. UTD needs no extra annotation here: its gate reads $\omega$ off the dominant vote mass of the released distribution.
+we report the seven standard label-distribution metrics, which are Chebyshev, Clark, KL divergence (KLD), cosine similarity, Spearman rank correlation, the parameter-free approximate-correctness percentage $\mu$~\cite{li_approximately_2025}, and the divisiveness error DVSE~\cite{lu2026divisiveness}, which measures how much conflicting positive and negative emotion mass a prediction preserves and is therefore the metric closest to the ambiguity we target.
+}
 
 \begin{table}[htbp]
 \centering
-\small
-\caption{Main comparison on Intentonomy test split. Avg.\ is the mean of Macro/Micro/Samples F1. FDIL rows report mean$\pm$std over three seeds. $^{\dagger}$Quoted from IntentMLM~\cite{wang_unlocking_2026}.}
+\scriptsize
+% \small
+\caption{Main comparison on Intentonomy test split. Avg.\ is the mean of Macro/Micro/Samples F1. \revised{Rows under matched protocol (the ``(ViT-L/14)'' reproductions, the CLIP baseline, and ours) report the five-seed mean, and $\pm$ is the $95\%$ $t$-interval half-width.} \revised{$^{\dagger}$HVU-CLIP is quoted under its own ViT-B/32 backbone because no code has been released, and a backbone-matched comparison under ResNet101 is given in Table~\ref{tab:backbone_ablation}.}}
 \label{tab:main_results}
 \begingroup
-\setlength{\tabcolsep}{4pt}
+\setlength{\tabcolsep}{3pt}
 \begin{tabular}{llcccc}
 \hline
 Method & Publication & Macro F1 & Micro F1 & Samples F1 & Avg. \\
@@ -39,13 +48,12 @@ Dividemix \cite{li_dividemix_2019} & ICLR 2020 & 30.11 & 40.23 & 41.56 & 37.30 \
 \multicolumn{6}{l}{\textbf{Intent perception methods}} \\
 Jia \cite{jia_intentonomy_2021} & CVPR 2021 & 23.98 & 31.28 & 31.39 & 28.88 \\
 CPAD \cite{ye_cross-modality_2023} & TIP 2023 & 27.39 & 40.98 & 41.12 & 36.50 \\
-HLEG \cite{shi_learnable_2023} & TAC 2023 & 32.77 & 44.69 & 45.54 & 41.00 \\
-HLEG (CLIP ViT-L/14) \cite{shi_learnable_2023} & TAC 2023 & 48.17 & 57.29 & 56.81 & 54.09 \\
 PIP-Net \cite{wang_prototype-based_2023} & TMM 2023 & 32.57 & 45.94 & 47.05 & 41.85 \\
-LabCR \cite{shi_label-aware_2024} & TIP 2024 & 34.63 & 48.51 & 48.05 & 43.73 \\
-LabCR (CLIP ViT-L/14) \cite{shi_label-aware_2024} & TIP 2024 & 48.04 & 57.13 & 56.65 & 53.94 \\
-IntCLIP \cite{leonardis_synergy_2025} & ECCV 2024 & 40.15 & 53.54 & 51.01 & 48.23 \\
-IntCLIP (CLIP ViT-L/14) \cite{leonardis_synergy_2025} & ECCV 2024 & 47.28 & 56.18 & 54.86 & 52.77 \\
+\revised{CoT4Intent \cite{huang_cot4intent_2026}} & \revised{-} & \revised{41.70} & \revised{53.10} & \revised{53.82} & \revised{49.54} \\
+\revised{HVU-CLIP \cite{yang_holistic_2026} (ViT-B/32)$^{\dagger}$} & \revised{TPAMI 2026} & \revised{42.91} & \revised{55.22} & \revised{52.54} & \revised{50.22} \\
+LabCR (ViT-L/14) \cite{shi_label-aware_2024} & TIP 2024 & \revised{$47.87_{\pm0.38}$} & \revised{$56.78_{\pm0.97}$} & \revised{$57.23_{\pm1.25}$} & \revised{$53.96_{\pm0.71}$} \\
+HLEG (ViT-L/14) \cite{shi_learnable_2023} & TAC 2023 & \revised{$47.38_{\pm0.75}$} & \revised{$54.85_{\pm1.70}$} & \revised{$55.29_{\pm1.06}$} & \revised{$52.50_{\pm0.98}$} \\
+IntCLIP (ViT-L/14) \cite{leonardis_synergy_2025} & ECCV 2024 & \revised{$44.98_{\pm1.12}$} & \revised{$54.73_{\pm0.49}$} & \revised{$54.73_{\pm1.18}$} & \revised{$51.48_{\pm0.82}$} \\
 % \hline
 % \multicolumn{6}{l}{\textbf{Multimodal large model methods}} \\
 % Qwen2-VL-7B & - & 21.85 & 27.06 & 33.48 & 27.46 \\
@@ -53,14 +61,9 @@ IntCLIP (CLIP ViT-L/14) \cite{leonardis_synergy_2025} & ECCV 2024 & 47.28 & 56.1
 % GPT-4o & - & 39.48 & 40.57 & 41.45 & 40.50 \\
 IntentMLM \cite{wang_unlocking_2026} & PR 2026 & 43.05 & 54.77 & 56.75 & 51.52 \\
 \hline
-\multicolumn{6}{l}{\textbf{Zero-shot VLM}} \\
-Qwen3-VL-8B-Instruct \cite{qwen_qwen3-vl_2025} & - & 38.51 & 40.75 & 39.63 & 39.63 \\
-InternVL3-8B \cite{zhu_internvl3_2025} & - & 37.54 & 41.85 & 40.50 & 39.97 \\
-GPT-4o \cite{hurst_gpt-4o_2024}$^{\dagger}$ & - & 39.48 & 40.57 & 41.45 & 40.50 \\
-\hline
-CLIP ViT-L/14 \cite{radford_learning_2021} & ICML 2021 & $47.40$ & $56.42$ & $56.41$ & $53.41$ \\
-FDIL (UTD only) & Ours & $50.20_{\pm0.44}$ & $58.03_{\pm0.11}$ & $58.79_{\pm0.78}$ & $55.68_{\pm0.44}$ \\
-FDIL & Ours & $\mathbf{52.13}_{\pm0.81}$ & $\mathbf{60.06}_{\pm0.24}$ & $\mathbf{60.28}_{\pm0.42}$ & $\mathbf{57.49}_{\pm0.49}$ \\
+CLIP ViT-L/14 \cite{radford_learning_2021} & ICML 2021 & \revised{$47.33_{\pm1.15}$} & \revised{$54.98_{\pm2.90}$} & \revised{$55.74_{\pm2.64}$} & \revised{$52.68_{\pm1.96}$} \\
+FDIL (UTD only) & Ours & \revised{$49.90_{\pm1.18}$} & \revised{$58.01_{\pm1.03}$} & \revised{$58.43_{\pm1.13}$} & \revised{$55.45_{\pm1.02}$} \\
+FDIL & Ours & \revised{$\mathbf{51.90}_{\pm0.95}$} & \revised{$\mathbf{59.90}_{\pm0.62}$} & \revised{$\mathbf{60.03}_{\pm0.94}$} & \revised{$\mathbf{57.28}_{\pm0.75}$} \\
 \hline
 \end{tabular}
 \endgroup
@@ -68,76 +71,82 @@ FDIL & Ours & $\mathbf{52.13}_{\pm0.81}$ & $\mathbf{60.06}_{\pm0.24}$ & $\mathbf
 
 \subsubsection{Implementation Details}
 
-Our default visual backbone is frozen CLIP ViT-L/14 \cite{radford_learning_2021}. The visual student is implemented as a lightweight residual MLP trained on top of a fixed SLR-C prior. In SLR-C, priors are constructed from three sources, namely lexical intent phrases, canonical intent descriptions, and Gemini 3.1 Pro-generated scenario descriptions \cite{team_gemini_2025} with frozen CLIP text encoder \cite{radford_learning_2021}; their normalized logits are averaged before local reranking within Top-10 visual candidates. For UTD, rationale text is generated offline by Qwen2.5-VL-7B-Instruct \cite{bai_qwen25-vl_2025} and then encoded by a frozen bge-large-en-v1.5 text encoder \cite{xiao_c-pack_2024}. The exact scenario- and rationale-generation prompt templates are released together with our artifacts. The teacher consumes only the resulting text embeddings and is optimized with Asymmetric Loss (ASL) \cite{ridnik_asymmetric_2021} using $\gamma_{-}=2$, $\gamma_{+}=0$, and clipping value 0.05. The student is optimized with AdamW \cite{loshchilov_decoupled_2018}, learning rate $5\times10^{-4}$, weight decay $10^{-4}$, batch size 256, and dropout 0.1. The teacher's hidden dimension is 1,024, and the student's hidden dimension is 768. The distillation temperature is set to 2.0. Best-epoch selection and early stopping use validation class-wise Macro F1 only. All decision thresholds are fitted exclusively on the validation split and then fixed before test evaluation; test outputs are used solely for final reporting and never enter any model- or threshold-selection branch. Notably, UTD introduces \emph{zero extra inference cost}, since the text teacher is only used during training and is discarded at test time.
+Our default visual backbone is frozen CLIP ViT-L/14 \cite{radford_learning_2021}. The visual student is implemented as a lightweight residual MLP trained on top of a fixed SLR-C prior. In SLR-C, priors are constructed from three sources, namely lexical intent phrases, canonical intent descriptions, and Gemini 3.1 Pro-generated scenario descriptions \cite{team_gemini_2025} with frozen CLIP text encoder \cite{radford_learning_2021}, and their normalized logits are averaged before local reranking within Top-10 visual candidates. For UTD, rationale text is generated offline by Qwen2.5-VL-7B-Instruct \cite{bai_qwen25-vl_2025} and then encoded by a frozen bge-large-en-v1.5 text encoder \cite{xiao_c-pack_2024}. The exact scenario- and rationale-generation prompt templates are released together with our artifacts. The teacher consumes only the resulting text embeddings and is optimized with Asymmetric Loss (ASL) \cite{ridnik_asymmetric_2021} using $\gamma_{-}=2$, $\gamma_{+}=0$, and clipping value 0.05. The student is optimized with AdamW \cite{loshchilov_decoupled_2018}, learning rate $5\times10^{-4}$, weight decay $10^{-4}$, batch size 256, and dropout 0.1. The teacher's hidden dimension is 1,024, and the student's hidden dimension is 768. The distillation temperature is set to 2.0. Best-epoch selection and early stopping use validation class-wise Macro F1 only. All decision thresholds are fitted exclusively on the validation split and then fixed before test evaluation, and test outputs are used solely for final reporting and never enter any model- or threshold-selection branch. Notably, UTD introduces \emph{zero extra inference cost}, since the text teacher is only used during training and is discarded at test time.
 
 \subsection{Comparative Experiments}
 
 \subsubsection{Comparison with state-of-the-art methods}
+\label{sec:sota_comparison}
 
-Table~\ref{tab:main_results} summarizes the main comparison on the test split. The strong CLIP baseline already surpasses the previously reported best result by a clear margin; however, because the previous methods are quoted under their original, generally weaker backbones, this margin mainly reflects backbone strength rather than algorithmic superiority, and we therefore do not interpret it as evidence for FDIL. For a fair comparison, we additionally reproduce the core mechanism of representative recent methods over the same frozen CLIP ViT-L/14 features, split, and validation-only class-wise thresholding, shown as the ``(CLIP ViT-L/14)'' rows. Under this matched protocol FDIL still leads all of them by $+3.4$ to $+4.7$ average F1. Building on the same features, UTD alone improves the average F1 over the baseline at zero extra inference cost, and the full FDIL framework further improves all four metrics. This pattern is consistent with our motivation that fixed semantic priors supply structured candidate semantics while uncertainty-aware supervision and image-aware refinement sharpen the final prediction.
+Table~\ref{tab:main_results} summarizes the main comparison on the test split.
+\revised{Under the matched protocol FDIL leads the baselines by $+3.3$ to $+5.8$ Avg.\ F1, each significant after correction on Avg.\ F1, mAP, and hard-subset F1. Against the strongest compared method, LabCR, the gain is $+3.32$ Avg.\ F1 ($p=0.002$) and $+7.67$ hard-subset F1 ($p=0.004$).} UTD alone already improves Avg.\ F1 over the baseline at zero extra inference cost, and full FDIL improves all four metrics.
 
 \subsubsection{Zero-shot Multimodal Large Model Comparison}
+\label{sec:zeroshot_vlm}
+\revised{To address the concern that recent multimodal large language models may already solve visual intent recognition through prompting alone, we evaluate MLLMs zero-shot on the same Intentonomy label set, prompting each to return a probability over the candidate categories. As shown in Table~\ref{tab:zeroshot_vlm}, GPT-5.6 Sol substantially narrows the gap, since its Avg.\ F1 remains below the task-trained CLIP baseline and $8.24$ below FDIL, whereas its threshold-free mAP and hard-subset F1 exceed both task-trained references. These mixed results show that a frontier general-purpose MLLM can provide highly competitive ranking and hard-class recognition without task-specific training, while dataset-specific learning still retains a clear advantage on aggregate fixed-threshold F1.}
 
-To address the concern that recent multimodal large language models may already solve visual intent recognition through prompting alone, we evaluate two recent open-weight MLLMs zero-shot on the same Intentonomy label set, prompting each to return a probability over the candidate categories; the group additionally lists, for reference, the GPT-4o zero-shot result reported by IntentMLM~\cite{wang_unlocking_2026}. As shown in the \textit{Zero-shot VLM} group of Table~\ref{tab:main_results}, direct zero-shot prediction is competitive but remains below the trained CLIP and FDIL models. Stronger general-purpose MLLMs therefore provide useful intent priors, but prompt-only recognition does not remove the need for dataset-specific calibration, uncertainty-aware supervision, and image-conditioned refinement.
+\begin{table}[htbp]
+\centering
+\scriptsize
+\caption{\revised{Zero-shot MLLM comparison on the Intentonomy test split. $^{\ddagger}$Published result quoted from IntentMLM~\cite{wang_unlocking_2026}.}}
+\label{tab:zeroshot_vlm}
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{lcccccc}
+\hline
+\revised{Model} & \revised{Macro} & \revised{Micro} & \revised{Samples} & \revised{Avg.} & \revised{mAP} & \revised{Hard} \\
+\hline
+\multicolumn{7}{l}{\revised{\textbf{Zero-shot prompting}}} \\
+\revised{Qwen3.5-9B \cite{qwen_qwen35_2026}} & \revised{37.11} & \revised{36.50} & \revised{36.40} & \revised{36.67} & \revised{42.99} & \revised{22.78} \\
+\revised{Step3-VL-10B \cite{huang_step3-vl-10b_2026}} & \revised{38.21} & \revised{40.21} & \revised{36.10} & \revised{38.17} & \revised{42.58} & \revised{26.64} \\
+\revised{Qwen3-VL-8B-Instruct \cite{qwen_qwen3-vl_2025}} & \revised{38.51} & \revised{40.75} & \revised{39.63} & \revised{39.63} & \revised{38.84} & \revised{28.37} \\
+\revised{InternVL3-8B \cite{zhu_internvl3_2025}} & \revised{37.54} & \revised{41.85} & \revised{40.50} & \revised{39.97} & \revised{37.67} & \revised{25.51} \\
+\revised{Gemma-4-E4B-IT \cite{gemma_team_gemma4_2026}} & \revised{38.76} & \revised{42.44} & \revised{39.25} & \revised{40.15} & \revised{40.42} & \revised{27.08} \\
+\revised{GPT-4o \cite{hurst_gpt-4o_2024}$^{\ddagger}$} & \revised{39.48} & \revised{40.57} & \revised{41.45} & \revised{40.50} & \revised{-} & \revised{-} \\
+\revised{GPT-5.6 Sol \cite{openai_gpt56sol_2026}} & \revised{47.58} & \revised{49.64} & \revised{49.91} & \revised{49.04} & \revised{\textbf{57.50}} & \revised{\textbf{36.19}} \\
+\hline
+\multicolumn{7}{l}{\revised{\textbf{Task-trained reference}}} \\
+\revised{CLIP ViT-L/14 \cite{radford_learning_2021}} & \revised{47.33} & \revised{54.98} & \revised{55.74} & \revised{52.68} & \revised{50.67} & \revised{28.45} \\
+\revised{FDIL (ours)} & \revised{\textbf{51.90}} & \revised{\textbf{59.90}} & \revised{\textbf{60.03}} & \revised{\textbf{57.28}} & \revised{55.10} & \revised{35.02} \\
+\hline
+\end{tabular}
+\end{table}
 
 \subsubsection{Performance on Difficulty- and Content-Dependent Subsets}
 
-To better understand the effectiveness of our method, we further evaluate performance on intent subsets grouped by difficulty (Table~\ref{tab:difficulty_results}) and by content dependency (Table~\ref{tab:content_results}). The difficulty-wise results provide two additional insights. First, the CLIP baseline already matches or exceeds prior methods across the three difficulty groups; on the easy subset FDIL is the stronger of our two models and trails only HLEG by $0.30$, a negligible gap on visually unambiguous categories where modelling semantic overlap offers little headroom. Second, FDIL yields its largest and most consistent gains on the medium and hard subsets, precisely where semantic ambiguity and supervisory uncertainty are most pronounced and which the framework is designed to target.
+Table~\ref{tab:difficulty_results} reports intent subsets grouped by difficulty and by content dependency. On the easy subset FDIL trails Query2Label by $0.40$ and HLEG by $0.30$, a negligible gap on visually unambiguous categories where modelling semantic overlap offers little headroom. FDIL's largest and most consistent gains fall on the medium and hard subsets, exactly where semantic and supervisory ambiguity are most pronounced. On the content split, FDIL's major gain appears in the \textit{Others} subset, where recognition requires holistic reasoning over multiple weak cues rather than a single object or scene pattern.
 % Validation-split results are omitted to respect the page limit (reported in the response letter).
 
 \begin{table}[htbp]
 \centering
-\caption{Difficulty-based intent subsets (Easy/Medium/Hard); Avg.\ is the subset mean. FDIL is the mean over three seeds.}
+\caption{Intent subsets grouped by difficulty and content dependency, where Avg.\ is the corresponding subset mean.}
 \label{tab:difficulty_results}
-\begin{tabular}{lcccc}
-\hline
-Method & Easy & Medium & Hard & Avg. \\
-\hline
-Random & 19.86 & 7.11 & 2.81 & 9.93 \\
-Visual \cite{he_deep_2016} & 54.64 & 24.92 & 10.71 & 30.09 \\
-Jia (w/o hashtag) \cite{jia_intentonomy_2021} & 57.10 & 25.68 & 12.72 & 31.83 \\
-Jia (hashtag) \cite{jia_intentonomy_2021} & 58.86 & 26.30 & 13.11 & 32.76 \\
-Query2Label \cite{liu_query2label_2021} & 81.59 & 38.06 & 14.55 & 44.73 \\
-CPAD \cite{ye_cross-modality_2023} & 69.47 & 31.50 & 8.54 & 36.50 \\
-HLEG \cite{shi_learnable_2023} & 81.49 & 38.99 & 20.22 & 46.90 \\
-PIP-Net \cite{wang_prototype-based_2023} & 70.73 & 33.63 & 14.33 & 39.56 \\
-IntentMLM \cite{wang_unlocking_2026} & 76.26 & 46.87 & 27.39 & 50.17 \\
-\hline
-CLIP ViT-L/14 \cite{radford_learning_2021} & 80.99 & 53.32 & 28.45 & 54.25 \\
-FDIL & \textbf{81.19} & \textbf{57.73} & \textbf{35.02} & \textbf{57.98} \\
-\hline
-\end{tabular}
-\end{table}
-
-\begin{table}[htbp]
-\centering
-\caption{Content-dependent intent subsets (Object/Context/Others); Avg.\ is the subset mean. FDIL is the mean over three seeds.}
 \label{tab:content_results}
-\begin{tabular}{lcccc}
+\begin{tabular}{lcccccccc}
 \hline
-Method & Object & Context & Others & Avg. \\
+& \multicolumn{4}{c}{Difficulty} & \multicolumn{4}{c}{Content dependency} \\
+\cline{2-5}\cline{6-9}
+Method & Easy & Medium & Hard & Avg. & Object & Context & Others & Avg. \\
 \hline
-Random & 7.75 & 12.53 & 6.05 & 8.78 \\
-Visual \cite{he_deep_2016} & 25.58 & 30.16 & 21.34 & 25.69 \\
-Jia (w/o hashtag) \cite{jia_intentonomy_2021} & 28.15 & 28.62 & 22.60 & 26.46 \\
-Jia (hashtag) \cite{jia_intentonomy_2021} & 29.66 & 32.48 & 22.61 & 28.25 \\
-CPAD \cite{ye_cross-modality_2023} & 28.81 & 47.30 & 24.74 & 33.62 \\
-PIP-Net \cite{wang_prototype-based_2023} & 39.20 & 39.53 & 27.59 & 35.44 \\
-IntentMLM \cite{wang_unlocking_2026} & 50.13 & 49.69 & 39.75 & 46.52 \\
+Random & 19.86 & 7.11 & 2.81 & 9.93 & 7.75 & 12.53 & 6.05 & 8.78 \\
+Visual \cite{he_deep_2016} & 54.64 & 24.92 & 10.71 & 30.09 & 25.58 & 30.16 & 21.34 & 25.69 \\
+Jia (w/o hashtag) \cite{jia_intentonomy_2021} & 57.10 & 25.68 & 12.72 & 31.83 & 28.15 & 28.62 & 22.60 & 26.46 \\
+Jia (hashtag) \cite{jia_intentonomy_2021} & 58.86 & 26.30 & 13.11 & 32.76 & 29.66 & 32.48 & 22.61 & 28.25 \\
+Query2Label \cite{liu_query2label_2021} & \textbf{81.59} & 38.06 & 14.55 & 44.73 & -- & -- & -- & -- \\
+CPAD \cite{ye_cross-modality_2023} & 69.47 & 31.50 & 8.54 & 36.50 & 28.81 & 47.30 & 24.74 & 33.62 \\
+HLEG \cite{shi_learnable_2023} & 81.49 & 38.99 & 20.22 & 46.90 & -- & -- & -- & -- \\
+PIP-Net \cite{wang_prototype-based_2023} & 70.73 & 33.63 & 14.33 & 39.56 & 39.20 & 39.53 & 27.59 & 35.44 \\
+IntentMLM \cite{wang_unlocking_2026} & 76.26 & 46.87 & 27.39 & 50.17 & 50.13 & 49.69 & 39.75 & 46.52 \\
 \hline
-CLIP ViT-L/14 \cite{radford_learning_2021} & 61.80 & \textbf{61.69} & 40.59 & 54.69 \\
-FDIL & \textbf{63.04} & 61.32 & \textbf{47.15} & \textbf{57.17} \\
+CLIP ViT-L/14 \cite{radford_learning_2021} & 80.99 & 53.32 & 28.45 & 54.25 & 61.80 & \textbf{61.69} & 40.59 & 54.69 \\
+FDIL & 81.19 & \textbf{57.73} & \textbf{35.02} & \textbf{57.98} & \textbf{63.04} & 61.32 & \textbf{47.15} & \textbf{57.17} \\
 \hline
 \end{tabular}
 \end{table}
-
-Turning to content dependency, Table~\ref{tab:content_results} reports results on content-dependent subsets.
-It again shows that the strong CLIP baseline is already highly effective on object- and context-dependent intents. The major gain of FDIL appears in the \textit{Others} subset, where intent recognition requires more holistic reasoning over multiple weak cues rather than direct reliance on a single object or scene pattern.
 % Validation-split results are omitted to respect the page limit (reported in the response letter).
 
 \subsubsection{Interpretability Analysis}
 
-To make the source of the improvement interpretable rather than aggregate, we examine where in the label space FDIL helps. Figure~\ref{fig:tsne} shows a t-SNE projection of the decision-score space on four semantically adjacent intents: FDIL produces more compact, better-separated same-intent clusters than the CLIP baseline (silhouette $0.21\!\to\!0.29$), indicating that the semantic prior and the rationale teacher together pull confusable neighboring intents apart rather than merely rescaling scores. We further compute the per-class F1 change of FDIL relative to the CLIP baseline under the matched class-wise protocol. The largest per-class gains are concentrated on hard and abstract classes, including \textit{WorkILike} ($+28.5$), \textit{PassionAboutSomething} ($+17.3$), and \textit{SocialLifeFriendship} ($+17.2$), while only two classes regress.
+Figure~\ref{fig:tsne} shows a t-SNE projection of the decision-score space on four semantically adjacent intents. FDIL produces more compact, better-separated same-intent clusters than the CLIP baseline (silhouette $0.21\!\to\!0.29$), so the semantic prior and the rationale teacher pull confusable neighboring intents apart rather than merely rescaling scores. Per-class F1 changes under the matched class-wise protocol concentrate on hard and abstract classes, including \textit{WorkILike} ($+28.5$), \textit{PassionAboutSomething} ($+17.3$), and \textit{SocialLifeFriendship} ($+17.2$), while only two classes regress.
 
 \begin{figure}[htbp]
 \centering
@@ -180,27 +189,28 @@ CreativeUnique & Medium & 41.9 & 36.6 & $-5.3$ \\
 
 \subsubsection{Effectiveness of SLR-C and Residual Refinement}
 
-We first study how SLR-C interacts with residual learning and distillation. Table~\ref{tab:slrc_ablation} shows that prior alone is insufficient, while adding a trainable student and distillation is essential for recovering robust intent predictions.
 \begin{table}[htbp]
 \centering
-\caption{Component ablation of FDIL (\textit{w/o UTD}: no text distillation; \textit{w/o Gated}: no agreement-aware gating). Full FDIL is the mean over three seeds; ablations use a single seed.}
+\caption{Component ablation of FDIL, where \textit{w/o UTD} removes text distillation and \textit{Ungated teacher} removes agreement-aware gating.}
 \label{tab:slrc_ablation}
 \begin{tabular}{lccccc}
 \hline
 Method & Macro & Micro & Samples & Avg. & Hard \\
 \hline
 w/o UTD & 47.90 & 55.98 & 55.18 & 53.02 & 29.71 \\
-w/o Gated & 49.69 & 57.90 & 58.98 & 55.52 & 31.69 \\
+Ungated teacher & 49.69 & 57.90 & 58.98 & 55.52 & 31.69 \\
 FDIL (full) & \textbf{52.13} & \textbf{60.06} & \textbf{60.28} & \textbf{57.49} & \textbf{35.02} \\
 \hline
 \end{tabular}
 \end{table}
 
-Two observations are noteworthy. First, naively injecting a heterogeneous prior is not enough; without a trainable student, the mixed prior can distort the score geometry and lead to poor predictions. Second, once distillation is introduced, residual refinement becomes consistently beneficial, showing that heterogeneous prior fusion and uncertainty-aware supervision must be optimized jointly rather than independently.
+Table~\ref{tab:slrc_ablation} ablates SLR-C against residual learning and distillation. The prior alone is insufficient, as without a trainable student the mixed prior distorts the score geometry, and removing UTD costs $4.47$ Avg.\ F1. Once distillation is present, residual refinement is consistently beneficial, so heterogeneous prior fusion and uncertainty-aware supervision must be optimized jointly rather than independently.
 
-\subsubsection{Unified versus Functionally Decoupled Ambiguity Handling}
+\subsubsection{Effectiveness and Necessity of Functional Decoupling}
+\label{sec:unified_vs_decoupled}
+\label{sec:quadrants}
 
-We next examine whether the functional decomposition is necessary, or whether a single unified mechanism can absorb both forms of ambiguity. Table~\ref{tab:unified_decoupled} contrasts the decoupled FDIL model with three unified controls under identical frozen CLIP ViT-L/14 features, data split, and validation-only class-wise thresholding. The most direct control, \textit{Unified joint-target KD}, averages the SLR-C and rationale-teacher probabilities into a single distillation target and trains one image-feature student, without residual decomposition or agreement-aware gating.
+Table~\ref{tab:unified_decoupled} contrasts decoupled FDIL with three unified controls under identical frozen CLIP ViT-L/14 features, split, and validation-only class-wise thresholding. \textit{Unified joint-target KD} averages the SLR-C and rationale-teacher probabilities into one distillation target and trains a single student, without residual decomposition or agreement-aware gating. Neither signal is degenerate in isolation, but the manner of combination is decisive.
 
 \begin{table}[htbp]
 \centering
@@ -215,16 +225,65 @@ Method & Macro & Micro & Samples & Avg. & Hard \\
 Unified UTD only & 50.20 & 58.03 & 58.79 & 55.68 & 30.27 \\
 Unified SLR-C only & 51.29 & \textbf{60.10} & 59.22 & 56.87 & 34.01 \\
 Unified joint-target KD & 50.69 & 58.35 & 57.96 & 55.66 & 32.41 \\
-FDIL (decoupled) & \textbf{52.13} & 60.06 & \textbf{60.28} & \textbf{57.49} & \textbf{35.02} \\
+FDIL & \textbf{52.13} & 60.06 & \textbf{60.28} & \textbf{57.49} & \textbf{35.02} \\
 \hline
 \end{tabular}
 \end{table}
 
-The results show that neither signal is degenerate in isolation: the semantic prior alone and the rationale teacher alone are each competitive. Crucially, the manner of combination is decisive. Collapsing the two signals into a single mixed target (\textit{Unified joint-target KD}) yields no benefit, whereas the decoupled FDIL model is best overall. We therefore interpret decoupling as conferring a small but consistent accuracy gain over a single mixed target, together with its primary advantage of modularity: each function is separately justified and measurable, yielding an independent mAP increment, and the UTD branch can be deployed alone at zero additional inference cost.
+% : collapsing the two into a single mixed target yields no benefit, whereas decoupled FDIL is best overall. Decoupling thus confers a small but consistent accuracy gain over a mixed target, together with modularity, since each function remains separately measurable and the UTD branch can be deployed alone at zero additional inference cost.
+\revised{We further examine how the two modules respond to the two sources of ambiguity in Table~\ref{tab:quadrants}. Supervisory ambiguity is measured by $1-\omega$, with $\omega=1/3$ defining the high-ambiguity stratum, while semantic ambiguity is measured by the negative top-2 margin of the out-of-fold baseline logits and split at the median. Significance is assessed using paired two-sided $t$-tests on per-sample F1 against the shared baseline, with Holm correction over the twelve comparisons.
+The results reveal different sensitivity patterns for the two modules. SLR-C consistently benefits samples with high semantic ambiguity, improving F1 by $+4.08$ and $+1.17$ under low and high supervisory ambiguity, respectively, with both gains remaining significant after correction. In contrast, UTD has essentially no effect when annotator agreement is high ($-0.05$ and $-0.07$ F1), while its largest and only significant gain appears when high supervisory ambiguity coincides with high semantic ambiguity ($+0.84$, corrected $p=0.025$). Thus, SLR-C primarily addresses ambiguity in the label semantics, whereas the benefit of UTD emerges under uncertain supervision and becomes most evident on semantically difficult samples. These complementary response patterns provide empirical support for assigning the two ambiguity sources to separate mechanisms.}
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{\revised{$2\times2$ ambiguity interaction on cross-fitted Intentonomy train predictions. Cells give $\Delta$ per-sample F1 against the shared baseline, and $^\ast$ marks Holm-corrected $p<0.05$.}}
+\label{tab:quadrants}
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{llcccc}
+\hline
+& & \multicolumn{2}{c}{Low supervisory ($\omega\!\ge\!2/3$)} & \multicolumn{2}{c}{High supervisory ($\omega\!=\!1/3$)} \\
+\cline{3-4}\cline{5-6}
+& & Low sem. & High sem. & Low sem. & High sem. \\
+& $n$ & 1{,}271 & 588 & 5{,}099 & 5{,}781 \\
+\hline
+Base & F1 & 72.23 & 41.56 & 40.54 & 22.90 \\
+\hline
+\multirow{3}{*}{$\Delta$F1} & +SLR-C & $-0.43$ & $+4.08^\ast$ & $+0.49$ & $+1.17^\ast$ \\
+& +UTD & $-0.05$ & $-0.07$ & $+0.03$ & $+0.84^\ast$ \\
+& Full FDIL & $-0.71$ & $+2.18$ & $+0.15$ & $+1.14^\ast$ \\
+\hline
+\end{tabular}
+\end{table}
+
+% Table~\ref{tab:gate_profile} supplies the stronger evidence for the gate: the teacher's advantage over the visual baseline falls monotonically with agreement, from $+22.54$ F1 at $\omega=1/3$ to $+4.22$ at $\omega=2/3$, and \emph{reverses} to $-4.60$ at $\omega=1$, exactly where $1-\omega$ switches the teacher off, so the gate is aligned with the teacher's actual informativeness rather than being an arbitrary reweighting.
+% \revised{One prediction is not borne out: in the doubly-ambiguous cell the full model tracks its stronger component ($+1.14$ against SLR-C's $+1.17$) instead of dominating it, in a cross-fitted setting harsher than the main protocol.
+% \begin{table}[htbp]
+% \centering
+% \small
+% \caption{\revised{The text teacher's advantage over the visual baseline decreases monotonically with annotator agreement and reverses sign at $\omega=1$, exactly where the gate $1-\omega$ removes it.}}
+% \label{tab:gate_profile}
+% \setlength{\tabcolsep}{5pt}
+% \begin{tabular}{cccccc}
+% \hline
+% $\omega$ & $n$ & Gate $1-\omega$ & Base F1 & Teacher F1 & Teacher $-$ Base \\
+% \hline
+% $1/3$ & 10{,}880 & 0.667 & 31.17 & 53.71 & $+22.54$ \\
+% $2/3$ & 1{,}355 & 0.333 & 60.73 & 64.95 & $+4.22$ \\
+% $1$ & 504 & 0.000 & 67.38 & 62.78 & $-4.60$ \\
+% \hline
+% \end{tabular}
+% \end{table}
+
+% \revised{Table~\ref{tab:quadrants} separates the two modules as predicted. SLR-C gains only in the high-semantic-ambiguity cells ($+4.08$ and $+1.17$ F1, both significant) and nothing in the low-ambiguity cells; the same pattern holds within each agreement stratum separately, so its benefit tracks the margin axis independently of $\omega$. UTD is inert wherever agreement is high ($-0.05$ and $-0.07$, $p>0.93$) and its only significant gain is the low-agreement, high-semantic cell ($+0.84$, corrected $p=0.025$), though the $\omega\!\ge\!2/3$ stratum holds only $1{,}859$ images and resolves the supervisory axis directionally rather than sharply. Table~\ref{tab:gate_profile} supplies the stronger evidence for the gate: the teacher's advantage over the visual baseline falls monotonically with agreement, from $+22.54$ F1 at $\omega=1/3$ to $+4.22$ at $\omega=2/3$, and \emph{reverses} to $-4.60$ at $\omega=1$, exactly where $1-\omega$ switches the teacher off, so the gate is aligned with the teacher's actual informativeness rather than being an arbitrary reweighting.}
+
+% \revised{One prediction is not borne out: in the doubly-ambiguous cell the full model tracks its stronger component ($+1.14$ against SLR-C's $+1.17$) instead of dominating it, in a cross-fitted setting harsher than the main protocol.
+% Taken together, the decoupled design is both effective, since no unified control matches it, and necessary, since each module acts on the ambiguity axis the decomposition assigns to it; what the experiment does not establish is that the two corrections compose additively.}
+
 
 \subsubsection{Heterogeneous Priors in SLR-C}
 
-We next compare different textual priors used by SLR-C. We consider three semantic sources: \textit{Lexical}, which uses short class-name phrases; \textit{Canonical}, which uses the official intent descriptions provided by Intentonomy; and \textit{Scenario}, which uses Gemini-generated visual scenarios. For the ensemble setting, we average the normalized logits from the selected sources before local reranking. Table~\ref{tab:prior_ablation} therefore isolates the effect of prior sources under the SLR-C reranking stage only.
+Table~\ref{tab:prior_ablation} compares the three semantic sources of SLR-C under the reranking stage only, namely \textit{Lexical} (short class-name phrases), \textit{Canonical} (the official Intentonomy intent descriptions), and \textit{Scenario} (Gemini-generated visual scenarios).
 \begin{table}[htbp]
 \centering
 \caption{Ablation of textual priors in SLR-C (reranking-only, $K{=}10$). Results use a single seed.}
@@ -244,11 +303,11 @@ $\checkmark$ & $\checkmark$ & $\checkmark$ & 50.90 & \textbf{59.81} & 58.47 & \t
 \end{tabular}
 \end{table}
 
-The results show that ensemble outperforms its single-source components on the aggregate metrics, confirming that the three sources carry complementary information. Lexical phrases are compact, canonical descriptions are semantically explicit, and scenario descriptions ground latent intention into typical visual situations. Second, no single source dominates at the reranking-only stage, the choice of prior is a trade-off rather than a strict ordering. Third, the three-source ensemble achieves the best aggregate performance and the broadest semantic coverage, and once combined with residual refinement and the UTD teacher it also yields the strongest hard-subset result. We therefore adopt it in FDIL for its balanced coverage and strong behaviour under the full pipeline.
+No single source dominates, so the choice of prior is a trade-off rather than a strict ordering, whereas the three-source ensemble is best on the aggregate metrics and carries the broadest semantic coverage. The sources are therefore complementary, and we adopt the ensemble in FDIL, where it also gives the strongest hard-subset result under the full pipeline.
 
 \subsubsection{Sensitivity to Candidate Size $K$}
 
-We next study the effect of candidate size $K$ while fixing the thresholding strategy to the final class-wise setting. Table~\ref{tab:k_sensitivity_test} reports the test-split results obtained by retraining FDIL under $K \in \{5,10,28\}$ and then searching thresholds on the validation split. The comparison shows that the best overall result is achieved at $K=10$, which we adopt as the default candidate size; $K=5$ is slightly weaker and $K=28$ is comparable but offers no further benefit. This suggests that, under the final lexical-canonical-scenario prior, a moderate local candidate set best balances semantic coverage against the distractor noise introduced by an overly broad reranking range.
+Table~\ref{tab:k_sensitivity_test} retrains FDIL under $K \in \{5,10,28\}$ with class-wise thresholding. $K=10$ is best overall and is our default, while $K=5$ is slightly weaker and $K=28$ comparable but no better. A moderate candidate set therefore balances semantic coverage against the distractor noise of an overly broad reranking range.
 
 \begin{table}[htbp]
 \centering
@@ -267,8 +326,8 @@ Top-$K$ & Macro & Micro & Samples & Avg. & Hard \\
 
 \begin{table}[htbp]
 \centering
-\small
-\caption{Calibration decomposition under matched global/class-wise thresholding. FDIL is mean$\pm$std over three seeds; CLIP uses a single seed.}
+\footnotesize
+\caption{Calibration decomposition under matched global/class-wise thresholding. FDIL is mean$\pm$std over three seeds, and CLIP uses a single seed.}
 \label{tab:thresholding_test}
 \setlength{\tabcolsep}{3pt}
 \begin{tabular}{llcccccc}
@@ -286,12 +345,12 @@ FDIL & Class-wise & $\mathbf{52.13}_{\pm0.81}$ & $\mathbf{60.06}_{\pm0.24}$ & $\
 
 \subsubsection{Calibration and Threshold-free Evaluation}
 
-To separate FDIL's mechanisms from class-wise calibration, we evaluate both the CLIP baseline and FDIL under matched global and class-wise thresholding (Table~\ref{tab:thresholding_test}). FDIL improves over the baseline under both protocols on average and hard-subset F1, and class-wise thresholding helps both models, so calibration is a shared post-processing gain rather than the source of FDIL's advantage. The threshold-free mAP, invariant to the decision rule by construction, confirms the same conclusion with a $+4.4$ gain.
+Table~\ref{tab:thresholding_test} evaluates the baseline and FDIL under matched global and class-wise thresholding. FDIL improves on average and hard-subset F1 under both protocols, and class-wise thresholding helps both models, so calibration is a shared post-processing gain rather than the source of FDIL's advantage, and the decision-rule-invariant mAP confirms this with a $+4.4$ gain.
 
 \begin{table}[htbp]
 \centering
 \small
-\caption{Threshold-free, rank-based metrics. mAP is the macro average precision. FDIL/UTD mAP values are means over three seeds; all AUCs and CLIP mAP use a single representative seed.}
+\caption{Threshold-free, rank-based metrics. mAP is the macro average precision. FDIL/UTD mAP values are means over three seeds, and all AUCs and CLIP mAP use a single representative seed.}
 \label{tab:threshold_free}
 \setlength{\tabcolsep}{4pt}
 \begin{tabular}{lcccc}
@@ -313,14 +372,14 @@ FDIL & \textbf{55.10} & 89.36 & 88.31 & \textbf{60.64} \\
 \label{fig:roc_pr}
 \end{figure}
 
-Table~\ref{tab:threshold_free} and Figure~\ref{fig:roc_pr} report fully threshold-free, rank-based metrics (mAP, ROC-AUC, PR-AUC) for FDIL, its ablations, and representative methods reproduced under the matched CLIP ViT-L/14 protocol. FDIL improves over the baseline on every metric with a $95\%$ paired-bootstrap interval excluding zero ($p<0.001$), and FDIL outperforms the reproduced methods when the backbone is equalized.
+Table~\ref{tab:threshold_free} and Figure~\ref{fig:roc_pr} report threshold-free, rank-based metrics. FDIL improves over the baseline on every metric with a $95\%$ paired-bootstrap interval excluding zero ($p<0.001$), and leads the reproduced methods once the backbone is equalized.
 
 \subsubsection{The Effectiveness of Rationale}
 
-We then compare generic image captioning with rationale-style supervision under UTD only setting. We further ablate the internal structure of the rationale used by the text teacher. Specifically, we compare Caption, which only describes visible content in short natural language; Step 1 only, which contains observable visual evidence; Step 1 with Step 2, which additionally introduces contextual interpretation; and Full rationale, which further adds counterfactual disambiguation cues. Table~\ref{tab:rationale_ablation} reports the results under gated distillation without SLR-C.
+Table~\ref{tab:rationale_ablation} ablates the teacher text under gated distillation without SLR-C, comparing a plain Caption against rationales built from observable visual evidence (Step 1), contextual interpretation (Step 2), and counterfactual disambiguation (Step 3).
 \begin{table}[htbp]
 \centering
-\caption{Ablation of rationale construction for UTD (Step 1/2/3: visual evidence, contextual bridging, counterfactual disambiguation). Results use a single seed.}
+\caption{Ablation of rationale construction for UTD, where Steps 1, 2, and 3 add visual evidence, contextual bridging, and counterfactual disambiguation. Results use a single seed.}
 \label{tab:rationale_ablation}
 \begin{tabular}{lccccc}
 \hline
@@ -334,8 +393,12 @@ Rationale (Step 1 \& 2 \& 3) & \textbf{50.31} & 57.97 & \textbf{59.07} & \textbf
 \end{tabular}
 \end{table}
 
-The trend is revealing. Caption supervision is already a reasonably strong privileged signal, but it remains slightly weaker than the full rationale in Macro, Samples, Avg., and Hard. Step 1 already provides useful visual facts, but adding Step 2 alone slightly degrades the overall classification metrics, suggesting that contextual interpretation without explicit disambiguation may introduce semantic drift. Once the counterfactual Step 3 is added, however, the rationale becomes significantly more effective. This supports our central claim that subjective intention recognition requires not only richer context, but also explicit boundary contraction among confusing alternatives.
+Caption supervision is already a reasonably strong privileged signal, yet it trails the full rationale on Macro, Samples, Avg., and Hard. Adding contextual interpretation alone (Step 2) slightly degrades the metrics, indicating semantic drift without explicit disambiguation, and the counterfactual Step 3 recovers and surpasses it. Subjective intent supervision therefore requires not only richer context but explicit boundary contraction among confusing alternatives.
 
+%% --- BEGIN condensed-out for page limit: UTD gating/modality ablation removed;
+%% gating evidence is retained in Table~\ref{tab:gate_profile} and in the
+%% ungated-teacher negative control below. ---
+\iffalse
 \subsubsection{UTD Ablations: Gating and Teacher Modality}
 
 We isolate the effect of UTD without using the SLR-C prior, jointly studying agreement-aware gating and the teacher's input modality. Table~\ref{tab:utd_ablation} (top block) compares plain supervised learning, distillation without gating, and agreement-aware gated distillation; the bottom block contrasts teacher-only oracle performance with the corresponding gated-distillation student under text-only versus image+text teacher inputs.
@@ -365,14 +428,17 @@ Gated student & Image+Text & 48.57 & 56.10 & 57.13 & 53.93 & 28.58 \\
 
 Table~\ref{tab:utd_ablation} shows that both ungated and gated UTD improve over the supervised baseline, while agreement-aware gating gives the best Avg.\ F1. The modality comparison further shows that a multimodal oracle teacher is not weaker by itself, but distills worse than the text-only teacher, suggesting that the text manifold provides cleaner semantic supervision.
 
+\fi
+%% --- END condensed-out ---
+
 \subsubsection{Negative Controls on the Text Teacher}
 
-A natural concern is whether UTD's gains arise from any external VLM text added on top of a strong backbone, rather than from the structured, uncertainty-gated rationale specifically. We test this with negative-control retrains, each corrupting a single ingredient of the pipeline while keeping the rest fixed (Table~\ref{tab:negative_controls}): shuffled rationale, where each image is paired with another image's rationale so the teacher carries no per-sample information; ungated teacher, where the agreement gate is removed (standard KD); and uniform gate, where every sample receives the mean agreement. The supervised residual without distillation (w/o UTD) serves as the lower reference.
+Table~\ref{tab:negative_controls} retrains FDIL with a single ingredient corrupted, using shuffled rationale (each image paired with another image's rationale), ungated teacher (standard KD), and uniform gate (every sample at the mean agreement), against the supervised residual (w/o UTD) as the lower reference. Shuffling rationales degrades more than removing UTD altogether ($-10.40$ against $-4.47$ Avg.\ F1), so the gain relies on image-specific rationale content rather than on arbitrary external text. Flattening or removing the agreement gate degrades less but consistently, supporting uncertainty-aware gating.
 
 \begin{table}[htbp]
 \centering
 \small
-\caption{Negative controls on the UTD text teacher ($\Delta$ in points; negative denotes degradation). Full FDIL is the mean over three seeds; control deltas use a single seed.}
+\caption{Negative controls on the UTD text teacher, with $\Delta$ in points, where negative denotes degradation.}
 \label{tab:negative_controls}
 \setlength{\tabcolsep}{4pt}
 \begin{tabular}{lcccccc}
@@ -380,15 +446,13 @@ A natural concern is whether UTD's gains arise from any external VLM text added 
 Condition & Macro & Micro & Samples & Avg. & mAP & Hard \\
 \hline
 FDIL (full) & 52.13 & 60.06 & 60.28 & 57.49 & 55.10 & 35.02 \\
-\quad w/o UTD (supervised) & $-4.03$ & $-5.59$ & $-5.17$ & $-4.94$ & $-2.18$ & $-6.02$ \\
+\quad w/o UTD & $-4.23$ & $-4.08$ & $-5.10$ & $-4.47$ & $-4.93$ & $-5.31$ \\
 \quad Shuffled rationale & $-7.75$ & $-12.39$ & $-11.01$ & $-10.40$ & $-9.04$ & $-7.58$ \\
-\quad Ungated teacher & $-0.62$ & $-0.41$ & $+0.07$ & $-0.33$ & $+0.03$ & $-0.69$ \\
+\quad Ungated teacher & $-2.44$ & $-2.16$ & $-1.30$ & $-1.97$ & $-1.49$ & $-3.33$ \\
 \quad Uniform agreement gate & $-1.16$ & $-0.93$ & $-1.21$ & $-1.12$ & $-1.33$ & $+1.13$ \\
 \hline
 \end{tabular}
 \end{table}
-
-Table~\ref{tab:negative_controls} verifies that UTD does not benefit from arbitrary external text. Shuffling rationales causes a larger degradation than removing UTD, confirming that the gain relies on image-specific rationale content. Flattening or removing the agreement gate leads to smaller but consistent degradation, supporting the use of uncertainty-aware gating.
 
 %% --- BEGIN condensed-out for 35-page limit: merged into Table~\ref{tab:utd_ablation} above ---
 \iffalse
@@ -418,60 +482,227 @@ Interestingly, the multimodal oracle teacher is not weaker by itself, but it bec
 
 \subsection{Backbone Independence}
 
-To examine whether FDIL depends entirely on a strong backbone, we also test the full pipeline with a weaker ResNet101 student under the best configuration. The results are shown in Table~\ref{tab:backbone_ablation}. The value of $K$ is set to 28 to give the weaker backbone the widest semantic candidate scaffold.
+Table~\ref{tab:backbone_ablation} compares the performance of FDIL and strong existing methods under ResNet101. FDIL remains clearly effective on ResNet101, showing that the decoupled design is not exclusive to CLIP features. Compared with HVU-CLIP, FDIL demonstrates superior performance on the Macro, Samples, and Avg.\ metrics, which could be attributed to its ability to handle the hard categories with high ambiguity.
 
 \begin{table}[htbp]
 \centering
-\caption{Backbone sensitivity of FDIL on the Intentonomy test split. CLIP FDIL is the mean over three seeds; ResNet101 results use a single seed.}
+\caption{Comparison of models under ResNet101 on the Intentonomy test split.}
 \label{tab:backbone_ablation}
-\begin{tabular}{lcccccc}
+\begin{tabular}{lccccc}
 \hline
-Backbone & Method & Macro & Micro & Samples & Avg. & Hard \\
+Method & Macro & Micro & Samples & Avg. & Hard \\
 \hline
-ResNet101 \cite{he_deep_2016} & Baseline & 36.56 & 41.87 & 43.10 & 40.51 & 18.99 \\
-ResNet101 \cite{he_deep_2016} & IntCLIP \cite{leonardis_synergy_2025} & 40.15 & 53.54 & 51.01 & 48.23 & - \\
-ResNet101 \cite{he_deep_2016}& FDIL & 43.20 & 50.63 & 52.02 & 48.62 & 25.65 \\
-\hline
-CLIP ViT-L/14 \cite{radford_learning_2021} & Baseline & 47.40 & 56.42 & 56.41 & 53.41 & 28.45 \\
-CLIP ViT-L/14 \cite{radford_learning_2021}& FDIL & \textbf{52.13} & \textbf{60.06} & \textbf{60.28} & \textbf{57.49} & \textbf{35.02} \\
+Baseline & 36.56 & 41.87 & 43.10 & 40.51 & 18.99 \\
+IntCLIP \cite{leonardis_synergy_2025} & 40.15 & \textbf{53.54} & 51.01 & 48.23 & - \\
+HVU-CLIP \cite{yang_holistic_2026} & 41.24 & 52.22 & 50.41 & 47.96 & - \\
+FDIL & \textbf{43.20} & 50.63 & \textbf{52.02} & \textbf{48.62} & \textbf{25.65} \\
 \hline
 \end{tabular}
 \end{table}
 
-Three conclusions follow from Table~\ref{tab:backbone_ablation}. First, FDIL remains clearly effective on ResNet101 and shows that the functionally decoupled design is not exclusive to CLIP features. Second, compared with IntCLIP, which achieves state-of-the-art under the same ResNet101 backbone, FDIL achieves a better result. Third, the best ResNet101 configuration prefers a much larger candidate set than the CLIP backbone, suggesting that weaker visual representations benefit from a broader semantic scaffold before residual correction. At the same time, the remaining gap to CLIP ViT-L/14 indicates that strong visual features are still important for fully exploiting the semantic prior and the uncertainty-aware teacher.
+\subsection{\revised{Cross-Dataset Generalization}}
+\label{sec:flickrldl}
 
-\subsection{Efficiency Comparison}
-
-Finally, we compare the inference cost of the baseline, FDIL (UTD only), and the full FDIL pipeline, together with the representative external methods. Since all these methods share the same frozen CLIP ViT-L/14 feature extractor, Table~\ref{tab:efficiency_comparison} reports the additional inference cost on top of pre-extracted CLIP features. Parameters count the inference-active prediction heads only, FLOPs are computed per image under the same feature-level protocol, and latency is measured with batch size 1 on a single RTX 4090 GPU.
+\revised{We further evaluate FDIL under label distribution learning (LDL), where the target is a probability distribution over labels rather than a set of binary decisions. LDL requires no threshold selection, so it tests whether the functional decoupling generalizes beyond the prediction space it was developed for. Table~\ref{tab:ldl_transfer} reports both datasets.}
 
 \begin{table}[htbp]
 \centering
-\caption{Feature-level inference cost on frozen CLIP ViT-L/14 features: params (inference-active heads), per-image FLOPs, and batch-1 latency on an RTX 4090.}
+\scriptsize
+\caption{\revised{Results on Flickr-LDL and Emotion6, averaged over five seeds. $^{*}$/$^{**}$ indicate significant improvements over the matched baseline at $p<0.05$/$p<0.01$, and $^{\dagger}$ indicates a significant degradation at $p<0.05$ (paired $t$-test over five paired runs). Bold and underline mark the best and second-best entry among the baseline and the three FDIL variants.}}
+\label{tab:ldl_transfer}
+\setlength{\tabcolsep}{2.2pt}
+\begin{tabular}{lccccccc}
+\hline
+\revised{Method} &
+\revised{Cheby.$\downarrow$} &
+\revised{Clark$\downarrow$} &
+\revised{KLD$\downarrow$} &
+\revised{Cos.$\uparrow$} &
+\revised{Spear.$\uparrow$} &
+\revised{$\mu$\,(\%)$\uparrow$} &
+\revised{DVSE$\downarrow$} \\
+\hline
+
+\multicolumn{8}{l}{\revised{\textit{Flickr-LDL} ($2{,}229$ test images)}} \\
+
+% \revised{$\delta$-LDL~\cite{li_approximately_2025}}
+% & \revised{$.20388$}
+% & \revised{$2.30323$}
+% & \revised{$.34342$}
+% & \revised{$.89662$}
+% & \revised{$.71087$}
+% & \revised{$71.39$}
+% & \revised{$.07718$} \\
+
+% \revised{LRR~\cite{jia_label_2023}}
+% & \revised{$.20385$}
+% & \revised{$2.30334$}
+% & \revised{$.34330$}
+% & \revised{$.89663$}
+% & \revised{$.71088$}
+% & \revised{$71.40$}
+% & \revised{$.07722$} \\
+
+% \revised{DPA~\cite{jia_adaptive_2024}}
+% & \revised{$.20386$}
+% & \revised{$2.30334$}
+% & \revised{$.34330$}
+% & \revised{$.89663$}
+% & \revised{$.71089$}
+% & \revised{$71.40$}
+% & \revised{$.07722$} \\
+
+\revised{LDL-DVS~\cite{lu2026divisiveness}}
+& \revised{$.20385$}
+& \revised{$2.30341$}
+& \revised{$.34332$}
+& \revised{$.89663$}
+& \revised{$.71085$}
+& \revised{$71.40$}
+& \revised{$.07719$} \\
+
+\revised{Baseline}
+& \revised{$.20386$}
+& \revised{$\underline{2.30331}$}
+& \revised{$\underline{.34329}$}
+& \revised{$.89664$}
+& \revised{$.71089$}
+& \revised{$71.40$}
+& \revised{$.07723$} \\
+
+\revised{\quad + SLR-C}
+& \revised{$.20308$}
+& \revised{$\mathbf{2.30313}$}
+& \revised{$\mathbf{.34061}$}
+& \revised{$\mathbf{.89732}$}
+& \revised{$.71291$}
+& \revised{$\mathbf{71.58}$}
+& \revised{$.07641$} \\
+
+\revised{\quad + UTD}
+& \revised{$\mathbf{.20257}$}
+& \revised{$2.31226^{\dagger}$}
+& \revised{$.34542$}
+& \revised{$.89610$}
+& \revised{$\underline{.71369}$}
+& \revised{$71.31$}
+& \revised{$\mathbf{.07292}^{*}$} \\
+
+\revised{FDIL}
+& \revised{$\underline{.20272}$}
+& \revised{$2.31126^{\dagger}$}
+& \revised{$.34332$}
+& \revised{$\underline{.89672}$}
+& \revised{$\mathbf{.71406}^{*}$}
+& \revised{$\underline{71.45}$}
+& \revised{$\underline{.07379}^{**}$} \\
+
+\hline
+
+\multicolumn{8}{l}{\revised{\textit{Emotion6} ($594$ test images)}} \\
+
+% \revised{$\delta$-LDL~\cite{li_approximately_2025}}
+% & \revised{$.17983$}
+% & \revised{$1.59791$}
+% & \revised{$.25384$}
+% & \revised{$.89427$}
+% & \revised{$.72157$}
+% & \revised{$64.11$}
+% & \revised{$.07854$} \\
+
+% \revised{LRR~\cite{jia_label_2023}}
+% & \revised{$.17936$}
+% & \revised{$1.59792$}
+% & \revised{$.25317$}
+% & \revised{$.89466$}
+% & \revised{$.72227$}
+% & \revised{$64.20$}
+% & \revised{$.07838$} \\
+
+% \revised{DPA~\cite{jia_adaptive_2024}}
+% & \revised{$.17936$}
+% & \revised{$1.59794$}
+% & \revised{$.25318$}
+% & \revised{$.89466$}
+% & \revised{$.72231$}
+% & \revised{$64.20$}
+% & \revised{$.07837$} \\
+
+\revised{LDL-DVS~\cite{lu2026divisiveness}}
+& \revised{$.17939$}
+& \revised{$1.59807$}
+& \revised{$.25322$}
+& \revised{$.89464$}
+& \revised{$.72225$}
+& \revised{$64.20$}
+& \revised{$.07834$} \\
+
+\revised{Baseline}
+& \revised{$\mathbf{.17937}$}
+& \revised{$1.59790$}
+& \revised{$.25317$}
+& \revised{$.89466$}
+& \revised{$.72227$}
+& \revised{$64.20$}
+& \revised{$.07838$} \\
+
+\revised{\quad + SLR-C}
+& \revised{$\underline{.17968}$}
+& \revised{$1.59758$}
+& \revised{$\underline{.25152}$}
+& \revised{$\mathbf{.89548}$}
+& \revised{$\underline{.72314}$}
+& \revised{$\mathbf{64.52}$}
+& \revised{$\mathbf{.07811}$} \\
+
+\revised{\quad + UTD}
+& \revised{$.18044$}
+& \revised{$\underline{1.59491}$}
+& \revised{$.25372$}
+& \revised{$.89406$}
+& \revised{$\mathbf{.72563}^{*}$}
+& \revised{$64.12$}
+& \revised{$.07907$} \\
+
+\revised{FDIL}
+& \revised{$.18017$}
+& \revised{$\mathbf{1.59097}^{*}$}
+& \revised{$\mathbf{.25132}$}
+& \revised{$\underline{.89528}$}
+& \revised{$.72194$}
+& \revised{$\underline{64.41}$}
+& \revised{$\underline{.07812}$} \\
+
+\hline
+\end{tabular}
+\end{table}
+
+\revised{The reproduced LDL objective LDL-DVS~\cite{lu2026divisiveness} performs close to the matched baseline in this setting. This suggests that the stronger pretrained representation substantially reduces the optimization headroom available to these regularizers compared with the visual features used in their original evaluations. The two FDIL components exhibit complementary effects across the two datasets. SLR-C mainly improves distribution-fitting metrics (KLD, cosine similarity, and $\mu$) on Flickr-LDL, and similarly improves these metrics on Emotion6. UTD has a stronger effect on distribution structure, improving Spearman correlation on both datasets and reaching statistical significance on Emotion6 ($p=0.042$). On Flickr-LDL, it also significantly reduces DVSE ($p=0.010$), although this is accompanied by a degradation in Clark distance. These results are consistent with the distinct roles of the two components that SLR-C refines the allocation of probability mass among semantically plausible labels, whereas UTD exploits uncertainty in the target distribution to guide the learned prediction structure. Two caveats apply. The margins are small, FDIL significantly degrades Clark distance on Flickr-LDL, and the two datasets disagree on which metric improves. We therefore read these results as a transfer test of the functional decoupling, whose division of labour replicates on both datasets, rather than as a new state of the art for LDL.}
+
+\subsection{Efficiency Comparison}
+
+Table~\ref{tab:efficiency_comparison} compares the inference efficiency of representative methods. FDIL (UTD only) has exactly the same inference cost as the baseline because the text teacher is discarded after training. The full FDIL requires only 2.41M parameters and 4.93M FLOPs, with a latency of 0.466\,ms per image. In comparison, HLEG introduces substantially heavier Transformer decoding. IntCLIP is the cheapest head measured here, but its region-aggregation design still runs on top of the same frozen encoder and trails FDIL by $5.80$ Avg.\ F1 under the matched ViT-L/14 protocol of Table~\ref{tab:main_results}. HVU-CLIP releases no code, so it cannot be measured directly, and we expect a cost comparable to IntCLIP. IntentMLM and CoT4Intent follow MLLM inference pipelines, whose cost is orders of magnitude higher. Overall, FDIL achieves its gains with only minor inference overhead.
+
+\begin{table}[htbp]
+\centering
+\caption{Inference efficiency comparison on an RTX 4090.}
 \label{tab:efficiency_comparison}
 \begin{tabular}{lccc}
 \hline
 Method & Params (M) & FLOPs (M) & Latency (ms) \\
 \hline
 Baseline & 1.20 & 2.40 & 0.109 \\
+HLEG \cite{shi_learnable_2023} & 203.70 & 12\,075.9 & 2.725 \\
+IntCLIP \cite{leonardis_synergy_2025} & 0.02 & 22.02 & 0.111 \\
 FDIL (UTD only) & 1.20 & 2.40 & 0.109 \\
 FDIL & 2.41 & 4.93 & 0.466 \\
 \hline
-HLEG \cite{shi_learnable_2023} & 203.70 & 12\,075.9 & 2.725 \\
-IntCLIP \cite{leonardis_synergy_2025} & 0.02 & 22.02 & 0.111 \\
-IntentMLM \cite{wang_unlocking_2026} & \multicolumn{3}{c}{MLLM: $\sim$10$^{9}$ params, 10--100\,ms/image} \\
-\hline
 \end{tabular}
-% \par\vspace{2pt}
-% {\footnotesize $^{\dagger}$IntCLIP's learnable head is only the $32\times768$ prompt context vectors; its effective classifier weights are class-text embeddings produced offline by the frozen CLIP text encoder, so the region-aggregation step still costs $22.02$M FLOPs despite the tiny parameter count.}
 \end{table}
-
-The table confirms two intended properties of our design. First, FDIL (UTD only) has exactly the same inference cost as the baseline, because the text teacher is used only during training and discarded at test time. Second, the full FDIL pipeline introduces additional reranking and residual refinement, but the absolute overhead remains small: even with the full lexical-canonical-scenario prior and residual head, the feature-level inference latency stays well below 1 ms per image. This shows that the final performance gains are not obtained by paying a large deployment cost.
-
-Profiling the previous methods under the same shared-feature protocol places this overhead in context. HLEG's decoder costs two-to-three orders of magnitude more than FDIL, whereas IntCLIP uses a tiny learnable head whose region aggregation still incurs non-trivial FLOPs. FDIL sits between these regimes, keeping sub-millisecond latency while adding an explicit semantic prior and residual refinement; IntentMLM is dominated by an MLLM and reported only qualitatively.
 
 \subsection{Case Study}
 
-Figure~\ref{fig:case_study} provides qualitative examples. In the first case, FDIL suppresses a plausible but incorrect distractor by using counterfactual rationale evidence, consistent with the role of UTD in sharpening semantic boundaries. In the second case, the annotated label has only 0.33 agreement, and the FDIL prediction remains semantically plausible, illustrating the intrinsic uncertainty of subjective intent recognition.
+Figure~\ref{fig:case_study} provides qualitative examples. In the first, FDIL suppresses a plausible but incorrect distractor using counterfactual rationale evidence, consistent with UTD sharpening semantic boundaries. In the second, FDIL errs on a label with only $0.33$ agreement yet stays semantically plausible, illustrating the intrinsic uncertainty of subjective intent recognition.
 
 \begin{figure*}[t]
 \centering

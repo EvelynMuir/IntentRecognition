@@ -3,6 +3,21 @@
 % ================================
 \section{General Response}
 
-\todo{summary of the revision and the major concerns addressed}
+We thank the Associate Editor and all reviewers for the careful second-round assessment. Three concerns recurred across the reports. These were the theoretical basis of the functional decoupling, the absence of statistical validation, and evaluation on a single benchmark. Each is answered with new analysis or new experiments in the manuscript rather than with rewriting. The table below maps every concern to the change and its location.
 
-Below, we provide point-by-point responses to each reviewer. Newly added or revised content is referenced by section, table, or figure. In the revised manuscript, all changes are highlighted in red.
+\begin{changetable}{p{0.24\linewidth}p{0.42\linewidth}p{0.25\linewidth}}
+\textbf{Concern} & \textbf{What we changed} & \textbf{Where} \\
+\hline
+Theory of the decoupling (R2, R4) & Exact entropy identity replacing the previous approximate risk decomposition, one derivation per module, and a $2\times2$ interaction experiment testing their prediction & Sec.~\ref{sec:decoupling_principle}, and Sec.~\ref{sec:quadrants} with Table~\ref{tab:quadrants} \\
+Statistical validation (R2, R6) & Five seeds, $95\%$ $t$-intervals, paired $t$-tests against every compared method with Holm correction & Sec.~\ref{sec:sota_comparison} and Table~\ref{tab:main_results}, with full statistics in Table~\ref{tab:significance_letter} of this letter \\
+Single benchmark (R2, R4) & Cross-dataset study on Flickr-LDL and Emotion6, placed in the manuscript itself & Sec.~\ref{sec:flickrldl}, Table~\ref{tab:ldl_transfer} \\
+Recent baselines (R4, EiC) & Two 2026 intent methods added and compared, one under a matched backbone, and four recent MLLMs evaluated zero-shot & Sec.~\ref{sec:related_work}, Tables~\ref{tab:main_results}, \ref{tab:zeroshot_vlm}, \ref{tab:backbone_ablation} \\
+Abstract comparability (AE) & Absolute values replaced with relative gains over the strongest prior result & Abstract \\
+Proofreading, bibliography (R4, EiC) & Venue fields corrected, new works discussed individually, \res{51} items & Bibliography, Sec.~\ref{sec:related_work} \\
+\end{changetable}
+
+Two points of context apply throughout, so we state them once here rather than repeating them under each comment.
+
+\rh{The cross-dataset study.} We first explored a transfer evaluation on EMOTIC. Its annotation protocol does not naturally match our soft multi-label setting, so we replaced it with Flickr-LDL and Emotion6, which carry native subjective label distributions and are evaluated under standard published protocols. This is why EMOTIC no longer appears in the manuscript.
+
+\rh{What this letter adds.} The manuscript is at the $35$-page limit, so three items live here instead. These are the complete per-method significance statistics (Table~\ref{tab:significance_letter}), the seed dispersion behind the cross-dataset table (Table~\ref{tab:ldl_letter}), and the per-class F1 attribution behind the manuscript's one-sentence interpretability summary (Table~\ref{tab:per_class_attr_letter}). Everything else we describe below is in the revised manuscript, marked in red.

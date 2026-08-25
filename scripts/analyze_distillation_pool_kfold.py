@@ -38,6 +38,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 import scripts.analyze_privileged_distillation as P  # noqa: E402
 import scripts.analyze_distillation_slrc as S  # noqa: E402
+import scripts.slrc_prior_norm as N  # noqa: E402
 
 
 def _parse_args() -> argparse.Namespace:
@@ -102,6 +103,15 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--slr-topk", type=int, default=10)
     parser.add_argument("--slr-alpha", type=float, default=0.3)
+    parser.add_argument(
+        "--slr-prior-norm",
+        type=str,
+        default="zscore",
+        choices=N.NORMS,
+        help="Semantic-prior normalisation for SLR-C. 'zscore' (default) is the published "
+             "per-sample z-score; 'class_*' variants de-bias each class over the sample axis "
+             "and are fitted on the fold's train rows only.",
+    )
     parser.add_argument("--fdil-hidden-dim", type=int, default=768)
     parser.add_argument(
         "--no-resume",
@@ -324,14 +334,19 @@ def run_cv(
         tr_base_logits = P._logit_np(P._predict_student(baseline_model, tr_img, device, int(args.batch_size)))
         va_base_logits = P._logit_np(P._predict_student(baseline_model, va_img, device, int(args.batch_size)))
         te_base_logits = P._logit_np(P._predict_student(baseline_model, te_img, device, int(args.batch_size)))
-        tr_slr_logits = S._apply_slr(
-            tr_base_logits, semantic_prior[train_idx], topk=int(args.slr_topk), alpha=float(args.slr_alpha)
+        prior_normed = N.norm_prior(
+            semantic_prior,
+            str(args.slr_prior_norm),
+            fit_idx=train_idx if str(args.slr_prior_norm) in N.FOLD_FITTED else None,
         )
-        va_slr_logits = S._apply_slr(
-            va_base_logits, semantic_prior[val_idx], topk=int(args.slr_topk), alpha=float(args.slr_alpha)
+        tr_slr_logits = N.apply_slr(
+            tr_base_logits, prior_normed[train_idx], topk=int(args.slr_topk), alpha=float(args.slr_alpha)
         )
-        te_slr_logits = S._apply_slr(
-            te_base_logits, semantic_prior[test_idx], topk=int(args.slr_topk), alpha=float(args.slr_alpha)
+        va_slr_logits = N.apply_slr(
+            va_base_logits, prior_normed[val_idx], topk=int(args.slr_topk), alpha=float(args.slr_alpha)
+        )
+        te_slr_logits = N.apply_slr(
+            te_base_logits, prior_normed[test_idx], topk=int(args.slr_topk), alpha=float(args.slr_alpha)
         )
         slr_bundle = P._evaluate_score_bundle(
             val_scores=P._sigmoid_np(va_slr_logits),

@@ -29,6 +29,13 @@
 % section/table/figure numbers. Requires main.aux to be built first.
 \usepackage{xr}
 \externaldocument{main}
+% Citation numbers are imported from main.aux, but their hyperlink destinations
+% live in main.pdf rather than this standalone letter. Keep the numbers and
+% suppress only those unavailable in-document citation links.
+\makeatletter
+\renewcommand{\hyper@natlinkstart}[1]{}
+\renewcommand{\hyper@natlinkend}{}
+\makeatother
 
 % Red markup, matching the manuscript's \revised macro.
 \newcommand{\revised}[1]{\textcolor{red}{#1}}

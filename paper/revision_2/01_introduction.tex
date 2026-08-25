@@ -9,7 +9,7 @@ Accurately recognizing these intentions is valuable for a variety of downstream 
 Compared with conventional image classification, visual intention recognition is fundamentally more challenging.
 In traditional classification tasks, the goal is to assign images to relatively objective semantic categories, such as objects, scenes, or actions. 
 In contrast, intention recognition requires mapping visual evidence to abstract and subjective intent labels.
-These labels are rarely determined by local visual cues alone; instead, they often emerge from a holistic interpretation of scene context, human activities, object configurations, social interactions, and commonsense knowledge.
+These labels are rarely determined by local visual cues alone. Instead, they often emerge from a holistic interpretation of scene context, human activities, object configurations, social interactions, and commonsense knowledge.
 Therefore, the main difficulty of this task lies not merely in visual representation learning, but in establishing a reliable bridge between concrete image content and abstract intention semantics.
 
 A central challenge of this task is its inherent ambiguity, which manifests in two distinct forms, as shown in Figure~\ref{fig:teaser} (a).
@@ -39,11 +39,11 @@ Recent studies have increasingly argued that such disagreement should not be tre
 \end{figure}
 
 Existing studies have attempted to alleviate these difficulties from different perspectives. 
-Prototype-based methods, \textit{e.g.} PIP-Net \cite{wang_prototype-based_2023}, introduce representative anchors to reduce feature-space confusion. 
+Prototype-based methods, \textit{e.g.}, PIP-Net \cite{wang_prototype-based_2023}, introduce representative anchors to reduce feature-space confusion. 
 Structure-aware methods, including CPAD \cite{ye_cross-modality_2023} and HLEG \cite{shi_learnable_2023}, exploit hierarchical label relationships to enhance multi-level semantic modeling and strengthen supervision. 
 From the perspective of label quality, LabCR \cite{shi_label-aware_2024} explicitly models label shifting and label blemish to better cope with imperfect annotation distributions. 
 More recently, knowledge-enhanced approaches have recognized that visual evidence alone is often insufficient for subjective intention understanding. 
-IntCLIP \cite{leonardis_synergy_2025} incorporates the vision-language alignment knowledge of CLIP into the task, while IntentMLM \cite{wang_unlocking_2026} further leverages multimodal large models, caption generation, and retrieval to perform more holistic intention perception. This line of work reflects a broader recent shift toward large vision-language and multimodal large language models (MLLMs) as sources of external semantic knowledge for subjective image understanding. However, our zero-shot experiments show that prompting a general-purpose MLLM directly remains below a task-trained model on this benchmark. Such models supply useful intent priors but do not provide the dataset-specific calibration and uncertainty-aware supervision that subjective intent recognition requires. Our purpose is therefore not to replace these models, but to convert their semantic knowledge into a structured prior and an uncertainty-gated training signal that explicitly target the two ambiguities below.
+IntCLIP \cite{leonardis_synergy_2025} incorporates the vision-language alignment knowledge of CLIP into the task, \revised{HVU-CLIP \cite{yang_holistic_2026} refines intent semantics iteratively and couples them with bidirectional visual-semantic interaction.} IntentMLM \cite{wang_unlocking_2026} further leverages multimodal large models, caption generation, and retrieval to perform more holistic intention perception \revised{, while CoT4Intent \cite{huang_cot4intent_2026} attributes the residual errors of MLLM-based intent classification to hallucination and suppresses it with structured chain-of-thought reasoning.} This line of work reflects a broader recent shift toward large vision-language and multimodal large language models (MLLMs) as sources of external semantic knowledge for subjective image understanding. However, our zero-shot experiments show that prompting a general-purpose MLLM directly remains below a task-trained model on this benchmark. Such models supply useful intent priors but do not provide the dataset-specific calibration and uncertainty-aware supervision that subjective intent recognition requires. Our purpose is therefore not to replace these models, but to convert their semantic knowledge into a structured prior and an uncertainty-gated training signal that explicitly target the two ambiguities below.
 
 Although these methods have yielded encouraging progress, they typically treat one perspective of ambiguity as dominant. 
 In our view, the core difficulty of subjective visual intention recognition is not any single ambiguity alone, but the coexistence of supervisory ambiguity and semantic ambiguity, which interfere with different functional components of the system. 
@@ -52,11 +52,12 @@ Treating these two failure modes within one mechanism may therefore be suboptima
 
 Motivated by this observation, we propose the \textbf{FDIL} (\textbf{F}unctionally \textbf{D}ecoupled \textbf{I}ntent \textbf{L}earning), a functionally decoupled framework for subjective intent recognition, as illustrated in Figure~\ref{fig:teaser}(b), where fixed semantic priors provide structured candidate semantics, uncertainty-aware text teachers stabilize ambiguous supervision, and a residual student learns image-aware intent prediction on top of the semantic prior.
 We decouple ambiguity handling into two complementary functions.
-First, Semantic Local Reranking and Calibration (SLR-C) provides ambiguity-aware semantic refinement: heterogeneous lexical, canonical, and scenario priors define a semantic prior that supplies structured candidate semantics.
-Second, Uncertainty-guided Text Distillation (UTD) provides ambiguity-aware semantic supervision: a text-only teacher distilled from rationale embeddings regularizes the visual model according to annotator agreement, improving robustness under subjective supervision and supporting image-aware prediction on top of the semantic prior.
+First, Semantic Local Reranking and Calibration (SLR-C) provides ambiguity-aware semantic refinement, where heterogeneous lexical, canonical, and scenario priors define a semantic prior that supplies structured candidate semantics.
+Second, Uncertainty-guided Text Distillation (UTD) provides ambiguity-aware semantic supervision, where a text-only teacher distilled from rationale embeddings regularizes the visual model according to annotator agreement, improving robustness under subjective supervision and supporting image-aware prediction on top of the semantic prior.
 Together, these two functions improve both robustness and discriminability without introducing high architectural complexity.
 
-Extensive experiments on the Intentonomy dataset show that our FDIL consistently outperforms strong existing baselines and recent state-of-the-art methods, yielding improvements in both hard-sample robustness and overall multi-label prediction quality.
+Extensive experiments on the Intentonomy dataset show that our FDIL outperforms baselines and recent state-of-the-art methods, yielding improvements in both hard-sample robustness and overall multi-label prediction quality.
+\revised{We further transfer FDIL to the Flickr-LDL and Emotion6 label-distribution benchmarks, where the division of labour survives the change of prediction space.}
 
 The main contributions of this work are summarized as follows:
 \begin{itemize}

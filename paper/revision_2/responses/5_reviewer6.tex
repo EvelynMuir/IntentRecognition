@@ -2,7 +2,17 @@
 % === Reviewer 6 ===
 % ================================
 \reviewerblock{Reviewer~6}{%
-\todo{lead-in paragraph}}
+We thank the reviewer for the positive assessment of the writing and structure, and for the precise methodological requirement, which we have implemented in full.}
 
-% \cresp{verbatim reviewer comment}{our response
-% \revloc{where and what we changed in the manuscript}}
+\cresp{The paper presents a functionally decoupled framework for visual-intent recognition that addresses supervisory and semantic ambiguity using structured semantic priors and uncertainty-aware distillation. The manuscript is well written, clearly structured, and the proposed contribution is reasonably good and relevant to the field. However, the performance improvement over comparable state-of-the-art methods is relatively small, which limits the strength of the empirical contribution. Although the authors report results using mean $\pm$ standard deviation over three runs, this alone is not sufficiently convincing for establishing statistical superiority. An explicit paired t-test, applied consistently against the strongest state-of-the-art methods, should therefore be provided to demonstrate that the observed improvements are statistically significant rather than caused by random variation.}
+{\gist{We implemented exactly the requested test, namely five seeds with paired two-sided $t$-tests against every compared method, Holm-corrected. Table~\ref{tab:significance_letter} of this letter gives the full statistics.}
+
+We agree that mean$\pm$std over three runs does not establish statistical superiority.
+
+\rh{Protocol.} We extend from three to \res{five} independent seeds. For each seed we retrain, on that same seed, the matched-protocol reproductions of the three strongest comparable methods, namely HLEG, LabCR, and IntCLIP, over identical frozen CLIP ViT-L/14 features, the identical split, and identical validation-only class-wise thresholding. This gives five \emph{paired} observations per method, with the training run as the pairing unit, so a paired two-sided $t$-test on the per-seed differences is well defined. Since FDIL is tested against five methods per metric, we also report Holm-corrected $p$-values.
+
+\rh{Outcome.} Avg.\ F1, mAP, and hard-subset F1 are significant against every compared method after correction. Against the strongest compared method, LabCR, the gains are \res{$+3.32$} Avg.\ F1 and \res{$+7.67$} hard-subset F1. The class-wise-thresholded F1 metrics carry more seed-to-seed variance because thresholds are fitted on a $498$-image validation split, and the sole non-significant contrast is Samples F1 against our own UTD-only ablation ($p_{\mathrm H}=0.0755$), which we report alongside the significant ones. This establishes statistical superiority over the matched published methods while remaining consistent with the modest effect size the reviewer correctly identified. Sec.~\ref{sec:sota_comparison} states the outcome and protocol, and the per-method table is in this letter because the manuscript is at the $35$-page limit.
+
+\rh{One note on the table.} The matched-protocol rows of Table~\ref{tab:main_results} were regenerated together with the significance test, so that the reported values and the test derive from a single reproducible run. They differ from the previous revision by a few tenths of a point.
+\revloc{Sec.~\ref{sec:sota_comparison}, the confidence intervals and regenerated matched-protocol rows in Table~\ref{tab:main_results} whose caption now states five seeds, and Table~\ref{tab:significance_letter} of this letter}
+}
