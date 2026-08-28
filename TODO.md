@@ -1,225 +1,142 @@
-| 二审问题                                 | 评价                      | 目前风险  |
-| ------------------------------------ | ------------------------- | ----- |
-| R2：缺乏两种 ambiguity 的理论依据              | **基本回答，但理论映射有漏洞**         | **高** |
-| R2/R6：CI、t-test、多次训练                 | **回答得很好**                 | 低     |
-| R2：single benchmark/generalization   | **回答了**                   | 中     |
-| R4：larger-scale dataset              | **严格说没有回答**               | **高** |
-| R4：2026 / recent SOTA                | **回答充分**                  | 低     |
-| R4：framework 过复杂、模块必要性               | **明显增强，但“necessity”仍稍过度** | 中     |
-| R4：efficiency / failure / deployment | **基本充分**                  | 低     |
-| AE：Abstract 要相对提升                    | **回答了，但有内部矛盾**            | 中高    |
-| EiC：recent bibliography / 35–55 refs | **基本满足**                  | 低     |
-| Proofreading                         | **仍有几处明确错误**              | 中     |
+1. 核对正文及response的统一性
 
-### 最需要改的 7 个地方
+3. **不要叫 Table 7 “interaction experiment”。**
+   你现在做的是 2×2 stratification + 每个 cell 内的 paired test，并没有正式检验 supervisory × semantic 的 statistical interaction。因此正文 caption 的 “2 × 2 ambiguity interaction”和 response 里大量的 “interaction experiment” 容易被统计审稿人抓住。
 
-1. **理论部分最大的逻辑问题：SLR-C 不可能补回 (I(Y;X\mid Z))。**
+   推荐统一成 **“2×2 ambiguity-stratified analysis”**。同时 response 里这句建议直接删掉：
 
-你现在 Eq. (15) 写：
+   > “Two components that were redundant with each other could not respond to orthogonal stratifications of the data in this way.”
 
-[
-H(Y_c|Z)=H(Y_c|X)+I(Y_c;X|Z),
-]
+   这句话逻辑上并不成立，而且两个 ambiguity axis 也没有证明是“orthogonal”。比较稳妥的是：
 
-然后把第二项解释成 “information discarded by (\phi)”，并进一步把 SLR-C 和这一类 semantic insufficiency 联系起来。公式本身完全正确。
+   > “These patterns are consistent with distinct functional sensitivities of the two modules.”
 
-但你的 SLR-C prior 实际是
+   这已经足够回答 reviewer。 
 
-[
-s_c^{prior}=\operatorname{sim}(f_{\rm img}(x),e_c),
-]
+4. **理论部分本身现在是成立的，但 response 把理论意义说过头了。**
+   Eq. (15) 的 identity 没问题；问题在于你从“different functionals”跳到了：
 
-而你定义的 (Z=f_{\rm img}(X))。换句话说，**SLR-C 的 prior (S) 也是 (Z) 的函数**。
+   > “therefore require different learning treatments rather than one shared mechanism”
+   > 以及正文：
+   > “pose different learning problems rather than admitting a single shared mechanism.”
 
-所以如果某些信息已经被 (Z) 丢掉了，也就是 (I(Y;X|Z))，**SLR-C 不可能重新获得这些信息**。这是目前理论中最容易被理论 reviewer 一眼指出的地方。
+   信息分解只能**motivate** functional decoupling，不能证明任何 unified mechanism 都不可能同时处理它们。建议全部把 `require` / `rather than admitting` 改成：
 
-真正与你方法一致的是：
+   > “motivate treating them with distinct mechanisms”
 
-[
-H(Y|B)=H(Y|Z)+I(Y;Z|B),
-]
+   然后用 Table 6 说“在我们测试的 unified control 下，decoupling 更好”。理论负责 justification，实验负责 empirical support，不要让理论承担“证明 necessity”的任务。
 
-因为 baseline logits (B) 是 (Z) 的压缩，而 SLR-C 可以利用 **(Z) 中存在、但 baseline logits (B) 没有充分利用的信息**。
+   还有 response 中：
 
-甚至可以写成一个更完整的 exact identity：
+   > “the required non-redundancy is visible in the prior ablation (Table 8), where no single source dominates.”
 
-[
-H(Y|B)
-======
+   这个逻辑不对。“没有单一 prior source dominate”证明的是不同 prior source 有互补性，**不是**证明 (S) 在给定 (B) 后 non-redundant。这里最好改成“SLR-C 相对 baseline 的性能提升与 (S) 提供额外 label-relevant information 的解释一致”。
 
-H(Y|X)
-+
-I(Y;X|Z)
-+
-I(Y;Z|B).
-]
+5. **效率部分要明确是 feature-level/head-level cost。**
+   response 的 Table 17 caption 其实写得更严谨：“Feature-level inference cost on frozen CLIP features”；但正文 Table 17 现在只写：
 
-你的 frozen backbone 不处理第二项；**SLR-C 处理的是最后一项——decision/readout insufficiency**。这样就完全自洽了。
+   > “Inference efficiency comparison on an RTX 4090.”
 
-同理，UTD 也不能“降低” (H(Y|X))，因为你自己已经把它定义成 irreducible disagreement。UTD 能做的是：**在这种不可约主观性存在时，减少有限标注造成的 target-estimation variance / 避免对不可靠 hard target 过拟合**。所以 response 里“two deficits ... admit corrective mechanisms”最好改成“require different learning treatments”，不要暗示两个 entropy term 都能被方法减少。
+   这样很容易让人以为 0.466 ms 是完整 image→prediction latency。Discussion 里又据此说适合 high-throughput，会进一步放大这个误解。
 
-还有一句尤其建议删掉：
+   建议正文 caption 恢复：
 
-> “at (\omega=1), where supervision is effectively noiseless”
+   > “Feature-level inference cost on pre-extracted CLIP ViT-L/14 features...”
 
-(\omega=1) 只是有限 annotator 全部一致，不等于真实 population supervision 无噪声。并且你的 (g^*) 只有在额外假设 (\sigma_v^2(1)=0) 时才真的等于 0。把它改成 **“maximally reliable observed supervision”** 会安全很多。
+   同时删掉：
 
----
+   > “HVU-CLIP releases no code and we expect a comparable cost”
 
-2. **Reviewer 4 要的是 “larger-scale datasets”，而你加的两个数据集其实都更小。**
+   `we expect` 完全没有必要，也没数据支持。IntentMLM/CoT4Intent 的 “orders of magnitude more expensive” 如果没有统一测量，最好也改成：
 
-Intentonomy 约 14.4k images；你 response 自己写：
+   > “require MLLM inference and are therefore not included in the measured feature-level comparison.”
 
-* Flickr-LDL：11,150
-* Emotion6：1,980
+   response 里还有一句：
 
-所以这不能严格回答：
+   > “At inference UTD contributes nothing”
 
-> “There must be larger-scale datasets.”
+   这也不准确——UTD 的训练作用保留在 student 参数里，只是**不增加 inference-time computation**。应该这么写。 
 
-现在 response 是：
+6. **ResNet101 那句归因没有证据。**
+   正文：
 
-> “We agree ... Flickr-LDL (11,150) and Emotion6 (1,980) ... We chose these to vary a different axis rather than simply to add images.”
+   > “FDIL is better on Macro, Samples, and Avg. F1 and lower on Micro F1, which we attribute to its handling of the highly ambiguous hard categories.”
 
-这个理由能回答 **generalization breadth**，但不能回答 **larger-scale**。
+   但 HVU-CLIP 根本没有 Hard F1，所以你不能根据这张表把两者差异归因到 hard categories。直接停在事实即可：
 
-这是我认为除理论外最大的审稿风险。
+   > “FDIL is higher on Macro, Samples, and Avg. F1, while HVU-CLIP is higher on Micro F1.”
 
-如果版面和实验条件已经不允许再跑真正更大的数据集，我反而建议**不要假装它满足了 larger-scale**。改成更诚实的：
+   会显得更专业。
 
-> Although these benchmarks are not individually larger than Intentonomy, they directly address evaluation breadth by testing the framework under a distinct subjective label-distribution formulation...
+7. **Case Study 最后一句很像在为 failure 辩护。**
+   现在是：
 
-然后解释 compatible large-scale subjective soft-label benchmarks 很有限。
+   > “illustrating the intrinsic uncertainty of the task and the rationality of the model’s decisions.”
 
-这样至少 reviewer 不会觉得你在“换概念”。目前的 “We agree” → 紧接着两个更小数据集，会很显眼。
+   “模型虽然错了但它是 rational 的”特别像防御性解释。建议：
 
----
+   > “illustrating that low-agreement samples can admit semantically plausible alternative predictions.”
 
-3. **LDL transfer 的方法协议在正文里写得不够，甚至有 formulation gap。**
+   客观描述现象即可。
 
-正文先明确说 LDL 输出位于 probability simplex，不再做 threshold。 但原 FDIL 方法里：
+8. **Discussion/Conclusion 对 transfer 的总结还是太用力。**
+   比如：
 
-* UTD 是 Bernoulli KL；
-* (y^{hard}) 是 multi-label binary；
-* (\omega) 是 positive labels 的 minimum agreement；
-* 每一类是独立 Bernoulli。
+   > “Generalization beyond the intent taxonomy is likewise bounded in magnitude rather than in kind.”
+   > “What does carry across all three transfers is the functional decomposition itself...”
+   > “therefore calls for priors written for that space rather than for a different division of labour.”
 
-这些和 LDL 的 simplex distribution **不是同一个输出 geometry**。
+   这些句子写得很漂亮，但数据其实没有这么确定：LDL 的 effect 很小、metric-dependent，而且 Flickr 和 Emotion6 对 full FDIL 的显著指标并不一致。这里最好写成：
 
-Response 甚至进一步说用了：
+   > “Across the transfer studies, the component-level tendencies are broadly consistent, although the overall gains are small and metric-dependent.”
 
-> “out-of-fold teacher predictions”
+   最后一段：
 
-但我在正文的 Flickr-LDL / Emotion6 protocol 里没有看到具体说明这一套是怎么适配的。
+   > “the key challenge ... lies in resolving supervisory and semantic ambiguity rather than in extracting low-level visual features”
 
-至少正文应该用很短的一段写清：
+   也太宽泛，而且你自己的 ResNet101 实验其实证明 backbone quality 仍然重要。建议改成：
 
-* LDL 中 (\omega) 到底怎么从 distribution / annotator votes 得到；
-* UTD 的 student/teacher loss 是 Bernoulli KL 还是 categorical KL；
-* 是否仍有 hard label；
-* SLR-C 如何作用于 distribution logits；
-* train/val/test 怎么分；
-* OOF teacher 怎么生成；
-* 哪些 hyperparameters 保持 Intentonomy 不变。
+   > “These results suggest that, given strong visual representations, explicitly modeling supervisory and semantic ambiguity can further improve subjective intent recognition.”
 
-否则 reviewer 很容易问：**“你说 prediction geometry 变了，但你的 method definition 没跟着变。”**
+   这样几乎没有攻击面。
 
----
+9. **response 里最需要删的不是科学 caveat，而是“辩护式措辞”。**
+   我会删/改这些表达：
 
-4. **Abstract 的 “28.0% hard-subset SOTA” 现在和你自己的 GPT-5.6 表存在内部冲突。**
+   * “new experiments ... **rather than with rewriting**”
+   * “We **deliberately** scope the claim ... which we report **rather than obscure**.”
+   * “There are two modules, **not many**”
+   * “the **largest benchmark we could use**...”
+   * “compatible ... benchmarks are **scarce**”
+   * “We implemented **exactly** the requested test”
+   * “This **establishes statistical superiority**...”
+   * “the **sole non-trivial regression**...”
+   * closing 的 “a **demanding** and constructive second round”
 
-Abstract 写：
+   这些都不是错，但组合起来会让 response 有一种“我提前预判你会攻击我，所以我先解释”的感觉。尤其 **“rather than obscure”** 我强烈建议删掉，完全没有收益。
 
-> “FDIL leads the state-of-the-art by 6.1% relative average F1 and 28.0% on the hard subset.”
+   同时“35-page limit”目前被重复解释了很多次。General Response 说一次、EiC page-limit comment 再说一次就足够了。其他 reviewer 下直接说“full statistics are provided in Table R1”即可。
 
-但 Table 2 里：
+10. **LDL response 里有两个不严谨的表述。**
+    一是：
 
-* FDIL Hard = **35.02**
-* GPT-5.6 Sol Hard = **36.19**
+> “SLR-C moves the pointwise-fit metrics (KLD, cosine, µ) **and only those**”
 
-也就是说，你自己的新增 comparator 在 Hard 上已经超过 FDIL。
+Table R2 中其他指标也有数值变化，只是显著性/主要趋势不同，所以 `and only those` 应改成 `primarily affects`。
 
-你这里的 28.0% 实际应该是相对**此前 task-specific / published intent method**（例如 IntentMLM 27.39）而言。
+二是：
 
-所以一定要限定：
+> 四个 LDL objective “moving every metric by at most (7\times10^{-4})”
 
-> **“FDIL improves over the strongest prior task-specific method by 6.1% relative Avg. F1 and 28.0% relative Hard F1.”**
+这句话和表里的 µ(%) 不严格对应，而且完全没必要精确到这个程度。直接写：
 
-或者：
+> “produce only negligible changes relative to the matched baseline”
 
-> “Among prior task-specific intent-recognition methods, ...”
+更安全也更清楚。
 
-否则“state-of-the-art on hard subset”已经被自己的 Table 2 否定。
+11. **还有几个小但应该修的 proofreading 问题。**
+    首页单位应为 **Beijing University of Posts and Telecommunications**，不是 “Post and Telecommunications”；Sec. 4.5.2 有 `distribution.The` 缺空格；Keywords 的大小写建议统一；`source benchmark` 用在 EMOTIC 上也不太自然，改成 `transfer benchmark`。另外 Figure 3 的 silhouette 如果是在 **t-SNE 2D embedding** 上计算的，我建议不要作为定量证据；如果是在原始 decision-score space 算的，应明确写出来。
 
-另外 response 说：
+总体判断是：**现在不需要再增加实验了，主要需要“收口”。** 目前最大的风险不是 reviewer 觉得你没回答，而是你为了把每个质疑都堵死，反而把一些原本只需要“evidence supports”写成了“establishes / requires / could not / must”。这会给 reviewer 新的逻辑攻击点。
 
-> “Both percentages are computed directly from the main comparison table.”
-
-也不准确。Avg 来自 Table 1，而 Hard 的 prior comparison 是另一张 difficulty table，不是 Table 1。
-
----
-
-5. **Response 里 HVU-CLIP 的 “best on four of five columns” 是明确错误。**
-
-你写：
-
-> “FDIL is best on four of the five reported columns”
-
-然后自己列出来：
-
-* Macro：FDIL 赢
-* Micro：FDIL **输**
-* Samples：FDIL 赢
-* Avg：FDIL 赢
-* Hard：HVU-CLIP **没有报告**
-
-所以可比较的其实只有 4 项，FDIL 是 **3/4 胜**，而不是 4/5。
-
-建议直接改：
-
-> “FDIL outperforms HVU-CLIP on three of the four commonly reported metrics (Macro, Samples, and Avg. F1), while trailing on Micro F1; HVU-CLIP does not report Hard F1.”
-
-这个小错误很值得现在修，因为 reviewer 一眼就能算出来。
-
----
-
-6.
-
-Table 12：你说 flattening/removing gate “degrades consistently”，但 uniform gate 的 Hard 是 **+1.13**，所以不能说所有指标都 consistently degrade。 改成：
-
-> “degrades Avg. F1 and most metrics”
-
-即可。
-
----
-
-
-还有一些纯语言小问题，比如：
-
-> “we report...” 出现在句号后仍然小写；
-> “we propose the FDIL” 应该是 “we propose FDIL”；
-> “intention perception ,” 多了空格。
-
-这些不致命，但 Reviewer 4 已经明确要求 proofreading，最好别再留下这种东西。
-
----
-
-### 哪些部分已经做得很好
-
-统计验证这次基本可以放心。五 seeds、95% t-interval、paired two-sided t-test、Holm correction，而且把唯一一个不显著的 Samples F1 vs UTD-only (p_H=0.0755) 也明确报告了，这正面满足了 Reviewer 2 和 Reviewer 6 的要求。
-
-不过 response 中的措辞最好从 **“against every compared method”** 改成 **“against every matched-protocol comparator”**。因为 CoT4Intent、HVU-CLIP、IntentMLM 这些 published-only rows 并没有五 seed paired test，你真正检验的是 matched reproductions。
-
-recent baselines 这块也够了：HVU-CLIP、CoT4Intent 加进主比较，又加了一组近期 zero-shot MLLM；而且你没有为了显得 FDIL 强而隐藏 GPT-5.6 在 mAP/Hard 上更高的事实，这反而是加分项。
-
-efficiency、failure visualization 和 deployment 也都回答到了；35 页 manuscript 我看排版上没有明显的溢出、重叠、图表裁切问题。Response 里把 supplementary statistics 放进去，在正文达到 page limit 的情况下也算合理。
-
-### 我对当前版本的最终判断
-
-**如果不考虑上面几个问题，这次 revision 已经比上一版强很多，二审的主要批评基本都有实质性新实验回应，而不是只靠措辞。**
-
-但我会把提交前优先级排成：
-
-**第一优先：修理论逻辑 → 第二优先：处理 larger-scale 这个没有真正满足的问题 → 第三优先：补清 LDL adaptation protocol → 然后修 Abstract/GPT-5.6、4/5、Table 4、HLEG venue 等明确错误。**
-
-其中**理论问题我认为必须改**。它不是“reviewer 可能不喜欢这种解释”，而是当前“(I(Y;X|Z)) 被 representation 丢弃”与“SLR-C 只读取同一个 (Z)”之间确实存在形式上的矛盾。好在这个问题**不需要重新做实验，改理论 decomposition 就能修正，而且改完反而会比现在更严谨**。
+如果按优先级，我会先改 **Abstract → Table 5 → interaction措辞 → theory中的 require/necessity → efficiency → Discussion/Conclusion**。Response 则主要做减法，特别是 Reviewer 4 Comment 4 那三页，完全可以少掉大约 25% 的自我辩护文字，论证反而会更有力量。

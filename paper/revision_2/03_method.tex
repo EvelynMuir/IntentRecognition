@@ -1,6 +1,6 @@
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=\linewidth]{2_framework.pdf}
+\includegraphics[width=0.87\linewidth]{2_framework.pdf}
 \caption{Overview of FDIL. SLR-C constructs a textual semantic prior and performs local reranking plus residual refinement. UTD uses a rationale-based text teacher and an agreement-aware gate to stabilize learning under ambiguous supervision.}
 \label{fig:fdil_framework}
 \end{figure}
@@ -10,7 +10,7 @@
 
 \subsection{Overview}
 
-To address the dual challenges of supervisory ambiguity and semantic ambiguity in visual intention recognition, we propose the \textbf{FDIL}, a functionally decoupled framework where fixed semantic priors provide structured candidate semantics, uncertainty-aware text teachers stabilize ambiguous supervision, and a residual student learns image-aware intent prediction on top of the semantic prior. Instead of forcing one unified mechanism to handle both supervisory ambiguity and semantic ambiguity, we assign them to two complementary functions.
+To address the dual challenges of supervisory and semantic ambiguity, we propose \textbf{FDIL}, a functionally decoupled framework where fixed semantic priors provide structured candidate semantics, uncertainty-aware text teachers stabilize ambiguous supervision, and a residual student learns image-aware intent prediction on top of the semantic prior. Instead of forcing one unified mechanism to handle both ambiguities, we assign them to two complementary functions.
 
 FDIL consists of two key components, as shown in Figure~\ref{fig:fdil_framework}.
 \begin{itemize}
@@ -18,48 +18,37 @@ FDIL consists of two key components, as shown in Figure~\ref{fig:fdil_framework}
     \item \textbf{Uncertainty-guided Text Distillation (UTD)}, which introduces adaptive semantic guidance to improve robustness under ambiguous supervision.
 \end{itemize}
 
-Given an input image, the model first produces visual intent scores using a strong visual backbone. SLR-C then provides structured candidate semantics by locally reranking intent candidates and forming a semantic prior. UTD supplies uncertainty-aware semantic supervision through a rationale-based text teacher and can be reused to regularize both the visual student and the residual refinement module built on top of the semantic prior.
-
-%% --- BEGIN condensed-out for page limit: notation table removed; every symbol
-%% is now defined inline at its first occurrence in the text. ---
-\iffalse
-\begin{table}[htbp]
+%% --- Notation table (compact two-column layout) ---
+\begin{table}[!t]
 \centering
 \small
-\caption{Key notation used in the method.}
+\caption{\revised{Key notation used in the method.}}
 \label{tab:notation}
-\setlength{\tabcolsep}{6pt}
-
-\begin{tabular}{ll}
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{ll@{\hspace{10pt}}ll}
 \hline
-Symbol & Meaning \\
+\revised{Symbol} & \revised{Meaning} & \revised{Symbol} & \revised{Meaning} \\
 \hline
-$x$ & input image \\
-$\mathcal{Y},\,C$ & intent label space and number of classes \\
-$\mathbf{y}^{\text{soft}},\,\mathbf{y}^{\text{hard}}$ & soft annotation / binarized hard labels \\
-$\omega\in(0,1]$ & sample-level annotator agreement score \\
-$\phi=f_{\text{img}}(x)$ & frozen visual image feature \\
-$\tilde{s}^{\text{prior}}_c$ & normalized heterogeneous semantic prior \\
-$\mathcal{C}_K(x),\,K$ & Top-$K$ candidate set and its size \\
-$s^{\text{full}}_c$ & final refined score for class $c$ \\
-$t_c$ & class-wise decision threshold (validation-only) \\
-$\mathbf{p}^{\text{tea}},\,\tau$ & text-teacher distribution and temperature \\
-$g=1-\omega$ & teacher-branch gate weight \\
-$\mathcal{L}_{\text{total}}$ & total training loss \\
+\revised{$x$} & \revised{input image} & \revised{$s^{\text{prior}}_c,\,\tilde{s}^{\text{prior}}_c$} & \revised{raw / normalized prior score} \\
+\revised{$\mathcal{Y},\,C$} & \revised{label space, no.\ of classes} & \revised{$\mathbf{e}_c$} & \revised{class-level text embedding} \\
+\revised{$\mathbf{y}^{\text{soft}},\,\mathbf{y}^{\text{hard}}$} & \revised{soft / binarized labels} & \revised{$\mathcal{C}_K(x),\,K$} & \revised{Top-$K$ candidate set, its size} \\
+\revised{$\omega\in(0,1]$} & \revised{sample-level agreement} & \revised{$\alpha$} & \revised{prior strength in reranking} \\
+\revised{$f_{\text{img}}=\phi$} & \revised{frozen visual encoder} & \revised{$\tilde{s}_c$} & \revised{locally reranked logits} \\
+\revised{$\mathbf{s}^{b}$ ($B$)} & \revised{frozen base visual logits} & \revised{$s^{\text{full}}_c$} & \revised{final refined score for class $c$} \\
+\revised{$h_{\text{res}}$} & \revised{residual student MLP} & \revised{$t_c$} & \revised{class-wise threshold (validation)} \\
+\revised{$T(x)$} & \revised{rationale text for image $x$} & \revised{$\mathbf{p}^{\text{tea}},\,\tau$} & \revised{teacher distribution, temperature} \\
+\revised{$\mathbf{s}^{v}$} & \revised{student logits under KD} & \revised{$g=1-\omega$} & \revised{teacher-branch gate weight} \\
+\revised{$\mathcal{L}_{\text{vis}},\,\mathcal{L}_{\text{distill}}$} & \revised{classification / KD loss} & \revised{$\lambda,\,\mathcal{L}_{\text{total}}$} & \revised{KD weight, total loss} \\
 \hline
 \end{tabular}
-
 \end{table}
-\fi
-%% --- END condensed-out ---
+%% --- END notation table ---
 
 \subsection{Problem Formulation}
 
 Given an input image $x$, the goal is to predict a set of intent labels from a predefined label space $\mathcal{Y}=\{1,\dots,C\}$, where $C$ is the total number of intent categories. Due to the subjective nature of visual intention recognition, annotations are provided as soft label vectors $\mathbf{y}^{\text{soft}} \in \{0, 0.33, 0.66, 1\}^C$, reflecting annotator agreement.
 
-Existing approaches typically follow either hard binarization or soft regression paradigms, both of which have limitations under ambiguous supervision. To address this, we adopt a \textbf{decoupled utilization} of annotation signals.
-
-Specifically, we derive binarized labels $\mathbf{y}^{\text{hard}}$ for classification supervision, while extracting an image-level agreement score $\omega \in (0,1]$ from $\mathbf{y}^{\text{soft}}$. Here, $\omega$ reflects annotator consensus, where higher values indicate more reliable supervision. The binarized labels are computed as.
+Existing approaches typically follow either hard binarization or soft regression, both limited under ambiguous supervision, so we adopt a \textbf{decoupled utilization} of annotation signals. Specifically, we derive binarized labels $\mathbf{y}^{\text{hard}}$ for classification supervision, while extracting an image-level agreement score $\omega \in (0,1]$ from $\mathbf{y}^{\text{soft}}$. Here, $\omega$ reflects annotator consensus, where higher values indicate more reliable supervision. The binarized labels are computed as
 \begin{equation}
 y^{\text{hard}}_{c} =
 \begin{cases}
@@ -76,16 +65,14 @@ This choice lets the hardest positive label determine how much the sample should
 
 \subsection{Semantic Local Reranking and Calibration (SLR-C)}
 
-Semantic ambiguity mainly manifests as local confusion among visually plausible but semantically adjacent intents. A candidate-recall diagnostic shows that the baseline Top-10 candidates already cover $83.9\%$ of positive labels, and $67.8\%$ of its false negatives remain recoverable within this set. This suggests that many errors arise from ranking confusable intents rather than failing to retrieve the correct intent. To address this, we build a semantic refinement module that provides structured candidate semantics before turning to ambiguity-aware supervision.
+Semantic ambiguity mainly manifests as local confusion among visually plausible but semantically adjacent intents. A candidate-recall diagnostic shows that the baseline Top-10 candidates already cover $83.9\%$ of positive labels and that $67.8\%$ of its false negatives remain recoverable within that set, so many errors arise from ranking confusable intents rather than from failing to retrieve them. We therefore build a semantic refinement module supplying structured candidate semantics before turning to ambiguity-aware supervision.
 
 \subsubsection{Semantic Prior Construction}
 
-Intent semantics are inherently multi-granular and abstract, making a single textual representation insufficient. We therefore construct a heterogeneous semantic prior for each intent by combining three complementary textual sources, namely lexical intent phrases, canonical intent descriptions, and descriptive visual scenarios. The lexical source provides concise intent name cues, the canonical source provides semantic definitions, and the scenario source grounds abstract intents into plausible visual situations.
+Intent semantics are multi-granular and abstract, so a single textual representation is insufficient. We therefore build a heterogeneous semantic prior per intent from three complementary textual sources: lexical intent phrases giving concise name cues, canonical intent descriptions giving semantic definitions, and descriptive visual scenarios grounding abstract intents in plausible visual situations.
 
 \paragraph{Example}
-For the intent \textit{SocialLifeFriendship}, the lexical phrase is \textit{``Social Life and Friendship''}, and the canonical description is.
-\textit{``Being part of a social group. Having people to do things with. Having close friends, others to rely on. Making friends, drawing others near.''}
-This intent is further expanded into multiple scenario archetypes with distinct visual realizations. For \textit{SocialLifeFriendship}, scenarios include friends hiking together, close friends talking on a couch, a group dinner, or volunteers gardening together.
+For the intent \textit{SocialLifeFriendship}, the lexical phrase is \textit{``Social Life and Friendship''}, the canonical description is \textit{``Being part of a social group. Having people to do things with. Having close friends, others to rely on. Making friends, drawing others near.''}, and the scenario source expands it into distinct visual realizations such as friends hiking together, close friends talking on a couch, a group dinner, or volunteers gardening together.
 
 %% --- BEGIN condensed-out for 35-page limit (full scenario examples retained below) ---
 \iffalse
@@ -106,7 +93,7 @@ This intent is further expanded into multiple scenario archetypes with distinct 
 \fi
 %% --- END condensed-out for 35-page limit ---
 
-The scenarios are not hand-picked but produced by a fixed generation protocol applied uniformly to every intent class (template released with our artifacts), under which the vision-language model enumerates visually distinct realizations along five axes (subjects/objects, actions, settings, atmosphere, and photographic style), with at least three settings per intent so as to span intra-class variation rather than a single canonical view. Inclusion favors representativeness over exhaustive coverage. Outside the generated scenarios the prior degrades gracefully toward the lexical and canonical sources, the base logits, and the residual student.
+The scenarios are not hand-picked but produced by a fixed generation protocol applied uniformly to every intent class (template released with our artifacts), under which the vision-language model enumerates visually distinct realizations along five axes (subjects/objects, actions, settings, atmosphere, and photographic style), with at least three settings per intent so as to span intra-class variation rather than a single canonical view. Outside the generated scenarios the prior degrades gracefully toward the lexical and canonical sources, the base logits, and the residual student.
 
 Given an image $x$, we score each intent by the CLIP-scaled cosine similarity between the image feature $f_{\text{img}}(x)$ and the text embedding $\mathbf{e}_c$ of class $c$.
 \begin{equation}
@@ -122,7 +109,7 @@ where $\mu^{r}(x)$ and $\sigma^{r}(x)$ are the per-sample mean and standard devi
 
 \subsubsection{Semantic Local Reranking}
 
-In the refinement module, we start from base visual logits $\mathbf{s}^{b}$ produced by a frozen visual student. We first select a compact candidate set as.
+In the refinement module, we start from base visual logits $\mathbf{s}^{b}$ produced by a frozen visual student. We first select a compact candidate set as
 \begin{equation}
 \mathcal{C}_K(x) = \text{TopK}(\mathbf{s}^{b}, K).
 \end{equation}
@@ -134,43 +121,39 @@ s^{b}_c + \alpha \cdot \tilde{s}^{\text{prior}}_c, & c \in \mathcal{C}_K(x), \\
 s^{b}_c, & \text{otherwise}.
 \end{cases}
 \end{equation}
-Here $\alpha$ controls the strength of semantic reranking. In our implementation, $\alpha$ is fixed to 0.3.
-
-This localized reranking produces a semantic prior that narrows the candidate set and sharpens the local score geometry without introducing an additional trainable prior module.
+Here $\alpha$ controls the strength of semantic reranking and is fixed to $0.3$. This localized reranking narrows the candidate set and sharpens the local score geometry without adding a trainable prior module.
 
 \subsubsection{Residual Refinement on the Semantic Prior}
 
-Fixed reranking alone is not sufficient, because the heterogeneous prior may still fall short of the image-specific evidence. We therefore train a lightweight residual student on top of the semantic prior.
+Fixed reranking alone is insufficient, since the heterogeneous prior may still fall short of image-specific evidence, so we train a lightweight residual student on top of the semantic prior.
 \begin{equation}
 s^{\text{full}}_c = \tilde{s}_c + h_{\text{res}}(f_{\text{img}}(x))_c,
 \end{equation}
-where $h_{\text{res}}(\cdot)$ is a residual MLP that predicts class-wise residual intent scores from the image feature. In practice, the SLR-C logits $\tilde{s}_c$ are first computed and frozen, and the residual module is then optimized separately.
-
-In the final full model, this residual module is not trained in isolation, since it can also be regularized by the uncertainty-aware text teacher introduced next. Thus, SLR-C provides the structured candidate semantics first, and UTD later supplies the ambiguity-aware supervision used to stabilize image-aware prediction on top of the semantic prior.
+where $h_{\text{res}}(\cdot)$ is a residual MLP predicting class-wise residual intent scores from the image feature. The SLR-C logits $\tilde{s}_c$ are computed and frozen first, and the residual module is optimized on top of them. In the full model, it is additionally regularized by the uncertainty-aware text teacher introduced next, so SLR-C supplies the structured candidate semantics and UTD the ambiguity-aware supervision.
 
 \subsubsection{Class-wise Calibration}
 
-Motivated by Guo et al. \cite{guo_calibration_2017}, to account for class imbalance and varying score distributions, we adopt class-wise thresholds.
+Following Guo et al. \cite{guo_calibration_2017}, to account for class imbalance and varying score distributions, we adopt class-wise thresholds.
 \begin{equation}
 \hat{y}_c = \mathbb{I}[\sigma(s^{\text{full}}_c) > t_c],
 \end{equation}
-where $t_c$ is determined on the validation set. Concretely, each threshold is selected independently by maximizing the class-wise validation F1 score.
+where $\hat{y}_c$ is the predicted label for class $c$, $\mathbb{I}[\cdot]$ is the indicator function, $\sigma(\cdot)$ is the sigmoid function, not to be confused with the per-source standard deviation $\sigma^{r}(x)$ above, and $t_c$ is determined on the validation set by maximizing the class-wise validation F1 score.
 \begin{equation}
 t_c^\ast = \arg\max_{t \in \mathcal{T}} \text{F1}_c^{\text{val}}(t),
 \end{equation}
-where $\mathcal{T}$ is a fixed threshold grid. This design lets each class adapt its decision boundary to its own score distribution and frequency level, instead of sharing a single global threshold.
+where $\mathcal{T}$ is a fixed threshold grid, so each class adapts its decision boundary to its own score distribution and frequency instead of sharing a global threshold.
 
 \subsection{Uncertainty-guided Text Distillation (UTD)}
 
 %\subsubsection{Motivation}
 
-Supervisory ambiguity arises when multiple plausible intents coexist for a given image. Direct optimization against hard labels may lead to overconfident predictions and unstable decision boundaries. To alleviate this issue, we introduce semantic guidance from text space and adapt its influence based on the uncertainty of supervision.
+Supervisory ambiguity arises when multiple plausible intents coexist for an image, where direct optimization against hard labels leads to overconfident predictions and unstable decision boundaries. We therefore introduce semantic guidance from text space and adapt its influence to the uncertainty of supervision.
 
 \subsubsection{Text-derived Teacher}
 
-For each training image, we construct structured textual descriptions that capture semantic cues relevant to intention understanding. These descriptions are generated offline by a vision-language model, guided by both the image content and intent semantics.
+For each training image, we construct structured textual descriptions capturing semantic cues relevant to intention understanding, generated offline by a vision-language model from both the image content and intent semantics.
 
-To enhance discriminative capability under semantic ambiguity, we further incorporate contrastive cues by identifying visually plausible but incorrect intents predicted by the current model. Specifically, we select high-confidence negative intents as confusion candidates and use them to guide the generation of discriminative textual descriptions. This encourages the resulting text to emphasize subtle distinctions among semantically adjacent intents.
+To enhance discrimination under semantic ambiguity, we also select high-confidence negative intents predicted by the current model as confusion candidates and use them to guide generation, which encourages the text to emphasize subtle distinctions among semantically adjacent intents.
 
 The generated text aims to summarize three aspects.
 (1) observable visual elements,
@@ -186,9 +169,9 @@ A lightweight classifier then maps the embedding into a multi-label teacher dist
 \begin{equation}
 \mathbf{p}^{\text{tea}} = \sigma(g_{\text{tea}}(\mathbf{e}_{\text{text}}) / \tau),
 \end{equation}
-where $\sigma(\cdot)$ is the sigmoid function and $\tau$ is the temperature parameter.
+where $g_{\text{tea}}$ is a lightweight classifier head and $\tau$ is the temperature parameter.
 
-This design introduces contrastive semantic signals that improve the teacher's ability to distinguish semantically similar intents, while remaining separate from the semantic prior itself. In the full FDIL pipeline, the same teacher can further regularize the residual refinement module built on top of SLR-C.
+These contrastive signals improve the teacher's ability to separate similar intents while remaining independent of the semantic prior, and in the full pipeline the same teacher also regularizes the residual refinement module.
 
 \subsubsection{Uncertainty-guided Distillation}
 
@@ -201,46 +184,43 @@ To incorporate semantic guidance, we introduce an uncertainty-guided Bernoulli d
 \begin{equation}
 \mathcal{L}_{\text{distill}} = \sum_{c=1}^{C}\text{KL}\big(\mathrm{Bern}(p_c^{\text{tea}})\,\|\, \mathrm{Bern}(\sigma(s_c^{v}/\tau))\big),
 \end{equation}
-which is applied independently to each label. We use Bernoulli-style distillation rather than softmax distillation because intent recognition is a multi-label problem in which each intent is modeled as an independent Bernoulli variable rather than as a mutually exclusive class on a probability simplex. This formulation preserves per-class uncertainty and avoids imposing artificial competition among labels.
+which is applied independently to each label. We use Bernoulli rather than softmax distillation because intent recognition is multi-label, so each intent is an independent Bernoulli variable rather than a mutually exclusive class on a simplex, which preserves per-class uncertainty and avoids artificial competition among labels.
 
 Rather than mixing the two objectives with a fixed global coefficient, we use a gate derived from the agreement score. For the current sample, the teacher branch weight is defined as $g = 1 - \omega$, so low-agreement samples receive stronger semantic guidance, while high-agreement samples remain dominated by direct visual supervision.
 
-Using $g$, the final loss is defined as.
+Using $g$, the final loss is defined as
 \begin{equation}
 \mathcal{L}_{\text{total}} = (1-g)\mathcal{L}_{\text{vis}} + \lambda g \mathcal{L}_{\text{distill}}
 = \omega \mathcal{L}_{\text{vis}} + \lambda (1-\omega)\mathcal{L}_{\text{distill}},
 \end{equation}
 where $\lambda$ is the distillation loss weight.
 
-This gated formulation allows the model to rely more on visual supervision when annotations are reliable, and to leverage semantic guidance when supervision is uncertain. In other words, UTD stabilizes ambiguous supervision through an uncertainty-aware text teacher rather than by modifying the semantic prior itself.
+The model therefore relies on visual supervision when annotations are reliable and on semantic guidance when supervision is uncertain, so UTD stabilizes ambiguous supervision through the text teacher rather than by modifying the semantic prior.
 
 \subsection{Functionally Decoupled Ambiguity Modeling}
 \label{sec:decoupling_principle}
 
-We interpret visual intention recognition as a functionally decoupled ambiguity problem, formed by semantic confusion among neighboring intents and supervisory uncertainty from subjective annotations.
-
-\revised{\textbf{Two ambiguities, two learning problems.}
-Let $X$ denote the image, $Z=\phi(X)$ its deterministic visual representation, and $Y_c\in\{0,1\}$ a random human judgement for intent $c$. Then
+\revised{\textbf{Three sources of residual uncertainty.}
+Let $X$ denote the image, $Z=\phi(X)$ its deterministic frozen visual representation, $Y_c\in\{0,1\}$ a random human judgement for intent $c$, and $B=\mathbf{s}^{b}(Z)$ the baseline decision scores. Since $B$ is a function of $Z$ and $Z$ of $X$, chaining $I(Y_c;Z\mid B)=H(Y_c\mid B)-H(Y_c\mid Z)$ with $I(Y_c;X\mid Z)=H(Y_c\mid Z)-H(Y_c\mid X)$ yields the exact identity
 \begin{equation}
 \label{eq:entropy_decomp}
-H(Y_c\mid Z)
+H(Y_c\mid B)
 =
 \underbrace{H(Y_c\mid X)}_{\text{irreducible supervisory}}
 +
-\underbrace{I(Y_c;X\mid Z)}_{\text{discarded by }\phi} ,
+\underbrace{I(Y_c;X\mid Z)}_{\text{discarded by }\phi}
++
+\underbrace{I(Y_c;Z\mid B)}_{\text{unused by the readout}} ,
 \end{equation}
-which follows from
-$I(Y_c;X\mid Z)=H(Y_c\mid Z)-H(Y_c\mid X,Z)$ and
-$H(Y_c\mid X,Z)=H(Y_c\mid X)$ because $Z=\phi(X)$.
-The first term is disagreement persisting given the complete image. Being a functional of the annotation distribution $\Pr(Y_c\mid X)$ alone, it cannot be reduced by any choice of $\phi$ or any predictor reading $Z$. The second is label-relevant information that $X$ carries but $Z$ discards, a functional of the representation map. \eqref{eq:entropy_decomp} serves to show that the two deficits are functionals of different objects and hence pose two learning problems, what the model is asked to fit and what information the decision rule can access, which is why FDIL treats them with mechanisms of different type.}
+where both conditional mutual informations use $H(Y_c\mid X,Z)=H(Y_c\mid X)$ and $H(Y_c\mid Z,B)=H(Y_c\mid Z)$ because $Z$ and $B$ are deterministic functions of $X$ and $Z$. The first term is disagreement persisting given the complete image; being a functional of the annotation distribution $\Pr(Y_c\mid X)$ alone, no choice of $\phi$ and no predictor reading $Z$ can reduce it. The second is label-relevant information that $X$ carries but the frozen $Z$ discards, a functional of the representation map that is unrecoverable downstream by the data-processing inequality. The third is information already carried by $Z$ that the baseline decision rule leaves unexploited, a functional of the readout. Since the backbone stays frozen, FDIL does not act on the second term; SLR-C acts on the third, while UTD does not reduce the first but changes how strongly supervision drawn from it is trusted. The three terms are functionals of different objects, which motivates treating them with distinct mechanisms; whether that separation pays off empirically is tested against a unified control in Sec.~\ref{sec:unified_vs_decoupled}.}
 
-\revised{\textbf{SLR-C supplies label-relevant information the baseline underuses.}
-Let $B=\mathbf{s}^{b}(Z)$ be the baseline logits and $S=\tilde{\mathbf{s}}^{\mathrm{prior}}(X)$ the text-side prior scores. Since $B$ is a function of $Z$, the data-processing inequality gives $H(Y_c\mid B)\ge H(Y_c\mid Z)$, showing that the baseline prediction is in general insufficient, retaining only part of the label-relevant information. Conditioning additionally on the prior gives the  identity
+\revised{\textbf{SLR-C recovers information the readout leaves unused.}
+Let $S=\tilde{\mathbf{s}}^{\mathrm{prior}}(X)=\psi(Z)$ be the text-side prior scores, which are similarities between the same frozen image feature and class-level text embeddings and are therefore themselves a function of $Z$. Conditioning additionally on the prior gives the identity
 \begin{equation}
 \label{eq:cmi_prior}
 H(Y_c\mid B,S)=H(Y_c\mid B)-I(Y_c;S\mid B),
 \end{equation}
-so residual uncertainty falls by the conditional mutual information $I(Y_c;S\mid B)$, the label-relevant information in the prior that the baseline prediction does not already carry, which is zero precisely when $S$ is redundant given $B$. SLR-C is therefore an injection of under-used text-side information, and $\tilde{s}_c=s^{b}_c+\alpha\tilde{s}^{\mathrm{prior}}_c$ is the minimal way to make the decision rule a function of $(B,S)$ rather than of $B$ alone.}
+so residual uncertainty falls by $I(Y_c;S\mid B)$, the label-relevant information in the prior that the baseline scores do not already carry, which is zero precisely when $S$ is redundant given $B$. Since $S=\psi(Z)$, this gain is bounded by the third term of \eqref{eq:entropy_decomp}, $I(Y_c;S\mid B)\le I(Y_c;Z\mid B)$, so SLR-C recovers part of what the readout leaves unused and cannot recover what $\phi$ discarded. It injects under-used text-side information rather than providing a second view of the image, and $\tilde{s}_c=s^{b}_c+\alpha\tilde{s}^{\mathrm{prior}}_c$ is the minimal way to make the decision rule a function of $(B,S)$ rather than of $B$ alone.}
 
 \revised{\textbf{Top-$K$ reranking as local hypothesis screening.}
 For a positive intent $c^+$ and a confusing intent $c^-$ in $\mathcal{C}_K(x)$, let
@@ -252,10 +232,10 @@ $\Delta_{\mathrm{prior}}
 \label{eq:margin_identity}
 m'-m=\alpha\Delta_{\mathrm{prior}},
 \end{equation}
-so the margin grows whenever the prior ranks $c^+$ above $c^-$, a reversed pair is corrected when $\alpha\Delta_{\mathrm{prior}}\ge -m>0$, and scores outside $\mathcal{C}_K(x)$ are untouched. Restricting the prior to $\mathcal{C}_K(x)$ is thus local hypothesis screening, in the sense of variable screening for high-dimensional selection. The semantic channel acts only on hypotheses the visual evidence already deems plausible. $K$ balances coverage against distractor noise. SLR-C therefore does not globally rescore the label space but corrects semantic confusion among high-probability candidates.}
+so the margin grows whenever the prior ranks $c^+$ above $c^-$, a reversed pair is corrected when $\alpha\Delta_{\mathrm{prior}}\ge -m>0$, and scores outside $\mathcal{C}_K(x)$ are untouched. Restricting the prior to $\mathcal{C}_K(x)$ is thus local hypothesis screening, in the sense of variable screening for high-dimensional selection: the semantic channel acts only on hypotheses the visual evidence already deems plausible, and $K$ balances coverage against distractor noise. SLR-C therefore does not globally rescore the label space but corrects confusion among high-probability candidates.}
 
 \revised{\textbf{UTD as reliability-weighted privileged information.}
-The rationale teacher reads a textual description $T(x)$ generated with access to intent semantics and model-specific confusion candidates, which exists at training time only. UTD therefore uses privileged information \cite{vapnik_new_2009}, realized through distillation \cite{lopez-paz_unifying_2016}, and must decide how much to trust that privileged channel. In a per-sample scalar view of one label, the annotated target is $y_v=y+\varepsilon_v$ with $\mathbb{E}\varepsilon_v=0$ and $\mathrm{Var}(\varepsilon_v)=\sigma_v^2(\omega)$, decreasing in the agreement score $\omega$ since higher consensus means less annotation noise, while the teacher gives $y_t=y+b_t+\varepsilon_t$ with bias $b_t$ and independent noise of variance $\sigma_t^2$. For $\hat{y}(g)=(1-g)y_v+g\,y_t$ we have $\mathrm{MSE}(g)=(1-g)^2\sigma_v^2(\omega)+g^2(\sigma_t^2+b_t^2)$, minimized at
+The rationale teacher reads a textual description $T(x)$ generated with access to intent semantics and model-specific confusion candidates, which exists at training time only. UTD therefore uses privileged information \cite{vapnik_new_2009}, realized through distillation \cite{lopez-paz_unifying_2016}, and must decide how much to trust that privileged channel. Its role is not to reduce the irreducible term of \eqref{eq:entropy_decomp}, which no learner can do, but to limit the error of estimating a subjective target from finitely many annotators and to avoid overfitting hard targets that a low-agreement sample cannot support. In a per-sample scalar view of one label, the annotated target is $y_v=y+\varepsilon_v$ with $\mathbb{E}\varepsilon_v=0$ and $\mathrm{Var}(\varepsilon_v)=\sigma_v^2(\omega)$, decreasing in the agreement score $\omega$ since higher consensus means less annotation noise, while the teacher gives $y_t=y+b_t+\varepsilon_t$ with bias $b_t$ and independent noise of variance $\sigma_t^2$. For $\hat{y}(g)=(1-g)y_v+g\,y_t$ we have $\mathrm{MSE}(g)=(1-g)^2\sigma_v^2(\omega)+g^2(\sigma_t^2+b_t^2)$, minimized at
 \begin{equation}
 \label{eq:opt_gate}
 g^{\ast}
@@ -263,7 +243,7 @@ g^{\ast}
 \frac{\sigma_v^2(\omega)}
 {\sigma_v^2(\omega)+\sigma_t^2+b_t^2},
 \end{equation}
-which increases with supervision noise, decreases with teacher noise and bias, and is monotonically decreasing in $\omega$. Our gate $g=1-\omega$ is a monotone, parameter-free approximation of \eqref{eq:opt_gate}. It keeps the correct direction without estimating $\sigma_t^2$ or $b_t^2$, and reaches $g=0$ at $\omega=1$, where supervision is effectively noiseless and the privileged channel can only add bias. The teacher contribution to the student-logit gradient is then
+which increases with supervision noise, decreases with teacher noise and bias, and is monotonically decreasing in $\omega$. Our gate $g=1-\omega$ is a monotone, parameter-free approximation of \eqref{eq:opt_gate}. It keeps the correct direction without estimating $\sigma_t^2$ or $b_t^2$, and reaches $g=0$ at $\omega=1$, where the observed supervision is maximally reliable, so the privileged channel can contribute little beyond its own bias. The two coincide exactly only if unanimous annotators imply $\sigma_v^2(1)=0$, which we do not assume, since unanimity among a finite panel need not mean noiseless population supervision. The teacher contribution to the student-logit gradient is then
 \begin{equation}
 \label{eq:gate_grad}
 \frac{\partial\,\lambda(1-\omega)\mathcal{L}_{\mathrm{distill}}}
@@ -273,4 +253,4 @@ which increases with supervision noise, decreases with teacher noise and bias, a
 \end{equation}
 with $p_c=\sigma(s^v_c/\tau)$ and $q_c=p^{\mathrm{tea}}_c$, so guidance is routed in proportion to annotator disagreement.}
 
-\revised{In summary, SLR-C addresses prediction-semantic insufficiency in the decision space, while UTD addresses unreliable supervision through uncertainty-weighted privileged information. Since each module is tied to a different deficit, their gains should be distinctly sensitive to the two ambiguity sources, which we test in Sec.~\ref{sec:quadrants}.}
+\revised{In summary, SLR-C addresses readout insufficiency in the decision space, while UTD addresses unreliable supervision through uncertainty-weighted privileged information. Since each module is tied to a different source of uncertainty identified in \eqref{eq:entropy_decomp}, their gains should be distinctly sensitive to the two ambiguity sources, which we test in Sec.~\ref{sec:quadrants}.}

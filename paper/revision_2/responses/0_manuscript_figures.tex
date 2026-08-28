@@ -1,4 +1,4 @@
-% Exact copies of revised-manuscript figures and tables used after responses.
+% Revised-manuscript figures and tables reproduced after responses.
 % Labels are intentionally omitted so references continue to resolve through
 % \externaldocument{main}; captions are unnumbered and show the manuscript ID.
 
@@ -15,10 +15,10 @@ Method & Publication & Macro F1 & Micro F1 & Samples F1 & Avg. \\
 PIP-Net & TMM 2023 & 32.57 & 45.94 & 47.05 & 41.85 \\
 \revised{CoT4Intent} & \revised{-} & \revised{41.70} & \revised{53.10} & \revised{53.82} & \revised{49.54} \\
 \revised{HVU-CLIP (ViT-B/32)$^{\dagger}$} & \revised{TPAMI 2026} & \revised{42.91} & \revised{55.22} & \revised{52.54} & \revised{50.22} \\
-LabCR (CLIP ViT-L/14) & TIP 2024 & \revised{$47.87_{\pm0.38}$} & \revised{$56.78_{\pm0.97}$} & \revised{$57.23_{\pm1.25}$} & \revised{$53.96_{\pm0.71}$} \\
-HLEG (CLIP ViT-L/14) & TAC 2023 & \revised{$47.38_{\pm0.75}$} & \revised{$54.85_{\pm1.70}$} & \revised{$55.29_{\pm1.06}$} & \revised{$52.50_{\pm0.98}$} \\
-IntCLIP (CLIP ViT-L/14) & ECCV 2024 & \revised{$44.98_{\pm1.12}$} & \revised{$54.73_{\pm0.49}$} & \revised{$54.73_{\pm1.18}$} & \revised{$51.48_{\pm0.82}$} \\
 IntentMLM & PR 2026 & 43.05 & 54.77 & 56.75 & 51.52 \\
+IntCLIP (ViT-L/14) & ECCV 2024 & \revised{$44.98_{\pm1.12}$} & \revised{$54.73_{\pm0.49}$} & \revised{$54.73_{\pm1.18}$} & \revised{$51.48_{\pm0.82}$} \\
+HLEG (ViT-L/14) & TAC 2023 & \revised{$47.38_{\pm0.75}$} & \revised{$54.85_{\pm1.70}$} & \revised{$55.29_{\pm1.06}$} & \revised{$52.50_{\pm0.98}$} \\
+LabCR (ViT-L/14) & TIP 2024 & \revised{$47.87_{\pm0.38}$} & \revised{$56.78_{\pm0.97}$} & \revised{$57.23_{\pm1.25}$} & \revised{$53.96_{\pm0.71}$} \\
 \hline
 CLIP ViT-L/14 & ICML 2021 & \revised{$47.33_{\pm1.15}$} & \revised{$54.98_{\pm2.90}$} & \revised{$55.74_{\pm2.64}$} & \revised{$52.68_{\pm1.96}$} \\
 FDIL (UTD only) & Ours & \revised{$49.90_{\pm1.18}$} & \revised{$58.01_{\pm1.03}$} & \revised{$58.43_{\pm1.13}$} & \revised{$55.45_{\pm1.02}$} \\
@@ -31,24 +31,24 @@ FDIL & Ours & \revised{$\mathbf{51.90}_{\pm0.95}$} & \revised{$\mathbf{59.90}_{\
 \newcommand{\showZeroShot}{%
 \begin{table}[!h]
 \centering\footnotesize
-\caption*{\textbf{[Manuscript Table~\ref{tab:zeroshot_vlm}]} Zero-shot MLLM comparison on the Intentonomy test split, same $28$-label set and single shared prompt. \textit{Hard} is F1 on the hard difficulty subset. Zero-shot rows are single deterministic passes with a fixed $0.5$ threshold; GPT-5.6 Sol is evaluated with reasoning disabled. $^{\ddagger}$published result quoted from IntentMLM; per-class scores unavailable.}
-\setlength{\tabcolsep}{2.5pt}
-\begin{tabular}{lcccccc}
+\caption*{\textbf{[Manuscript Table~\ref{tab:zeroshot_vlm}]} Zero-shot MLLM comparison on the Intentonomy test split. $^{\ddagger}$Published result quoted from IntentMLM.}
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{lcccc}
 \hline
-Model & Macro & Micro & Samples & Avg. & mAP & Hard \\
+Model & Macro & Micro & Samples & Avg. \\
 \hline
-\multicolumn{7}{l}{\textbf{Zero-shot prompting}} \\
-\revised{Qwen3.5-9B} & \revised{37.11} & \revised{36.50} & \revised{36.40} & \revised{36.67} & \revised{42.99} & \revised{22.78} \\
-\revised{Step3-VL-10B} & \revised{38.21} & \revised{40.21} & \revised{36.10} & \revised{38.17} & \revised{42.58} & \revised{26.64} \\
-\revised{Qwen3-VL-8B-Instruct} & \revised{38.51} & \revised{40.75} & \revised{39.63} & \revised{39.63} & \revised{38.84} & \revised{28.37} \\
-\revised{InternVL3-8B} & \revised{37.54} & \revised{41.85} & \revised{40.50} & \revised{39.97} & \revised{37.67} & \revised{25.51} \\
-\revised{Gemma-4-E4B-IT} & \revised{38.76} & \revised{42.44} & \revised{39.25} & \revised{40.15} & \revised{40.42} & \revised{27.08} \\
-\revised{GPT-4o$^{\ddagger}$} & \revised{39.48} & \revised{40.57} & \revised{41.45} & \revised{40.50} & \revised{-} & \revised{-} \\
-\revised{GPT-5.6 Sol} & \revised{47.58} & \revised{49.64} & \revised{49.91} & \revised{49.04} & \revised{\textbf{57.50}} & \revised{\textbf{36.19}} \\
+\multicolumn{5}{l}{\textbf{Zero-shot prompting}} \\
+\revised{Qwen3.5-9B \cite{qwen_qwen35_2026}} & \revised{37.11} & \revised{36.50} & \revised{36.40} & \revised{36.67} \\
+\revised{Step3-VL-10B \cite{huang_step3-vl-10b_2026}} & \revised{38.21} & \revised{40.21} & \revised{36.10} & \revised{38.17} \\
+\revised{Qwen3-VL-8B-Instruct \cite{qwen_qwen3-vl_2025}} & \revised{38.51} & \revised{40.75} & \revised{39.63} & \revised{39.63} \\
+\revised{InternVL3-8B \cite{zhu_internvl3_2025}} & \revised{37.54} & \revised{41.85} & \revised{40.50} & \revised{39.97} \\
+\revised{Gemma-4-E4B-IT \cite{gemma_team_gemma4_2026}} & \revised{38.76} & \revised{42.44} & \revised{39.25} & \revised{40.15} \\
+\revised{GPT-4o \cite{hurst_gpt-4o_2024}$^{\ddagger}$} & \revised{39.48} & \revised{40.57} & \revised{41.45} & \revised{40.50} \\
+\revised{GPT-5.6 Sol \cite{openai_gpt56sol_2026}} & \revised{47.58} & \revised{49.64} & \revised{49.91} & \revised{49.04} \\
 \hline
-\multicolumn{7}{l}{\textbf{Task-trained reference}} \\
-CLIP ViT-L/14 & 47.33 & 54.98 & 55.74 & 52.68 & 50.67 & 28.45 \\
-FDIL (ours) & $\mathbf{51.90}$ & $\mathbf{59.90}$ & $\mathbf{60.03}$ & $\mathbf{57.28}$ & 55.10 & 35.02 \\
+\multicolumn{5}{l}{\textbf{Task-trained reference}} \\
+\revised{CLIP ViT-L/14 \cite{radford_learning_2021}} & \revised{47.33} & \revised{54.98} & \revised{55.74} & \revised{52.68} \\
+\revised{FDIL (ours)} & \revised{\textbf{51.90}} & \revised{\textbf{59.90}} & \revised{\textbf{60.03}} & \revised{\textbf{57.28}} \\
 \hline
 \end{tabular}
 \end{table}}
@@ -122,32 +122,37 @@ FDIL (ours) & $\mathbf{51.90}$ & $\mathbf{59.90}$ & $\mathbf{60.03}$ & $\mathbf{
 \newcommand{\showFlickrLDL}{%
 \begin{table}[!h]
 \centering\scriptsize
-\caption{Seed dispersion and per-metric significance behind manuscript Table~\ref{tab:ldl_transfer}: official test splits, mean$\pm$standard deviation over five seeds. $\Delta$ and $p$ are for FDIL against the matched baseline (paired $t$-test over the five paired runs). LDL-DVS~\cite{lu2026divisiveness} is the published divisiveness objective, run on identical features, splits, and seeds. The manuscript table reports the means only, for space.}
+\caption{Full label-distribution comparison behind manuscript Table~\ref{tab:ldl_transfer}: untouched official test splits, mean$\pm$standard deviation over five seeds. $\delta$-LDL~\cite{li_approximately_2025}, LDL-LRR~\cite{jia_label_2023}, LDL-DPA~\cite{jia_adaptive_2024}, and LDL-DVS~\cite{lu2026divisiveness} are published label-distribution objectives run at their default weights on identical features, splits, seeds, and prediction head. Bold marks the best entry per metric within each block. The last row of each block gives $\Delta$ and the paired $t$-test $p$ for FDIL against the matched baseline over the five paired runs, with $p<0.05$ in italics.}
 \ldlletterlabel
 \setlength{\tabcolsep}{1pt}
+\resizebox{\linewidth}{!}{%
 \begin{tabular}{lccccccc}
 \hline
-Metric & Baseline & LDL-DVS & \quad + SLR-C & \quad + UTD & FDIL & $\Delta$ & $p$ \\
+Method & Cheby.$\downarrow$ & Clark$\downarrow$ & KLD$\downarrow$ & Cos.$\uparrow$ & Spear.$\uparrow$ & $\mu$(\%)$\uparrow$ & DVSE$\downarrow$ \\
 \hline
-\multicolumn{8}{l}{\textit{Flickr-LDL}} \\
-Chebyshev $\downarrow$ & $0.2039${\tiny$\pm$0.0012} & $0.2039${\tiny$\pm$0.0012} & $0.2031${\tiny$\pm$0.0006} & $0.2026${\tiny$\pm$0.0011} & $0.2027${\tiny$\pm$0.0007} & $-0.0011$ & $0.178$ \\
-Clark $\downarrow$ & $2.3033${\tiny$\pm$0.0044} & $2.3034${\tiny$\pm$0.0044} & $2.3031${\tiny$\pm$0.0024} & $2.3123${\tiny$\pm$0.0025} & $2.3113${\tiny$\pm$0.0027} & $+0.0079$ & $0.008$ \\
-KLD $\downarrow$ & $0.3433${\tiny$\pm$0.0016} & $0.3433${\tiny$\pm$0.0016} & $0.3406${\tiny$\pm$0.0010} & $0.3454${\tiny$\pm$0.0029} & $0.3433${\tiny$\pm$0.0016} & $+0.0000$ & $0.978$ \\
-Cosine $\uparrow$ & $0.8966${\tiny$\pm$0.0007} & $0.8966${\tiny$\pm$0.0007} & $0.8973${\tiny$\pm$0.0007} & $0.8961${\tiny$\pm$0.0013} & $0.8967${\tiny$\pm$0.0006} & $+0.0001$ & $0.874$ \\
-Spearman $\uparrow$ & $0.7109${\tiny$\pm$0.0026} & $0.7108${\tiny$\pm$0.0026} & $0.7129${\tiny$\pm$0.0010} & $0.7137${\tiny$\pm$0.0012} & $0.7141${\tiny$\pm$0.0012} & $+0.0032$ & $0.017$ \\
-$\mu$ (\%) $\uparrow$ & $71.40${\tiny$\pm$0.14} & $71.40${\tiny$\pm$0.14} & $71.58${\tiny$\pm$0.09} & $71.31${\tiny$\pm$0.18} & $71.45${\tiny$\pm$0.11} & $+0.05$ & $0.542$ \\
-DVSE $\downarrow$ & $0.0772${\tiny$\pm$0.0020} & $0.0772${\tiny$\pm$0.0020} & $0.0764${\tiny$\pm$0.0014} & $0.0729${\tiny$\pm$0.0011} & $0.0738${\tiny$\pm$0.0009} & $-0.0034$ & $0.009$ \\
+\multicolumn{8}{l}{\textit{Flickr-LDL} ($2{,}229$ test images)} \\
+Baseline & $0.2039${\tiny$\pm$0.0012} & $2.3033${\tiny$\pm$0.0044} & $0.3433${\tiny$\pm$0.0016} & $0.8966${\tiny$\pm$0.0007} & $0.7109${\tiny$\pm$0.0026} & $71.40${\tiny$\pm$0.14} & $0.0772${\tiny$\pm$0.0020} \\
+$\delta$-LDL & $0.2039${\tiny$\pm$0.0014} & $2.3032${\tiny$\pm$0.0046} & $0.3434${\tiny$\pm$0.0018} & $0.8966${\tiny$\pm$0.0008} & $0.7109${\tiny$\pm$0.0026} & $71.39${\tiny$\pm$0.16} & $0.0772${\tiny$\pm$0.0020} \\
+LDL-LRR & $0.2039${\tiny$\pm$0.0012} & $2.3033${\tiny$\pm$0.0044} & $0.3433${\tiny$\pm$0.0016} & $0.8966${\tiny$\pm$0.0007} & $0.7109${\tiny$\pm$0.0026} & $71.40${\tiny$\pm$0.14} & $0.0772${\tiny$\pm$0.0020} \\
+LDL-DPA & $0.2039${\tiny$\pm$0.0012} & $2.3033${\tiny$\pm$0.0044} & $0.3433${\tiny$\pm$0.0016} & $0.8966${\tiny$\pm$0.0007} & $0.7109${\tiny$\pm$0.0026} & $71.40${\tiny$\pm$0.14} & $0.0772${\tiny$\pm$0.0020} \\
+LDL-DVS & $0.2039${\tiny$\pm$0.0012} & $2.3034${\tiny$\pm$0.0044} & $0.3433${\tiny$\pm$0.0016} & $0.8966${\tiny$\pm$0.0007} & $0.7108${\tiny$\pm$0.0026} & $71.40${\tiny$\pm$0.14} & $0.0772${\tiny$\pm$0.0020} \\
+\quad + SLR-C & $0.2031${\tiny$\pm$0.0006} & $\mathbf{2.3031}${\tiny$\pm$0.0024} & $\mathbf{0.3406}${\tiny$\pm$0.0010} & $\mathbf{0.8973}${\tiny$\pm$0.0007} & $0.7129${\tiny$\pm$0.0010} & $\mathbf{71.58}${\tiny$\pm$0.09} & $0.0764${\tiny$\pm$0.0014} \\
+\quad + UTD & $\mathbf{0.2026}${\tiny$\pm$0.0011} & $2.3123${\tiny$\pm$0.0025} & $0.3454${\tiny$\pm$0.0029} & $0.8961${\tiny$\pm$0.0013} & $0.7137${\tiny$\pm$0.0012} & $71.31${\tiny$\pm$0.18} & $\mathbf{0.0729}${\tiny$\pm$0.0011} \\
+FDIL & $0.2027${\tiny$\pm$0.0007} & $2.3113${\tiny$\pm$0.0027} & $0.3433${\tiny$\pm$0.0016} & $0.8967${\tiny$\pm$0.0006} & $\mathbf{0.7141}${\tiny$\pm$0.0012} & $71.45${\tiny$\pm$0.11} & $0.0738${\tiny$\pm$0.0009} \\
+$\Delta$, $p$ (FDIL) & $-0.0011$, $.178$ & $+0.0079$, $\mathit{.008}$ & $+0.0000$, $.978$ & $+0.0001$, $.874$ & $+0.0032$, $\mathit{.017}$ & $+0.05$, $.542$ & $-0.0034$, $\mathit{.009}$ \\
 \hline
-\multicolumn{8}{l}{\textit{Emotion6}} \\
-Chebyshev $\downarrow$ & $0.1794${\tiny$\pm$0.0019} & $0.1794${\tiny$\pm$0.0019} & $0.1797${\tiny$\pm$0.0016} & $0.1804${\tiny$\pm$0.0018} & $0.1802${\tiny$\pm$0.0011} & $+0.0008$ & $0.438$ \\
-Clark $\downarrow$ & $1.5979${\tiny$\pm$0.0025} & $1.5981${\tiny$\pm$0.0026} & $1.5976${\tiny$\pm$0.0053} & $1.5949${\tiny$\pm$0.0047} & $1.5910${\tiny$\pm$0.0023} & $-0.0069$ & $0.013$ \\
-KLD $\downarrow$ & $0.2532${\tiny$\pm$0.0026} & $0.2532${\tiny$\pm$0.0026} & $0.2515${\tiny$\pm$0.0019} & $0.2537${\tiny$\pm$0.0033} & $0.2513${\tiny$\pm$0.0006} & $-0.0019$ & $0.190$ \\
-Cosine $\uparrow$ & $0.8947${\tiny$\pm$0.0014} & $0.8946${\tiny$\pm$0.0014} & $0.8955${\tiny$\pm$0.0013} & $0.8941${\tiny$\pm$0.0018} & $0.8953${\tiny$\pm$0.0008} & $+0.0006$ & $0.439$ \\
-Spearman $\uparrow$ & $0.7223${\tiny$\pm$0.0025} & $0.7222${\tiny$\pm$0.0024} & $0.7231${\tiny$\pm$0.0026} & $0.7256${\tiny$\pm$0.0026} & $0.7219${\tiny$\pm$0.0026} & $-0.0003$ & $0.740$ \\
-$\mu$ (\%) $\uparrow$ & $64.20${\tiny$\pm$0.37} & $64.20${\tiny$\pm$0.37} & $64.52${\tiny$\pm$0.28} & $64.12${\tiny$\pm$0.43} & $64.41${\tiny$\pm$0.12} & $+0.21$ & $0.304$ \\
-DVSE $\downarrow$ & $0.0784${\tiny$\pm$0.0009} & $0.0783${\tiny$\pm$0.0009} & $0.0781${\tiny$\pm$0.0006} & $0.0791${\tiny$\pm$0.0014} & $0.0781${\tiny$\pm$0.0009} & $-0.0003$ & $0.683$ \\
+\multicolumn{8}{l}{\textit{Emotion6} ($594$ test images)} \\
+Baseline & $\mathbf{0.1794}${\tiny$\pm$0.0019} & $1.5979${\tiny$\pm$0.0025} & $0.2532${\tiny$\pm$0.0026} & $0.8947${\tiny$\pm$0.0014} & $0.7223${\tiny$\pm$0.0025} & $64.20${\tiny$\pm$0.37} & $0.0784${\tiny$\pm$0.0009} \\
+$\delta$-LDL & $0.1798${\tiny$\pm$0.0020} & $1.5979${\tiny$\pm$0.0026} & $0.2538${\tiny$\pm$0.0028} & $0.8943${\tiny$\pm$0.0015} & $0.7216${\tiny$\pm$0.0029} & $64.11${\tiny$\pm$0.40} & $0.0785${\tiny$\pm$0.0009} \\
+LDL-LRR & $\mathbf{0.1794}${\tiny$\pm$0.0019} & $1.5979${\tiny$\pm$0.0026} & $0.2532${\tiny$\pm$0.0026} & $0.8947${\tiny$\pm$0.0014} & $0.7223${\tiny$\pm$0.0025} & $64.20${\tiny$\pm$0.37} & $0.0784${\tiny$\pm$0.0009} \\
+LDL-DPA & $\mathbf{0.1794}${\tiny$\pm$0.0019} & $1.5979${\tiny$\pm$0.0025} & $0.2532${\tiny$\pm$0.0026} & $0.8947${\tiny$\pm$0.0014} & $0.7223${\tiny$\pm$0.0025} & $64.20${\tiny$\pm$0.37} & $0.0784${\tiny$\pm$0.0009} \\
+LDL-DVS & $\mathbf{0.1794}${\tiny$\pm$0.0019} & $1.5981${\tiny$\pm$0.0026} & $0.2532${\tiny$\pm$0.0026} & $0.8946${\tiny$\pm$0.0014} & $0.7222${\tiny$\pm$0.0024} & $64.20${\tiny$\pm$0.37} & $0.0783${\tiny$\pm$0.0009} \\
+\quad + SLR-C & $0.1797${\tiny$\pm$0.0016} & $1.5976${\tiny$\pm$0.0053} & $0.2515${\tiny$\pm$0.0019} & $\mathbf{0.8955}${\tiny$\pm$0.0013} & $0.7231${\tiny$\pm$0.0026} & $\mathbf{64.52}${\tiny$\pm$0.28} & $\mathbf{0.0781}${\tiny$\pm$0.0006} \\
+\quad + UTD & $0.1804${\tiny$\pm$0.0018} & $1.5949${\tiny$\pm$0.0047} & $0.2537${\tiny$\pm$0.0033} & $0.8941${\tiny$\pm$0.0018} & $\mathbf{0.7256}${\tiny$\pm$0.0026} & $64.12${\tiny$\pm$0.43} & $0.0791${\tiny$\pm$0.0014} \\
+FDIL & $0.1802${\tiny$\pm$0.0011} & $\mathbf{1.5910}${\tiny$\pm$0.0023} & $\mathbf{0.2513}${\tiny$\pm$0.0006} & $0.8953${\tiny$\pm$0.0008} & $0.7219${\tiny$\pm$0.0026} & $64.41${\tiny$\pm$0.12} & $\mathbf{0.0781}${\tiny$\pm$0.0009} \\
+$\Delta$, $p$ (FDIL) & $+0.0008$, $.438$ & $-0.0069$, $\mathit{.013}$ & $-0.0019$, $.190$ & $+0.0006$, $.439$ & $-0.0003$, $.740$ & $+0.21$, $.304$ & $-0.0003$, $.683$ \\
 \hline
-\end{tabular}
+\end{tabular}}
 \end{table}}
 
 \newcommand{\showUnifiedDecoupled}{%
@@ -190,17 +195,17 @@ FDIL (full) & 52.13 & 60.06 & 60.28 & 57.49 & 55.10 & 35.02 \\
 \newcommand{\showEfficiencyComparison}{%
 \begin{table}[!h]
 \centering\footnotesize
-\caption*{\textbf{[Manuscript Table~\ref{tab:efficiency_comparison}]} Feature-level inference cost on frozen CLIP ViT-L/14 features: params (inference-active heads), per-image FLOPs, and batch-1 latency on an RTX 4090. HVU-CLIP releases no code and cannot be measured; IntentMLM and CoT4Intent run MLLM inference pipelines whose cost is orders of magnitude higher.}
+\caption*{\textbf{[Manuscript Table~\ref{tab:efficiency_comparison}]} Feature-level inference cost on pre-extracted CLIP ViT-L/14 features: inference-active parameters, per-image FLOPs, and batch-1 latency on an RTX 4090. The shared frozen encoder is excluded.}
 \begin{tabular}{lccc}
 \hline
 Method & Params (M) & FLOPs (M) & Latency (ms) \\
 \hline
 Baseline & 1.20 & 2.40 & 0.109 \\
+HLEG \cite{shi_learnable_2023} & 203.70 & 12\,075.9 & 2.725 \\
+IntCLIP \cite{leonardis_synergy_2025} & 0.02 & 22.02 & 0.111 \\
+\hline
 FDIL (UTD only) & 1.20 & 2.40 & 0.109 \\
 FDIL & 2.41 & 4.93 & 0.466 \\
-\hline
-HLEG & 203.70 & 12\,075.9 & 2.725 \\
-IntCLIP & 0.02 & 22.02 & 0.111 \\
 \hline
 \end{tabular}
 \end{table}}
@@ -211,7 +216,7 @@ IntCLIP & 0.02 & 22.02 & 0.111 \\
 \newcommand{\showPerClassAttr}{%
 \begin{table}[!h]
 \centering\footnotesize
-\caption{Per-class F1 attribution of FDIL versus the CLIP baseline (matched class-wise protocol, representative seed). Top: five largest improvements. Bottom: the only two regressions among all $28$ classes. This table was condensed out of the manuscript for the page limit; the manuscript retains its one-sentence summary in the Interpretability Analysis.}
+\caption{Per-class F1 attribution of FDIL versus the CLIP baseline (matched class-wise protocol, representative seed). Top: five largest improvements. Bottom: the only two regressions among all $28$ classes. The manuscript retains its one-sentence summary in the Interpretability Analysis.}
 \perclasslabel
 \setlength{\tabcolsep}{5pt}
 \begin{tabular}{lcccc}
@@ -230,11 +235,11 @@ CreativeUnique & Medium & 41.9 & 36.6 & $-5.3$ \\
 \end{tabular}
 \end{table}}
 
-% ---- Table: 2x2 ambiguity interaction (new experiment) ----------------------
+% ---- Table: 2x2 ambiguity-stratified analysis (new experiment) --------------
 \newcommand{\showQuadrants}{%
 \begin{table}[!h]
 \centering\footnotesize
-\caption*{\textbf{[Manuscript Table~\ref{tab:quadrants}]} $2\times2$ ambiguity interaction on cross-fitted Intentonomy train predictions. Cells give $\Delta$ per-sample F1 against the shared baseline; $^\ast$ marks Holm-corrected $p<0.05$.}
+\caption*{\textbf{[Manuscript Table~\ref{tab:quadrants}]} $2\times2$ ambiguity-stratified analysis on cross-fitted Intentonomy train predictions. Cells give $\Delta$ per-sample F1 against the shared baseline; $^\ast$ marks Holm-corrected $p<0.05$.}
 \setlength{\tabcolsep}{4pt}
 \begin{tabular}{llcccc}
 \hline
