@@ -112,7 +112,7 @@ Table~\ref{tab:difficulty_results} groups intent subsets by difficulty and conte
 
 \begin{table}[htbp]
 \centering
-\caption{Intent subsets grouped by difficulty and content dependency, where Avg.\ is the corresponding subset mean. \revised{The lower block reproduces the matched-protocol rows of Table~\ref{tab:main_results} under identical features, split, and thresholding, as five-seed means; the ablation tables quote their own seed protocol.}}
+\caption{Intent subsets grouped by difficulty and content dependency, where Avg.\ is the corresponding subset mean.}
 \label{tab:difficulty_results}
 \label{tab:content_results}
 \begin{tabular}{lcccccccc}
@@ -510,7 +510,7 @@ Table~\ref{tab:backbone_ablation} compares FDIL with published ResNet101 results
 \subsubsection{\revised{Transfer to a Larger Benchmark}}
 \label{sec:emotic}
 
-\revised{Since annotator agreement is the signal UTD consumes, we evaluate on the multi-annotated pool of $10{,}613$ persons, the only part of EMOTIC that carries it, under a controlled $5\times5$ cross-validation. Each seed aggregates its complete five-fold out-of-fold performance, so one seed is one paired observation and all tests run on five paired values. Results are therefore internal to this pool rather than comparable with published EMOTIC numbers. Only the candidate size and prior weight of SLR-C are retuned for the new label space ($K{=}26$, $\alpha{=}0.09$), and all remaining settings follow Intentonomy.}
+\revised{We evaluate on the multi-annotated pool of $10{,}613$ persons, the part of EMOTIC that carries annotator agreements, under a controlled $5\times5$ cross-validation. Only the candidate size and prior weight of SLR-C are retuned for the new label space ($K{=}26$, $\alpha{=}0.09$), and all remaining settings follow Intentonomy.}
 
 \begin{table}[htbp]
 \centering
@@ -529,19 +529,17 @@ Table~\ref{tab:backbone_ablation} compares FDIL with published ResNet101 results
 \end{tabular}
 \end{table}
 
-\revised{As shown in Table~\ref{tab:emotic_pool}, full FDIL improves every metric over the baseline, and each improvement is reliable across the five seeds ($p\le0.005$). The division of labour also reappears in a new label space. Gated UTD accounts for the thresholded F1 metrics and leaves mAP unchanged, whereas SLR-C alone moves the F1 metrics only marginally and is the component whose mAP gain is individually reliable. Both mechanisms therefore keep their assigned roles on a larger and semantically more distant benchmark, although the absolute margins are smaller than on Intentonomy.}
+\revised{As shown in Table~\ref{tab:emotic_pool}, full FDIL improves every metric over the baseline, and each improvement is reliable across the five seeds ($p\le0.005$). The division of labour also reappears in the new label space. Gated UTD accounts for the thresholded F1 metrics and leaves mAP unchanged, whereas SLR-C alone moves the F1 metrics only marginally and is the component whose mAP gain is individually reliable. Both mechanisms therefore keep their assigned roles on a larger and semantically more distant benchmark, although the absolute margins are smaller than on Intentonomy.}
 
 \subsubsection{\revised{Transfer to Label Distribution Learning}}
 \label{sec:flickrldl}
 
-\revised{Under label distribution learning (LDL) the target is a probability distribution and no threshold is selected, testing whether the decoupling generalizes beyond the prediction space it was developed for.}
-
-\revised{Both functional roles are preserved and only the probability semantics change. Direct supervision becomes categorical cross-entropy against the annotator vote distribution. The image-conditioned residual head is now applied to the distribution logits before the softmax. UTD replaces the per-class Bernoulli KL with a temperature-scaled categorical KL and reads its gate off the released votes as $\omega=\max_c y^{\text{soft}}_c$. Table~\ref{tab:ldl_transfer} reports both datasets.}
+\revised{Under label distribution learning (LDL) the target is a probability distribution and no threshold is selected, testing whether the decoupling generalizes beyond the prediction space it was developed for. On this task, both functional roles are preserved and only the probability semantics change. Direct supervision becomes categorical cross-entropy against the annotator vote distribution. The image-conditioned residual head is now applied to the distribution logits before the softmax. UTD replaces the per-class Bernoulli KL with a temperature-scaled categorical KL and reads its gate off the released votes as $\omega=\max_c y^{\text{soft}}_c$. Table~\ref{tab:ldl_transfer} reports both datasets.}
 
 \begin{table}[htbp]
 \centering
 \scriptsize
-\caption{\revised{Results on Flickr-LDL and Emotion6, averaged over five seeds. $^{*}$/$^{**}$ indicate significant improvements over the matched baseline at $p<0.05$/$p<0.01$, and $^{\dagger}$ indicates a significant degradation at $p<0.05$ (paired $t$-test over five paired runs). Bold and underline mark the best and second-best entry among the baseline and the three FDIL variants.}}
+\caption{\revised{Results on Flickr-LDL and Emotion6, averaged over five seeds. $^{*}$/$^{**}$ indicate significant improvements over the matched baseline at $p<0.05$/$p<0.01$, and $^{\dagger}$ indicates a significant degradation at $p<0.05$ (paired $t$-test over five paired runs). Bold and underline mark the best and second-best entry per metric within each block, across all rows.}}
 \label{tab:ldl_transfer}
 \setlength{\tabcolsep}{2.2pt}
 \begin{tabular}{lccccccc}
@@ -558,32 +556,32 @@ Table~\ref{tab:backbone_ablation} compares FDIL with published ResNet101 results
 
 \multicolumn{8}{l}{\revised{\textit{Flickr-LDL} ($2{,}229$ test images)}} \\
 
-% \revised{$\delta$-LDL~\cite{li_approximately_2025}}
-% & \revised{$.20388$}
-% & \revised{$2.30323$}
-% & \revised{$.34342$}
-% & \revised{$.89662$}
-% & \revised{$.71087$}
-% & \revised{$71.39$}
-% & \revised{$.07718$} \\
+\revised{$\delta$-LDL~\cite{li_approximately_2025}}
+& \revised{$.20388$}
+& \revised{$\underline{2.30323}$}
+& \revised{$.34342$}
+& \revised{$.89662$}
+& \revised{$.71087$}
+& \revised{$71.39$}
+& \revised{$.07718$} \\
 
-% \revised{LRR~\cite{jia_label_2023}}
-% & \revised{$.20385$}
-% & \revised{$2.30334$}
-% & \revised{$.34330$}
-% & \revised{$.89663$}
-% & \revised{$.71088$}
-% & \revised{$71.40$}
-% & \revised{$.07722$} \\
+\revised{LRR~\cite{jia_label_2023}}
+& \revised{$.20385$}
+& \revised{$2.30334$}
+& \revised{$.34330$}
+& \revised{$.89663$}
+& \revised{$.71088$}
+& \revised{$71.40$}
+& \revised{$.07722$} \\
 
-% \revised{DPA~\cite{jia_adaptive_2024}}
-% & \revised{$.20386$}
-% & \revised{$2.30334$}
-% & \revised{$.34330$}
-% & \revised{$.89663$}
-% & \revised{$.71089$}
-% & \revised{$71.40$}
-% & \revised{$.07722$} \\
+\revised{DPA~\cite{jia_adaptive_2024}}
+& \revised{$.20386$}
+& \revised{$2.30334$}
+& \revised{$.34330$}
+& \revised{$.89663$}
+& \revised{$.71089$}
+& \revised{$71.40$}
+& \revised{$.07722$} \\
 
 \revised{LDL-DVS~\cite{lu2026divisiveness}}
 & \revised{$.20385$}
@@ -596,7 +594,7 @@ Table~\ref{tab:backbone_ablation} compares FDIL with published ResNet101 results
 
 \revised{Baseline}
 & \revised{$.20386$}
-& \revised{$\underline{2.30331}$}
+& \revised{$2.30331$}
 & \revised{$\underline{.34329}$}
 & \revised{$.89664$}
 & \revised{$.71089$}
@@ -634,32 +632,32 @@ Table~\ref{tab:backbone_ablation} compares FDIL with published ResNet101 results
 
 \multicolumn{8}{l}{\revised{\textit{Emotion6} ($594$ test images)}} \\
 
-% \revised{$\delta$-LDL~\cite{li_approximately_2025}}
-% & \revised{$.17983$}
-% & \revised{$1.59791$}
-% & \revised{$.25384$}
-% & \revised{$.89427$}
-% & \revised{$.72157$}
-% & \revised{$64.11$}
-% & \revised{$.07854$} \\
+\revised{$\delta$-LDL~\cite{li_approximately_2025}}
+& \revised{$.17983$}
+& \revised{$1.59791$}
+& \revised{$.25384$}
+& \revised{$.89427$}
+& \revised{$.72157$}
+& \revised{$64.11$}
+& \revised{$.07854$} \\
 
-% \revised{LRR~\cite{jia_label_2023}}
-% & \revised{$.17936$}
-% & \revised{$1.59792$}
-% & \revised{$.25317$}
-% & \revised{$.89466$}
-% & \revised{$.72227$}
-% & \revised{$64.20$}
-% & \revised{$.07838$} \\
+\revised{LRR~\cite{jia_label_2023}}
+& \revised{$\mathbf{.17936}$}
+& \revised{$1.59792$}
+& \revised{$.25317$}
+& \revised{$.89466$}
+& \revised{$.72227$}
+& \revised{$64.20$}
+& \revised{$.07838$} \\
 
-% \revised{DPA~\cite{jia_adaptive_2024}}
-% & \revised{$.17936$}
-% & \revised{$1.59794$}
-% & \revised{$.25318$}
-% & \revised{$.89466$}
-% & \revised{$.72231$}
-% & \revised{$64.20$}
-% & \revised{$.07837$} \\
+\revised{DPA~\cite{jia_adaptive_2024}}
+& \revised{$\mathbf{.17936}$}
+& \revised{$1.59794$}
+& \revised{$.25318$}
+& \revised{$.89466$}
+& \revised{$.72231$}
+& \revised{$64.20$}
+& \revised{$.07837$} \\
 
 \revised{LDL-DVS~\cite{lu2026divisiveness}}
 & \revised{$.17939$}
@@ -671,7 +669,7 @@ Table~\ref{tab:backbone_ablation} compares FDIL with published ResNet101 results
 & \revised{$.07834$} \\
 
 \revised{Baseline}
-& \revised{$\mathbf{.17937}$}
+& \revised{$\underline{.17937}$}
 & \revised{$1.59790$}
 & \revised{$.25317$}
 & \revised{$.89466$}
@@ -680,7 +678,7 @@ Table~\ref{tab:backbone_ablation} compares FDIL with published ResNet101 results
 & \revised{$.07838$} \\
 
 \revised{\quad + SLR-C}
-& \revised{$\underline{.17968}$}
+& \revised{$.17968$}
 & \revised{$1.59758$}
 & \revised{$\underline{.25152}$}
 & \revised{$\mathbf{.89548}$}
@@ -710,11 +708,11 @@ Table~\ref{tab:backbone_ablation} compares FDIL with published ResNet101 results
 \end{tabular}
 \end{table}
 
-\revised{The reproduced LDL objective LDL-DVS~\cite{lu2026divisiveness} stays close to the matched baseline, suggesting that the stronger pretrained representation leaves such regularizers less optimization headroom than the features used in their original evaluations. Our two designed components again act on different quantities. SLR-C mainly improves the distribution-fitting metrics (KLD, cosine similarity, and $\mu$) on both datasets, whereas UTD acts on distribution structure, improving Spearman correlation on both and significantly so on Emotion6 ($p=0.042$), and significantly reducing DVSE on Flickr-LDL ($p=0.010$) at the cost of Clark distance. SLR-C thus reallocates probability mass among plausible labels while UTD exploits target uncertainty to shape the predicted structure.}
+\revised{The four reproduced objectives, $\delta$-LDL, LRR, DPA, and LDL-DVS, all stay within $0.001$ of the matched baseline on every metric except $\mu$, which shifts by at most $0.09$, suggesting that the stronger pretrained representation leaves such regularizers little optimization headroom. Our two designed components again act on different quantities. SLR-C mainly improves the distribution-fitting metrics (KLD, cosine similarity, and $\mu$) on both datasets, whereas UTD acts on distribution structure, improving Spearman correlation on both and significantly so on Emotion6 ($p=0.042$), and significantly reducing DVSE on Flickr-LDL ($p=0.010$) at the cost of Clark distance. SLR-C thus reallocates probability mass among plausible labels while UTD exploits target uncertainty to shape the predicted structure.}
 
 \subsection{Efficiency Comparison}
 
-Table~\ref{tab:efficiency_comparison} compares inference efficiency. FDIL (UTD only) costs exactly the baseline, since the text teacher is discarded after training, and full FDIL needs 2.41M parameters, 4.93M FLOPs, and 0.466\,ms per image, whereas HLEG introduces much heavier Transformer decoding. IntCLIP uses the fewest parameters of any head measured, though at higher FLOPs than FDIL, and its region-aggregation design runs on the same frozen encoder while trailing FDIL by $5.80$ Avg.\ F1 under the matched protocol of Table~\ref{tab:main_results}. HVU-CLIP releases no code and cannot be measured, while IntentMLM and CoT4Intent require MLLM inference and are therefore not included in the measured feature-level comparison. FDIL therefore achieves its gains with minor inference overhead on top of the shared backbone.
+Table~\ref{tab:efficiency_comparison} compares inference efficiency. FDIL (UTD only) costs exactly the baseline, since the text teacher is discarded after training, and full FDIL needs 2.41M parameters, 4.93M FLOPs, and 0.466\,ms per image, whereas HLEG \revised{and LabCR} introduce much heavier Transformer decoding\revised{, at $203.70$M and $153.29$M parameters}. IntCLIP uses the fewest parameters of any head measured, though at higher FLOPs than FDIL, and its region-aggregation design runs on the same frozen encoder while trailing FDIL by $5.80$ Avg.\ F1 under the matched protocol of Table~\ref{tab:main_results}. HVU-CLIP releases no code, and IntentMLM and CoT4Intent require MLLM inference, so neither is included in this feature-level comparison. FDIL therefore achieves its gains with minor inference overhead on top of the shared backbone.
 
 \begin{table}[htbp]
 \centering
@@ -725,8 +723,9 @@ Table~\ref{tab:efficiency_comparison} compares inference efficiency. FDIL (UTD o
 \revised{Method} & \revised{Params (M)} & \revised{FLOPs (M)} & \revised{Latency (ms)} \\
 \hline
 \revised{Baseline} & \revised{1.20} & \revised{2.40} & \revised{0.109} \\
-\revised{HLEG \cite{shi_learnable_2023}} & \revised{203.70} & \revised{12\,075.9} & \revised{2.725} \\
 \revised{IntCLIP \cite{leonardis_synergy_2025}} & \revised{0.02} & \revised{22.02} & \revised{0.111} \\
+\revised{LabCR \cite{shi_label-aware_2024}} & \revised{153.29} & \revised{11\,526.8} & \revised{1.395} \\
+\revised{HLEG \cite{shi_learnable_2023}} & \revised{203.70} & \revised{12\,075.9} & \revised{2.725} \\
 \hline
 \revised{FDIL (UTD only)} & \revised{1.20} & \revised{2.40} & \revised{0.109} \\
 \revised{FDIL} & \revised{2.41} & \revised{4.93} & \revised{0.466} \\
@@ -736,7 +735,7 @@ Table~\ref{tab:efficiency_comparison} compares inference efficiency. FDIL (UTD o
 
 \subsection{Case Study}
 
-Figure~\ref{fig:case_study} gives qualitative examples. In the first, FDIL suppresses a plausible but incorrect distractor using counterfactual rationale evidence, consistent with UTD sharpening semantic boundaries. In the second it errs on a $0.33$-agreement label yet stays semantically plausible, illustrating that low-agreement samples can admit semantically plausible alternative predictions.
+Figure~\ref{fig:case_study} gives qualitative examples. In the first, FDIL suppresses a plausible but incorrect distractor using counterfactual rationale evidence, consistent with UTD sharpening semantic boundaries. In the second, it errs on a $0.33$-agreement label yet stays semantically plausible, illustrating that low-agreement samples can admit semantically plausible alternative predictions.
 
 \begin{figure*}[t]
 \centering

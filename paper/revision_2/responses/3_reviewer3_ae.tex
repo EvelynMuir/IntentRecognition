@@ -5,12 +5,9 @@
 We thank the Associate Editor for clarifying the intent of the previous comment. The Abstract is now built around comparative statements, as requested.}
 
 \cresp{Although the manuscript has been revised in response to the previous reviewer comments, the Abstract still does not fully address the main concern. My previous comment was not intended to encourage the authors to simply present more numerical values. Rather, I expected a quantitative comparison with existing methods, such as clearly stating the percentage improvement over the baseline. Presenting objective comparative metrics is essential for highlighting the significance of the proposed method and attracting readers' interest. Therefore, I believe this part still requires further revision.}
-{\gist{The Abstract now states relative gains over the strongest prior result rather than absolute scores.}
+{\gist{The Abstract now states relative gains over the strongest prior result, rather than absolute scores.}
 
-We agree that a relative comparison conveys the size of the advance in a way absolute scores do not. The Abstract now states an explicit relative gain over the strongest prior result under our matched protocol, and reads ``On Intentonomy, FDIL improves over the strongest prior method by $6.2\%$ relative average F1 and $28.4\%$ relative hard-subset F1.''
-
-Both percentages are relative to LabCR, the strongest prior method under our matched protocol: $57.28$ against $53.96$ Avg.\ F1 in Table~\ref{tab:main_results}, and $34.66$ against $26.99$ hard-subset F1 in Table~\ref{tab:difficulty_results}, which we extended with the reproduced matched-protocol rows so that both percentages are now checkable in the manuscript itself ($+3.32$ Avg.\ F1 and $+7.67$ hard-subset F1, the latter significant at $p_{\mathrm H}=0.004$). The claim is scoped to the methods we reproduced under the matched protocol rather than to all comparators, since only those rows share our features, split, and thresholding and can therefore support a paired test.
-
-The surrounding text then summarizes the cross-dataset evidence on EMOTIC, Flickr-LDL, and Emotion6 without adding a further list of isolated metric values. This keeps the Abstract focused on objective comparative gains, as requested, and leaves the complete per-method results and five-seed confidence intervals to Table~\ref{tab:main_results}.
+A relative comparison conveys the size of the advance in a way absolute scores do not. The Abstract now reads ``On Intentonomy, FDIL improves over the strongest prior method by $6.2\%$ relative average F1 and $28.4\%$ relative hard-subset F1.'' Both percentages are relative to LabCR, the strongest prior method under our matched protocol.
+The surrounding text then summarizes the cross-dataset evidence on EMOTIC, Flickr-LDL, and Emotion6, showing the generalizability of our methods.
 \revloc{the rewritten quantitative-comparison sentences in the Abstract}
 }
