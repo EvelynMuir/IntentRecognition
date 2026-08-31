@@ -1,0 +1,17 @@
+\section{General Response}
+
+We thank the Associate Editor and all five reviewers for their careful and constructive evaluation. The reviews are detailed and fair, and they have substantially improved the manuscript. We are encouraged that the reviewers found the problem \textbf{important} (R1, R2, R4) and the functional-decoupling perspective \textbf{theoretically well-motivated} (R5), including gains over a strong CLIP ViT-L/14 baseline and larger improvements on hard intent categories (R1, R5).
+
+We have organized the revision around four major concerns:
+
+\begin{itemize}
+\item \textbf{Fair comparison and calibration (R1).} In the Experimental Setup and Comparative Experiments, we add a matched-feature protocol in which all methods use frozen CLIP ViT-L/14 features, the same split, and validation-only threshold selection. We expand the main-results table with the controlled HLEG, LabCR, and IntCLIP results and keep their original-pipeline results explicitly separated as a robustness check. In Calibration and Threshold-free Evaluation, we add the four-cell method-versus-thresholding comparison, three-seed mean$\pm$std, ROC/PR curves, mAP/ROC-AUC/PR-AUC, and paired bootstrap tests.
+
+\item \textbf{Novelty and theoretical depth (R2, R4).} We add the subsection ``Functionally Decoupled Ambiguity Modeling'' to the Method, where we give empirical support and Eq.~\eqref{eq:risk_decomp} separates label-side conditional entropy from feature-side inter-class aliasing. We then add a unified-versus-decoupled table and text-teacher negative controls in the Ablation Studies to test the principle under identical features and selection rules. The Discussion now limits the claim to the measured aggregate advantage and presents the EMOTIC study as a cross-task evidence.
+
+\item \textbf{Evaluation and interpretation (R3, R4).} We expand the main-results table with zero-shot Qwen3-VL, InternVL3, and the published GPT-4o/IntentMLM result; add Fig.~\ref{fig:roc_pr} and Fig.~\ref{fig:tsne}; add the per-class attribution and efficiency tables; and insert a dedicated explanation of the Easy-subset near-tie. The Discussion now records the observed class-level failure case and the scope and limitations of the second-dataset study.
+
+\item \textbf{Clarity and reproducibility (R1, R4, R5, EiC).} We rewrite the final Introduction paragraphs to state the problem gap, purpose, and contributions directly; insert Table~\ref{tab:notation} at the start of the Method; add a standalone Discussion; and expand Implementation Details with the validation-only selection boundary. We also replace ``available on request'' with a concrete artifact list, update the recent-work discussion and bibliography, remove the obsolete ``FDIR'' instances with the former appendix tables, and replace the inconsistent ``Top/Bottom'' wording in the Figure~2 caption with a panel-independent description of SLR-C and UTD.
+\end{itemize}
+
+Below, we provide point-by-point responses to each reviewer. Newly added or revised content is referenced by section, table, or figure. In the revised manuscript, all changes are highlighted in \revised{red}.

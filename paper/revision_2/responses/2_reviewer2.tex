@@ -1,0 +1,51 @@
+% ================================
+% === Reviewer 2 ===
+% ================================
+\reviewerblock{Reviewer~2}{%
+We thank the reviewer for acknowledging the improvements in methodological detail, evaluation, and presentation, and for stating the remaining concerns so precisely. All four are answered with changes in the manuscript.}
+
+\cresp{There is still a lack of theoretical justification of functionally separate two types of ambiguity.}
+{\gist{Sec.~\ref{sec:decoupling_principle} now derives an exact three-term identity that gives the two ambiguities distinct origins. Sec.~\ref{sec:quadrants} then shows that each module moves only the axis it assigns.}
+
+Sec.~\ref{sec:decoupling_principle} derives $H(Y_c\mid B)=H(Y_c\mid X)+I(Y_c;X\mid Z)+I(Y_c;Z\mid B)$ (Eq.~\eqref{eq:entropy_decomp}). Both $Z=f(X)$ and $B=h(Z)$. The three terms have three origins, namely the annotation, the frozen encoder, and the readout. Those origins fix where each module may act.
+
+SLR-C acts at inference on reading out scores. Eq.~\eqref{eq:cmi_prior} bounds what \emph{any} rule reading $(B,S)$ can gain, by the readout term $I(Y_c;S\mid B)\le I(Y_c;Z\mid B)$. Eq.~\eqref{eq:margin_identity} gives what our fixed-$\alpha$ rule attains, $m'-m=\alpha\Delta_{\mathrm{prior}}$. The top-$K$ screen leaves the other $C-K$ intents untouched by construction, so we need no accuracy assumption on the prior. UTD acts during training on targets. The teacher is privileged information, and its MSE-optimal weight (Eq.~\eqref{eq:opt_gate}) falls as annotator agreement rises. The variance and bias terms in that weight are unobservable per sample, so we use the parameter-free surrogate $g=1-\omega$. Eq.~\eqref{eq:entropy_decomp} is Bayes-level, so training lowers none of its terms. UTD instead limits the estimation error a trained model adds on top of it.
+
+Two experiments test the separation. Table~\ref{tab:unified_decoupled} compares three unified controls under identical features, split, and thresholding. Merging both signals into one target is the weakest ($55.66$ Avg.\ F1), and decoupled FDIL is the best ($57.49$). Table~\ref{tab:quadrants} adds a $2\times2$ analysis, cross-fitted on the train split because only that split carries per-sample $\omega$. Each module moves one axis. SLR-C gains only where semantic ambiguity is high, by $+4.08$ and $+1.17$ F1, both significant after Holm correction. UTD is inert where agreement is high ($-0.05$, $-0.07$). Its only gain is where both ambiguities coincide ($+0.84$, $p_{\mathrm H}=0.025$). In that cell, the full model matches its stronger component ($+1.14$ against $+1.17$).
+\revloc{the derivations \eqref{eq:entropy_decomp}--\eqref{eq:opt_gate} in Sec.~\ref{sec:decoupling_principle}, the $2\times2$ analysis in Sec.~\ref{sec:quadrants} and Table~\ref{tab:quadrants}, and the unified-versus-decoupled control in Table~\ref{tab:unified_decoupled}}
+}
+
+\cresp{In spite of the inclusion of new experiments, statistical validation is still missing. Confidence intervals, hypothesis testing, and robustness to multiple training runs are necessary to prove that reported improvements are statistically significant.}
+{\gist{All three are now in place. Every external comparator is significant on every metric, and the full statistics are in Table~\ref{tab:significance_letter} of this letter.}
+
+We retrain FDIL \emph{and} every matched-protocol method on the same \res{five} seeds. Each test is therefore paired on the training run, and seed variance cancels between the two arms instead of inflating both. Table~\ref{tab:main_results} now reports $95\%$ $t$-intervals in place of bare standard deviations. Sec.~\ref{sec:sota_comparison} reports paired two-sided $t$-tests, Holm-corrected within the family of methods compared on each metric. Table~\ref{tab:threshold_free} adds a sample-level paired bootstrap, so run-to-run and sample-to-sample variance each get the right resampling unit.
+
+The gains hold under correction. FDIL leads the reproduced methods by $+3.3$ to $+5.8$ Avg.\ F1, and is significant on all four F1 metrics against every one of them. Against the strongest, LabCR, the margin is $+3.32$ Avg.\ F1 ($p_{\mathrm H}=0.002$). On the hard subset, where ambiguity concentrates, it gains $+7.67$ F1 over LabCR, and all hard-subset contrasts reach $p_{\mathrm H}\le0.004$. The easy subset separates no method from another ($p_{\mathrm H}=1.00$), since those categories have little headroom left. Only Samples F1 against our own UTD-only ablation ($p_{\mathrm H}=0.0755$) misses significance.
+\revloc{Sec.~\ref{sec:sota_comparison}, the confidence intervals in Table~\ref{tab:main_results}, the paired bootstrap accompanying Table~\ref{tab:threshold_free}, and Table~\ref{tab:significance_letter} of this letter}
+}
+\showQuadrants
+\showSignificance
+
+\cresp{Moreover, the evaluation is limited to the single benchmark dataset that makes it impossible to assess generalization ability of the approach.}
+{\gist{Sec.~\ref{sec:crossdataset} adds two transfers. EMOTIC is the larger benchmark. Label distribution learning tests the decoupling itself.}
+
+\rh{A larger benchmark.} EMOTIC keeps the multi-label output geometry, but is larger and semantically more distant. Sec.~\ref{sec:emotic} runs a controlled $5\times5$ cross-validation on its multi-annotated pool of $10{,}613$ persons. Only $K$ and $\alpha$ are retuned ($K{=}26$, $\alpha{=}0.09$), everything else follows Intentonomy. Every metric improves, and each improvement is reliable across the five seeds ($p\le0.005$). The division of labour also reappears. Gated UTD carries the thresholded F1 metrics, and SLR-C carries the reliable mAP gain.
+
+\rh{Label distribution learning.} Sec.~\ref{sec:flickrldl} evaluates Flickr-LDL ($11{,}150$ images) and Emotion6 ($1{,}980$ images), on their untouched official test splits, over five seeds. LDL replaces binary decisions with a point on the probability simplex and removes threshold selection. The two modules can therefore no longer share a fitted threshold, which is the most plausible way our separation could otherwise have been an artefact. Four published label-distribution objectives, run at default weights on identical features, splits, seeds, and head, all land within $0.001$ of the same baseline on every metric except $\mu$ (Table~\ref{tab:ldl_transfer}), resulting from little room a strong frozen CLIP representation leaves. FDIL gains significantly on both datasets. On Flickr-LDL, it improves rank correlation ($+0.0032$, $p=0.017$) and divisiveness error ($-0.0034$, $p=0.009$). On Emotion6, it improves Clark distance ($-0.0069$, $p=0.013$). The roles also replicate. SLR-C moves the pointwise-fit metrics (KLD $0.3433\!\rightarrow\!0.3406$, $\mu$ $71.40\!\rightarrow\!71.58$), while gated UTD moves the structural ones. Table~\ref{tab:ldl_letter} adds the seed dispersion and per-metric $p$-values omitted from the manuscript for space.
+\revloc{the new Sec.~\ref{sec:crossdataset} with Tables~\ref{tab:emotic_pool} and~\ref{tab:ldl_transfer}, the dataset descriptions and metrics in Sec.~\ref{sec:experiments}, and the transfer discussion in Sec.~\ref{sec:discussion}}
+}
+\showFlickrLDL
+
+\cresp{The analysis of computational efficiency, visualization of failures, and discussion of deployment are needed to make the contribution stronger.}
+{\gist{All three are now in the manuscript.}
+
+\rh{Efficiency.} Table~\ref{tab:efficiency_comparison} measures inference-active parameters, per-image FLOPs, and batch-1 latency under one shared protocol on pre-extracted features. The shared frozen encoder is excluded, so the numbers reflect what each method itself adds. Full FDIL costs \res{$2.41$}M parameters, $4.93$M FLOPs, and \res{$0.466$}\,ms per image. \res{We added LabCR, the strongest prior method under our matched protocol. Its label-query Transformer needs $153.29$M parameters and $1.395$\,ms, and HLEG needs $203.70$M and $2.725$\,ms. FDIL therefore leads LabCR by $3.32$ Avg.\ F1 at roughly $1/64$ of its parameters and a third of its latency.} IntCLIP is the smallest head measured ($0.02$M), but runs at $22.02$M FLOPs and trails FDIL by $5.80$ Avg.\ F1.
+
+\rh{Failure visualization.} Fig.~\ref{fig:case_study} places a success and a genuine failure side by side. FDIL errs on a $0.33$-agreement label yet stays semantically plausible, illustrating that low-agreement samples can admit semantically plausible alternative predictions.
+
+\rh{Deployment.} Sec.~\ref{sec:discussion} records the deployment cost. FDIL offers two operating points. One is the full model at \res{$0.466$}\,ms, the other the UTD branch alone at exactly baseline cost.
+\revloc{Table~\ref{tab:efficiency_comparison} and its discussion, the Interpretability Analysis subsection with Fig.~\ref{fig:case_study}, and the deployment and preparation-cost notes in Sec.~\ref{sec:discussion}}
+}
+\showEfficiencyComparison
+\showCaseStudy
+\showPerClassAttr

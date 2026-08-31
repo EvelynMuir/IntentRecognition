@@ -1,0 +1,51 @@
+%% --- BEGIN condensed-out for 35-page limit ---
+%% Notation moved into Method Sec.3.1 (Table~\ref{tab:notation}) and compressed
+%% to core symbols. Full notation table retained below but excluded from build.
+\iffalse
+\appendix
+\setcounter{table}{0}
+
+\revised{\section{Notation}}
+\label{app:notation}
+\revised{Table~\ref{tab:notation} summarizes the notation used throughout the paper.}
+
+\begin{table}[H]
+\centering
+\small
+\caption{\revised{Summary of notation.}}
+\label{tab:notation}
+\setlength{\tabcolsep}{6pt}
+\revised{
+\begin{tabular}{ll}
+\hline
+Symbol & Meaning \\
+\hline
+$x$ & input image \\
+$\mathcal{Y},\,C$ & intent label space and number of intent classes \\
+$Y\in\{0,1\}^C$ & latent multi-label intent \\
+$\mathbf{y}^{\text{soft}}$ & soft annotation vector in $\{0,0.33,0.66,1\}^C$ \\
+$\mathbf{y}^{\text{hard}}$ & binarized hard labels \\
+$\omega\in(0,1]$ & sample-level annotator agreement score \\
+$\phi=f_{\text{img}}(x)$ & frozen visual (CLIP) image feature \\
+$\mathbf{e}_c,\,\mathbf{e}_{\text{text}}$ & class-text / rationale text embedding \\
+$\gamma$ & CLIP logit scale \\
+$\tilde{s}^{\text{prior}}_c$ & normalized heterogeneous semantic prior for class $c$ \\
+$\mathbf{s}^{b},\,\mathbf{s}^{v}$ & base / visual-student logits \\
+$\mathcal{C}_K(x),\,K$ & Top-$K$ candidate set and its size \\
+$\alpha$ & semantic-reranking strength \\
+$h_{\text{res}}(\cdot)$ & residual student head \\
+$s^{\text{full}}_c$ & final refined score for class $c$ \\
+$t_c$ & class-wise decision threshold (validation-only) \\
+$\mathbf{p}^{\text{tea}},\,\tau$ & text-teacher distribution and temperature \\
+$g=1-\omega$ & teacher-branch gate weight \\
+$\lambda$ & distillation loss weight \\
+$\mathcal{L}_{\text{vis}},\mathcal{L}_{\text{distill}},\mathcal{L}_{\text{total}}$ & visual, distillation, and total losses \\
+$\eta_c(x)$ & Bayes intent posterior $\Pr(Y_c{=}1\mid X{=}x)$ \\
+$\mathcal{H}(\cdot)$ & binary entropy \\
+$\text{aliasing}_c(\phi)$ & inter-class mutual-information overlap (semantic ambiguity) \\
+\hline
+\end{tabular}
+}
+\end{table}
+\fi
+%% --- END condensed-out for 35-page limit ---

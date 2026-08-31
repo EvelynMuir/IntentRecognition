@@ -1,0 +1,25 @@
+% ================================
+% === Reviewer 3 (Associate Editor metareview) ===
+% ================================
+\reviewerblock{Reviewer~3 (Associate Editor)}{%
+We thank the Associate Editor for the focused, actionable points.}
+
+\cresp{The authors are encouraged to clearly state, in the Abstract, the quantitative improvements achieved by the proposed FDIL method compared to existing approaches.}
+{Following this recommendation, we replace the former qualitative performance statement in the final sentence of the Abstract with three controlled effect sizes: at least \res{$+3.4$ Avg F1}, \res{$+5.7$ Hard F1}, and \res{$+3.4$ threshold-free mAP} over representative recent methods. The same sentence now states the comparison boundary, matched frozen CLIP ViT-L/14 features, and validation-only thresholding, so that the gains cannot be read as comparisons across incompatible backbones or selection procedures.
+\revloc{the final sentence of the Abstract; the matched-feature comparison block in Table~\ref{tab:main_results}; threshold-free values in Table~\ref{tab:threshold_free}}
+}
+\showMainResults
+\showThresholdFree
+
+\cresp{In Section~3.3.1, Semantic Prior Construction, the authors should provide a more detailed justification for the selected scenarios, including their representativeness and the expected outcomes in conditions not covered by the presented scenarios.}
+{We appreciate the request for an explicit selection criterion and uncovered-case behavior. We expand ``Semantic Prior Construction'' in three places. First, the generation paragraph now states that scenarios are not hand-picked: one fixed prompt is applied to every intent class and enumerates visually distinct realizations along five axes (subjects/objects, actions, settings, atmosphere, and photographic style), with at least three settings per intent. Second, the aggregation paragraph now explains that lexical, canonical, and scenario sources are normalized independently and averaged before they are allowed to rerank only the base model's Top-$K$ candidates. Third, we add an uncovered-case paragraph: if an image falls outside the generated scenarios, only the scenario match weakens; lexical and canonical priors, unchanged base logits, and the image-conditioned residual student remain active. We also complete the prior-source ablation by adding the two previously missing pairwise combinations, allowing the manuscript to show that the three sources are complementary rather than relying on a verbal assertion.
+\revloc{the generation-protocol, source-aggregation, and uncovered-case paragraphs in Semantic Prior Construction of Sec.~\ref{sec:method}; the added Lexical+Scenario and Canonical+Scenario rows and the three-source row in Table~\ref{tab:prior_ablation}}
+}
+\showPriorAblation
+
+\cresp{Table~2 shows that FDIL achieves lower performance than the conventional HLEG method on the Easy subset, yet this observation is not discussed. The authors should explain the possible reasons for this result and clarify whether certain characteristics of the Easy subset contribute to the similar performance between the two methods. Further discussion of the key observations in the table is recommended.}
+{This Easy-subset exception is now stated explicitly rather than absorbed into the aggregate result. Immediately after Table~\ref{tab:difficulty_results}, we add a paragraph reporting that FDIL scores \res{$81.19$}, $0.30$ below HLEG and slightly above the CLIP baseline ($80.99$). The paragraph explains that Easy classes are largely visually unambiguous, so a strong CLIP representation already separates them well and leaves little headroom for ambiguity-targeted modules. It contrasts this near-tie with the Medium and Hard results, where FDIL's gains over the CLIP baseline are larger. We also add a per-class attribution table and interpretation: the largest gains occur in abstract Hard classes such as \textit{WorkILike}, \textit{PassionAboutSomething}, and \textit{SocialLifeFriendship}, while only one Easy class shows a small regression ($-0.96$ F1). The Discussion now uses this pattern to delimit the scope of the method instead of claiming uniform dominance.
+\revloc{the new interpretation paragraph immediately after Table~\ref{tab:difficulty_results} in Performance on Difficulty- and Content-Dependent Subsets; the new per-class analysis and Table~\ref{tab:per_class_attr}; the corresponding scope statement in Sec.~\ref{sec:discussion}}
+}
+\showDifficultyResults
+\showPerClassAttr
